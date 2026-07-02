@@ -1,0 +1,33 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:16
+    container_name: fixmycity_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: fixmycity
+      POSTGRES_PASSWORD: fixmycity_pass
+      POSTGRES_DB: fixmycity_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  auth-service:
+    build:
+      context: .
+      dockerfile: auth_service/Dockerfile
+    container_name: auth_service
+    restart: always
+    ports:
+      - "8001:8001"
+    environment:
+      DATABASE_URL: postgresql://fixmycity:fixmycity_pass@postgres:5432/fixmycity_db
+    depends_on:
+      - postgres
+    volumes:
+      - ./auth_service:/app/auth_service
+
+volumes:
+  postgres_data:
