@@ -1,31 +1,93 @@
+/* Import required fonts and icons */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap');
+
+/* Import Tailwind */
 @import "tailwindcss";
 
 @theme {
+  /* Colors */
   --color-primary: #002045;
   --color-primary-container: #1a365d;
   --color-primary-fixed: #d6e3ff;
   --color-primary-fixed-dim: #adc7f7;
   --color-on-primary: #ffffff;
   --color-on-primary-fixed: #001b3c;
+  --color-on-primary-container: #86a0cd;
+  
   --color-secondary: #00677d;
   --color-secondary-container: #50d9fe;
   --color-secondary-fixed: #b3ebff;
   --color-on-secondary-fixed: #001f27;
+  
+  --color-background: #f7f9fc;
   --color-surface: #f7f9fc;
   --color-surface-variant: #e0e3e6;
   --color-surface-container: #eceef1;
   --color-surface-container-low: #f2f4f7;
   --color-surface-container-lowest: #ffffff;
   --color-surface-container-highest: #e0e3e6;
+  
   --color-on-surface: #191c1e;
   --color-on-surface-variant: #43474e;
   --color-outline-variant: #c4c6cf;
   --color-status-success: #10B981;
+  --color-text-primary: #1A365D;
+  --color-text-muted: #64748B;
 
+  /* Spacing */
   --spacing-card-padding: 24px;
+  --spacing-stack-sm: 8px;
   --spacing-stack-md: 16px;
   --spacing-margin-mobile: 16px;
   --spacing-margin-desktop: 32px;
 
+  /* Shadows */
   --shadow-card: 0px 4px 20px rgba(26, 54, 93, 0.08);
+
+  /* Font Families */
+  --font-title-lg: 'Inter', sans-serif;
+  --font-display-lg-mobile: 'Space Grotesk', sans-serif;
+  --font-display-lg: 'Space Grotesk', sans-serif;
+  --font-body-md: 'Inter', sans-serif;
+  --font-headline-kpi: 'Space Grotesk', sans-serif;
+  --font-label-sm: 'Inter', sans-serif;
+
+  /* Font Sizes & Line Heights */
+  --text-title-lg: 20px;
+  --text-title-lg--line-height: 28px;
+  --text-title-lg--font-weight: 600;
+
+  --text-display-lg-mobile: 36px;
+  --text-display-lg-mobile--line-height: 1.2;
+  --text-display-lg-mobile--letter-spacing: 1px;
+  --text-display-lg-mobile--font-weight: 700;
+
+  --text-display-lg: 48px;
+  --text-display-lg--line-height: 1.1;
+  --text-display-lg--letter-spacing: 2px;
+  --text-display-lg--font-weight: 700;
+
+  --text-body-md: 16px;
+  --text-body-md--line-height: 24px;
+  --text-body-md--font-weight: 400;
+
+  --text-headline-kpi: 32px;
+  --text-headline-kpi--line-height: 1.2;
+  --text-headline-kpi--letter-spacing: 0.5px;
+  --text-headline-kpi--font-weight: 600;
+
+  --text-label-sm: 12px;
+  --text-label-sm--line-height: 16px;
+  --text-label-sm--font-weight: 500;
+}
+
+/* Custom CSS Effects */
+.input-glow:focus {
+  box-shadow: 0 0 0 2px var(--color-secondary-container);
+  border-color: var(--color-secondary-container);
+}
+.btn-glow:hover {
+  /* Using rgba to add opacity to the secondary-container hex color */
+  box-shadow: 0 0 10px 4px rgba(80, 217, 254, 0.4); 
 }
