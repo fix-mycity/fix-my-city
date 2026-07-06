@@ -29,6 +29,7 @@ class Settings:
     SMTP_PASSWORD = os.getenv("SMTP_PASSWORD")
 
     SMTP_SENDER = os.getenv("SMTP_SENDER", "fixmycity11@gmail.com")
-
+    
+    ENV = os.getenv("ENV", "development")
 
 settings = Settings()
