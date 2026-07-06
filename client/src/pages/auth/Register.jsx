@@ -1,12 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, Link } from "react-router-dom";
 import { toast } from "react-hot-toast";
 import { registerUser } from "../../features/auth/authThunks";
-import {
-  INDIA_DISTRICTS_BY_STATE,
-  INDIA_STATES,
-} from "../../data/indiaLocations";
+import { getStatesApi, getDistrictsApi, lookupPincodeApi } from "../../api/locationApi";
 
 const FIELD_NAMES = new Set([
   "username",
@@ -83,7 +80,79 @@ export default function Register() {
 
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const selectedDistricts = INDIA_DISTRICTS_BY_STATE[formData.state] || [];
+
+  const [states, setStates] = useState([]);
+  const [districts, setDistricts] = useState([]);
+  const [isPincodeLoading, setIsPincodeLoading] = useState(false);
+
+  useEffect(() => {
+    const fetchStates = async () => {
+      try {
+        const response = await getStatesApi();
+        setStates(response.data);
+      } catch (err) {
+        console.error("Failed to fetch states", err);
+      }
+    };
+    fetchStates();
+  }, []);
+
+  useEffect(() => {
+    if (!formData.state) {
+      setDistricts([]);
+      return;
+    }
+    const matchedState = states.find((s) => s.name === formData.state);
+    if (matchedState) {
+      const fetchDistricts = async () => {
+        try {
+          const response = await getDistrictsApi(matchedState.id);
+          setDistricts(response.data);
+        } catch (err) {
+          console.error("Failed to fetch districts", err);
+        }
+      };
+      fetchDistricts();
+    } else {
+      setDistricts([]);
+    }
+  }, [formData.state, states]);
+
+  useEffect(() => {
+    if (formData.pincode && /^\d{6}$/.test(formData.pincode)) {
+      const lookupPincode = async () => {
+        setIsPincodeLoading(true);
+        try {
+          const response = await lookupPincodeApi(formData.pincode);
+          const { state, district } = response.data;
+
+          if (state) {
+            setFormData((prev) => ({
+              ...prev,
+              state: state,
+              district: district || "",
+            }));
+
+            setFieldErrors((prev) => ({
+              ...prev,
+              state: "",
+              district: "",
+              pincode: "",
+            }));
+
+            toast.success(
+              `Location resolved to ${district ? district + ", " : ""}${state}`
+            );
+          }
+        } catch (err) {
+          console.error("Pincode lookup error:", err);
+        } finally {
+          setIsPincodeLoading(false);
+        }
+      };
+      lookupPincode();
+    }
+  }, [formData.pincode]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -148,7 +217,7 @@ export default function Register() {
 
     if (!district.trim()) {
       errors.district = "District is required.";
-    } else if (!INDIA_DISTRICTS_BY_STATE[state]?.includes(district)) {
+    } else if (districts.length > 0 && !districts.some((d) => d.name === district)) {
       errors.district = "Please select a valid district for the selected state.";
     }
 
@@ -331,9 +400,9 @@ export default function Register() {
                   className={`w-full h-11 px-4 border rounded bg-surface-container-lowest font-body-md text-body-md text-on-surface focus:outline-none input-glow transition-all ${fieldErrors.state ? "border-red-500 focus:border-red-500" : "border-outline-variant"} ${!formData.state ? "text-text-muted" : ""}`}
                 >
                   <option value="">Select state</option>
-                  {INDIA_STATES.map((stateName) => (
-                    <option key={stateName} value={stateName}>
-                      {stateName}
+                  {states.map((s) => (
+                    <option key={s.id} value={s.name}>
+                      {s.name}
                     </option>
                   ))}
                 </select>
@@ -362,9 +431,9 @@ export default function Register() {
                   <option value="">
                     {formData.state ? "Select district" : "Select state first"}
                   </option>
-                  {selectedDistricts.map((districtName) => (
-                    <option key={districtName} value={districtName}>
-                      {districtName}
+                  {districts.map((d) => (
+                    <option key={d.id} value={d.name}>
+                      {d.name}
                     </option>
                   ))}
                 </select>

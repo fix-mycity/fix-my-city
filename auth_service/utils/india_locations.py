@@ -1,4 +1,6 @@
-export const INDIA_DISTRICTS_BY_STATE = {
+# This file is auto-generated from client/src/data/indiaLocations.js
+
+INDIA_DISTRICTS_BY_STATE = {
   "Andaman and Nicobar Islands": [
     "Nicobar",
     "North and Middle Andaman",
@@ -59,7 +61,7 @@ export const INDIA_DISTRICTS_BY_STATE = {
     "West Kameng",
     "West Siang",
   ],
-  Assam: [
+  "Assam": [
     "Baksa",
     "Barpeta",
     "Biswanath",
@@ -95,7 +97,7 @@ export const INDIA_DISTRICTS_BY_STATE = {
     "Udalguri",
     "West Karbi Anglong",
   ],
-  Bihar: [
+  "Bihar": [
     "Araria",
     "Arwal",
     "Aurangabad",
@@ -135,8 +137,8 @@ export const INDIA_DISTRICTS_BY_STATE = {
     "Vaishali",
     "West Champaran",
   ],
-  Chandigarh: ["Chandigarh"],
-  Chhattisgarh: [
+  "Chandigarh": ["Chandigarh"],
+  "Chhattisgarh": [
     "Balod",
     "Baloda Bazar",
     "Balrampur",
@@ -171,7 +173,7 @@ export const INDIA_DISTRICTS_BY_STATE = {
     "Daman",
     "Diu",
   ],
-  Delhi: [
+  "Delhi": [
     "Central Delhi",
     "East Delhi",
     "New Delhi",
@@ -184,8 +186,8 @@ export const INDIA_DISTRICTS_BY_STATE = {
     "South West Delhi",
     "West Delhi",
   ],
-  Goa: ["North Goa", "South Goa"],
-  Gujarat: [
+  "Goa": ["North Goa", "South Goa"],
+  "Gujarat": [
     "Ahmedabad",
     "Amreli",
     "Anand",
@@ -220,7 +222,7 @@ export const INDIA_DISTRICTS_BY_STATE = {
     "Vadodara",
     "Valsad",
   ],
-  Haryana: [
+  "Haryana": [
     "Ambala",
     "Bhiwani",
     "Charkhi Dadri",
@@ -280,7 +282,7 @@ export const INDIA_DISTRICTS_BY_STATE = {
     "Srinagar",
     "Udhampur",
   ],
-  Jharkhand: [
+  "Jharkhand": [
     "Bokaro",
     "Chatra",
     "Deoghar",
@@ -306,7 +308,7 @@ export const INDIA_DISTRICTS_BY_STATE = {
     "Simdega",
     "West Singhbhum",
   ],
-  Karnataka: [
+  "Karnataka": [
     "Bagalkot",
     "Ballari",
     "Belagavi",
@@ -339,7 +341,7 @@ export const INDIA_DISTRICTS_BY_STATE = {
     "Vijayapura",
     "Yadgir",
   ],
-  Kerala: [
+  "Kerala": [
     "Alappuzha",
     "Ernakulam",
     "Idukki",
@@ -355,8 +357,8 @@ export const INDIA_DISTRICTS_BY_STATE = {
     "Thrissur",
     "Wayanad",
   ],
-  Ladakh: ["Kargil", "Leh"],
-  Lakshadweep: ["Lakshadweep"],
+  "Ladakh": ["Kargil", "Leh"],
+  "Lakshadweep": ["Lakshadweep"],
   "Madhya Pradesh": [
     "Agar Malwa",
     "Alirajpur",
@@ -411,7 +413,7 @@ export const INDIA_DISTRICTS_BY_STATE = {
     "Umaria",
     "Vidisha",
   ],
-  Maharashtra: [
+  "Maharashtra": [
     "Ahmednagar",
     "Akola",
     "Amravati",
@@ -449,7 +451,7 @@ export const INDIA_DISTRICTS_BY_STATE = {
     "Washim",
     "Yavatmal",
   ],
-  Manipur: [
+  "Manipur": [
     "Bishnupur",
     "Chandel",
     "Churachandpur",
@@ -467,7 +469,7 @@ export const INDIA_DISTRICTS_BY_STATE = {
     "Thoubal",
     "Ukhrul",
   ],
-  Meghalaya: [
+  "Meghalaya": [
     "East Garo Hills",
     "East Jaintia Hills",
     "East Khasi Hills",
@@ -481,7 +483,7 @@ export const INDIA_DISTRICTS_BY_STATE = {
     "West Jaintia Hills",
     "West Khasi Hills",
   ],
-  Mizoram: [
+  "Mizoram": [
     "Aizawl",
     "Champhai",
     "Hnahthial",
@@ -494,7 +496,7 @@ export const INDIA_DISTRICTS_BY_STATE = {
     "Serchhip",
     "Siaha",
   ],
-  Nagaland: [
+  "Nagaland": [
     "Chumoukedima",
     "Dimapur",
     "Kiphire",
@@ -512,7 +514,7 @@ export const INDIA_DISTRICTS_BY_STATE = {
     "Wokha",
     "Zunheboto",
   ],
-  Odisha: [
+  "Odisha": [
     "Angul",
     "Balangir",
     "Balasore",
@@ -544,8 +546,8 @@ export const INDIA_DISTRICTS_BY_STATE = {
     "Subarnapur",
     "Sundargarh",
   ],
-  Puducherry: ["Karaikal", "Mahe", "Puducherry", "Yanam"],
-  Punjab: [
+  "Puducherry": ["Karaikal", "Mahe", "Puducherry", "Yanam"],
+  "Punjab": [
     "Amritsar",
     "Barnala",
     "Bathinda",
@@ -570,7 +572,7 @@ export const INDIA_DISTRICTS_BY_STATE = {
     "Shaheed Bhagat Singh Nagar",
     "Tarn Taran",
   ],
-  Rajasthan: [
+  "Rajasthan": [
     "Ajmer",
     "Alwar",
     "Anupgarh",
@@ -622,7 +624,7 @@ export const INDIA_DISTRICTS_BY_STATE = {
     "Tonk",
     "Udaipur",
   ],
-  Sikkim: ["Gangtok", "Gyalshing", "Mangan", "Namchi", "Pakyong", "Soreng"],
+  "Sikkim": ["Gangtok", "Gyalshing", "Mangan", "Namchi", "Pakyong", "Soreng"],
   "Tamil Nadu": [
     "Ariyalur",
     "Chengalpattu",
@@ -663,7 +665,7 @@ export const INDIA_DISTRICTS_BY_STATE = {
     "Viluppuram",
     "Virudhunagar",
   ],
-  Telangana: [
+  "Telangana": [
     "Adilabad",
     "Bhadradri Kothagudem",
     "Hanumakonda",
@@ -698,7 +700,7 @@ export const INDIA_DISTRICTS_BY_STATE = {
     "Warangal",
     "Yadadri Bhuvanagiri",
   ],
-  Tripura: [
+  "Tripura": [
     "Dhalai",
     "Gomati",
     "Khowai",
@@ -785,7 +787,7 @@ export const INDIA_DISTRICTS_BY_STATE = {
     "Unnao",
     "Varanasi",
   ],
-  Uttarakhand: [
+  "Uttarakhand": [
     "Almora",
     "Bageshwar",
     "Chamoli",
@@ -825,6 +827,4 @@ export const INDIA_DISTRICTS_BY_STATE = {
     "South 24 Parganas",
     "Uttar Dinajpur",
   ],
-};
-
-export const INDIA_STATES = Object.keys(INDIA_DISTRICTS_BY_STATE);
+}
