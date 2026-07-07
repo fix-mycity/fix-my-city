@@ -63,6 +63,7 @@ export default function VerifyOTP() {
 
     try {
       await dispatch(verifyOtp({ email: registeredEmail, otp })).unwrap();
+      toast.success("Email verified successfully! Please log in.");
       navigate("/login");
     } catch (err) {
       const { errors, globalMessages } = getBackendFieldErrors(err, ["otp"]);
@@ -73,8 +74,9 @@ export default function VerifyOTP() {
 
       if (globalMessages.length > 0) {
         globalMessages.forEach((message) => toast.error(message));
-      } else if (Object.keys(errors).length === 0) {
-        toast.error(getGlobalErrorMessage(err, "OTP verification failed."));
+      } else {
+        const errorMsg = errors.otp || getGlobalErrorMessage(err, "OTP verification failed.");
+        toast.error(errorMsg);
       }
     }
   };
@@ -82,6 +84,7 @@ export default function VerifyOTP() {
   const handleResend = async () => {
     try {
       await dispatch(resendOtp({ email: registeredEmail })).unwrap();
+      toast.success("OTP code sent successfully!");
       setCooldown(30);
     } catch (err) {
       toast.error(getGlobalErrorMessage(err, "Failed to resend OTP."));

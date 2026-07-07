@@ -81,6 +81,7 @@ export default function ResetPassword() {
         confirm_password: formData.confirm_password
       })).unwrap();
 
+      toast.success("Password reset successfully! Please log in.");
       navigate('/login');
     } catch (err) {
       const { errors, globalMessages } = getBackendFieldErrors(err, [
@@ -95,8 +96,9 @@ export default function ResetPassword() {
 
       if (globalMessages.length > 0) {
         globalMessages.forEach((message) => toast.error(message));
-      } else if (Object.keys(errors).length === 0) {
-        toast.error(getGlobalErrorMessage(err, 'Password reset failed.'));
+      } else {
+        const errorMsg = errors.otp || errors.new_password || errors.confirm_password || getGlobalErrorMessage(err, 'Password reset failed.');
+        toast.error(errorMsg);
       }
     }
   };
