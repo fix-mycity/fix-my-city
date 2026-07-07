@@ -11,6 +11,16 @@ router = APIRouter(
 )
 
 
+def field_error(field_name: str, message: str):
+    return [
+        {
+            "loc": ["body", field_name],
+            "msg": message,
+            "type": "value_error",
+        }
+    ]
+
+
 @router.post("/send")
 def send_otp(
     data: SendOTPSchema,
@@ -38,7 +48,7 @@ def verify(
     if not is_valid:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid or expired OTP code"
+            detail=field_error("otp", "Invalid or expired OTP code")
         )
         
     # Mark user as verified in database

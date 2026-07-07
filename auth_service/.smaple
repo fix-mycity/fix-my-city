@@ -1,0 +1,21 @@
+# Database URL configuration
+# Use 'localhost' when running the database outside of docker and running python locally,
+# or 'postgres' when running both postgres and auth-service inside Docker via docker-compose.
+DATABASE_URL=postgresql://username:password@localhost:5432/database_name
+
+# Security & JWT configuration
+# You can generate a random 32-byte secret key with `openssl rand -hex 32` or similar.
+SECRET_KEY=your_secret_key_here
+ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_MINUTES=30
+REFRESH_TOKEN_EXPIRE_DAYS=7
+
+# SMTP / Email settings (e.g. Brevo)
+SMTP_HOST=smtp-relay.brevo.com
+SMTP_PORT=587
+SMTP_USERNAME=your_smtp_username_here
+SMTP_PASSWORD=your_smtp_password_or_api_key_here
+SMTP_SENDER=your_verified_sender_email_here
+
+#after deployment change it into production
+ENV=development
