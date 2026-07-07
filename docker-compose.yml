@@ -20,14 +20,43 @@ services:
       dockerfile: auth_service/Dockerfile
     container_name: auth_service
     restart: always
-    ports:
-      - "8001:8001"
+    expose:
+      - "8001"
     environment:
       DATABASE_URL: postgresql://fixmycity:fixmycity_pass@postgres:5432/fixmycity_db
     depends_on:
       - postgres
     volumes:
       - ./auth_service:/app/auth_service
+
+  city-operation-service:
+    build:
+      context: .
+      dockerfile: city_operation_service/Dockerfile
+    container_name: city_operation_service
+    restart: always
+    expose:
+      - "8002"
+    environment:
+      DATABASE_URL: postgresql://fixmycity:fixmycity_pass@postgres:5432/fixmycity_db
+    depends_on:
+      - postgres
+    volumes:
+      - ./city_operation_service:/app/city_operation_service
+
+  nginx:
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
+    container_name: fixmycity_nginx
+    restart: always
+    ports:
+      - "8080:8080"
+    depends_on:
+      - auth-service
+      - city-operation-service
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
 
 volumes:
   postgres_data:
