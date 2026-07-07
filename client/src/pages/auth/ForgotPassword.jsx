@@ -57,8 +57,9 @@ export default function ForgotPassword() {
 
       if (globalMessages.length > 0) {
         globalMessages.forEach((message) => toast.error(message));
-      } else if (Object.keys(errors).length === 0) {
-        toast.error(getGlobalErrorMessage(err, 'Failed to send reset OTP.'));
+      } else {
+        const errorMsg = errors.email || getGlobalErrorMessage(err, 'Failed to send reset OTP.');
+        toast.error(errorMsg);
       }
     }
   };
