@@ -9,6 +9,11 @@ import Register from './pages/auth/Register';
 import VerifyOTP from './pages/auth/VerifyOTP';
 import ForgotPassword from './pages/auth/ForgotPassword';
 import ResetPassword from './pages/auth/ResetPassword';
+import TermsOfService from './pages/TermsOfService';
+import PrivacyPolicy from './pages/PrivacyPolicy';
+import UserDashboard from './pages/UserDashboard';
+import ProtectedRoute from './routes/ProtectedRoute';
+import PublicRoute from './routes/PublicRoute';
 
 export default function App() {
   const dispatch = useDispatch();
@@ -29,12 +34,21 @@ export default function App() {
       <Toaster position="top-right" reverseOrder={false} />
       <Routes>
         <Route path="/" element={<LandingPage />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="/verify-otp" element={<VerifyOTP/>} />
-        <Route path="/forgot-password" element={<ForgotPassword/>} />
-        <Route path="/reset-password" element={<ResetPassword/>} />
-
+        <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
+        <Route path="/register" element={<PublicRoute><Register /></PublicRoute>} />
+        <Route path="/verify-otp" element={<PublicRoute><VerifyOTP/></PublicRoute>} />
+        <Route path="/forgot-password" element={<PublicRoute><ForgotPassword/></PublicRoute>} />
+        <Route path="/reset-password" element={<PublicRoute><ResetPassword/></PublicRoute>} />
+        <Route path="/terms" element={<TermsOfService />} />
+        <Route path="/privacy" element={<PrivacyPolicy />} />
+        <Route 
+          path="/dashboard" 
+          element={
+            <ProtectedRoute>
+              <UserDashboard/>
+            </ProtectedRoute>
+          } 
+        />
       </Routes>
     </BrowserRouter>
   );

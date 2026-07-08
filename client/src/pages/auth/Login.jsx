@@ -109,7 +109,7 @@ export default function Login() {
         email: formData.email,
         password: formData.password
       })).unwrap();
-      navigate('/dashboard');
+      navigate('/dashboard', { replace: true });
     } catch (err) {
       const { errors, globalMessages } = getBackendFieldErrors(err);
 
