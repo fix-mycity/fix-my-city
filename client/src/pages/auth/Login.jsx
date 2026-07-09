@@ -102,19 +102,24 @@ export default function Login() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!validateForm()) return;
+    if (!validateForm()) {
+      toast.error('Please fix the validation errors.');
+      return;
+    }
 
     try {
       await dispatch(loginUser({
         email: formData.email,
         password: formData.password
       })).unwrap();
+      toast.success('Logged in successfully!');
       navigate('/dashboard', { replace: true });
     } catch (err) {
       const { errors, globalMessages } = getBackendFieldErrors(err);
 
       if (Object.keys(errors).length > 0) {
         setFieldErrors((prev) => ({ ...prev, ...errors }));
+        toast.error('Please correct the highlighted errors.');
       }
 
       if (globalMessages.length > 0) {
