@@ -70,3 +70,22 @@ class RoleChecker:
                 detail="You do not have permissions to access this resource"
             )
         return current_user
+
+
+class PermissionChecker:
+    def __init__(self, required_permissions: list[str]):
+        self.required_permissions = set(required_permissions)
+
+    def __call__(
+        self,
+        current_user: User = Depends(get_current_active_user)
+    ) -> User:
+        user_permissions = {p.permission_name for p in current_user.permissions} if current_user.permissions else set()
+        
+        # Check if user has all required permissions (or 'admin:all')
+        if "admin:all" not in user_permissions and not self.required_permissions.issubset(user_permissions):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You do not have the required permissions to access this resource"
+            )
+        return current_user

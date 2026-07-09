@@ -97,11 +97,13 @@ def login_user(db: Session, credentials: LoginSchema, ip_address: str, device: s
 
     # 5. Generate access & refresh tokens
     role_name = user.role.role_name if user.role else "Citizen"
+    permissions = [p.permission_name for p in user.permissions] if user.permissions else []
     access_payload = {
         "sub": str(user.id),
         "email": user.email,
         "username": user.username,
-        "role": role_name
+        "role": role_name,
+        "permissions": permissions
     }
     
     access_token = create_access_token(access_payload)
@@ -128,7 +130,8 @@ def login_user(db: Session, credentials: LoginSchema, ip_address: str, device: s
                 "id": user.id,
                 "username": user.username,
                 "email": user.email,
-                "role": role_name
+                "role": role_name,
+                "permissions": permissions
             }
         }
     }
@@ -153,11 +156,13 @@ def refresh_user_tokens(db: Session, refresh_token: str) -> dict:
         
     # 3. Rotate refresh tokens (Generate new tokens & revoke the old one)
     role_name = user.role.role_name if user.role else "Citizen"
+    permissions = [p.permission_name for p in user.permissions] if user.permissions else []
     access_payload = {
         "sub": str(user.id),
         "email": user.email,
         "username": user.username,
-        "role": role_name
+        "role": role_name,
+        "permissions": permissions
     }
     new_access_token = create_access_token(access_payload)
     new_refresh_token = create_refresh_token(db, user.id)
