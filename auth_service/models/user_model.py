@@ -4,13 +4,22 @@ from sqlalchemy import (
     String,
     Boolean,
     DateTime,
-    ForeignKey
+    ForeignKey,
+    Table
 )
 
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 
 from database import Base
+
+
+user_permissions = Table(
+    "user_permissions",
+    Base.metadata,
+    Column("user_id", Integer, ForeignKey("users.id"), primary_key=True),
+    Column("permission_id", Integer, ForeignKey("permissions.id"), primary_key=True)
+)
 
 
 class User(Base):
@@ -51,3 +60,4 @@ class User(Base):
     )
 
     role = relationship("Role")
+    permissions = relationship("Permission", secondary=user_permissions)
