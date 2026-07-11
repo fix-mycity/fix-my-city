@@ -1,10 +1,10 @@
 from fastapi import Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import JWTError, jwt
 from config import settings
 from pydantic import BaseModel
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
+bearer_scheme = HTTPBearer()
 
 class UserData(BaseModel):
     id: int
@@ -13,18 +13,19 @@ class UserData(BaseModel):
     role: str | None = None
     permissions: list[str] = []
 
-def get_current_user(token: str = Depends(oauth2_scheme)) -> UserData:
+def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme)) -> UserData:
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
+    token = credentials.credentials
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
         user_id_str: str | None = payload.get("sub")
         if user_id_str is None:
             raise credentials_exception
-            
+
         return UserData(
             id=int(user_id_str),
             username=payload.get("username"),
@@ -50,4 +51,3 @@ class PermissionChecker:
                     detail="Forbidden: You do not have the required permissions"
                 )
         return current_user
-

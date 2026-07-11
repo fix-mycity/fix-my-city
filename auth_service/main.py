@@ -18,6 +18,7 @@ app = FastAPI(
     title="Fix My City Authentication Service",
     version="1.0.0",
     root_path="/api"
+
 )
 
 app.add_middleware(
