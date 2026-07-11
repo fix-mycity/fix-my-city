@@ -22,4 +22,4 @@ class ProfileResponseSchema(BaseModel):
     updated_at: datetime
 
     class Config:
-        from_attributes = True  # allows .from_orm() style conversion from SQLAlchemy model
+        from_attributes = True  # allows conversion from SQLAlchemy model

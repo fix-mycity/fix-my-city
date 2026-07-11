@@ -16,7 +16,9 @@ Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
     title="Fix My City Authentication Service",
-    version="1.0.0"
+    version="1.0.0",
+    root_path="/api"
+
 )
 
 app.add_middleware(
