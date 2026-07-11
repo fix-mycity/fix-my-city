@@ -23,6 +23,7 @@ def get_or_create_profile(db: Session, user_id: int) -> Profile:
 
 def update_profile(db: Session, user_id: int, data: ProfileUpdateSchema) -> Profile:
     profile = get_or_create_profile(db, user_id)
+    
 
     # only update fields that were actually sent (exclude_unset=True)
     update_data = data.model_dump(exclude_unset=True)

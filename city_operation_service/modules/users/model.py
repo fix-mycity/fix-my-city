@@ -3,8 +3,7 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
-    DateTime,
-    ForeignKey
+    DateTime
 )
 from sqlalchemy.sql import func
 
@@ -16,11 +15,13 @@ class Profile(Base):
 
     id = Column(Integer, primary_key=True, index=True)
 
-    # Links to auth_service.users.id — no relationship() here since
-    # User model lives in a different service/module, just store the FK id
+    # References auth_service.users.id, but NOT a real SQLAlchemy ForeignKey.
+    # Reason: this service's Base.metadata doesn't know about the "users"
+    # table (it belongs to auth_service's own Base), so create_all() would
+    # crash trying to resolve the FK constraint. We trust user_id from the
+    # JWT token instead — no DB-level constraint needed.
     user_id = Column(
         Integer,
-        ForeignKey("users.id"),
         unique=True,
         nullable=False,
         index=True
@@ -43,5 +44,4 @@ class Profile(Base):
         DateTime(timezone=True),
         server_default=func.now(),
         onupdate=func.now()
-    ) 
-
+    )
