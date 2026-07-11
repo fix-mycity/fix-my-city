@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, field_validator, ConfigDict
+from pydantic import BaseModel, Field, field_validator, model_validator, ConfigDict
 from typing import Optional
 from datetime import datetime
 
@@ -38,5 +38,58 @@ class ProfileResponseSchema(BaseModel):
     phone_number: Optional[str]
     avatar_url: Optional[str]
     bio: Optional[str]
+    created_at: datetime
+    updated_at: datetime
+
+
+class SavedLocationCreateSchema(BaseModel):
+    label: str = Field(..., min_length=2, max_length=50)
+    address: str = Field(..., min_length=5, max_length=500)
+    latitude: Optional[float] = Field(None, ge=-90.0, le=90.0)
+    longitude: Optional[float] = Field(None, ge=-180.0, le=180.0)
+
+    @field_validator("label", "address")
+    @classmethod
+    def strip_whitespace(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("Field cannot be empty or whitespace-only")
+        return v
+
+    @model_validator(mode="after")
+    def validate_coordinates(self) -> "SavedLocationCreateSchema":
+        lat = self.latitude
+        lon = self.longitude
+        if (lat is None) != (lon is None):
+            raise ValueError("Both latitude and longitude must be provided together, or both must be null")
+        return self
+
+
+class SavedLocationUpdateSchema(BaseModel):
+    label: Optional[str] = Field(None, min_length=2, max_length=50)
+    address: Optional[str] = Field(None, min_length=5, max_length=500)
+    latitude: Optional[float] = Field(None, ge=-90.0, le=90.0)
+    longitude: Optional[float] = Field(None, ge=-180.0, le=180.0)
+
+    @field_validator("label", "address")
+    @classmethod
+    def strip_whitespace(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None:
+            v = v.strip()
+            if not v:
+                raise ValueError("Field cannot be empty or whitespace-only")
+            return v
+        return v
+
+
+class SavedLocationResponseSchema(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    user_id: int
+    label: str
+    address: str
+    latitude: Optional[float]
+    longitude: Optional[float]
     created_at: datetime
     updated_at: datetime
