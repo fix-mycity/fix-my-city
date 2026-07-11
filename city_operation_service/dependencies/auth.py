@@ -11,6 +11,7 @@ class UserData(BaseModel):
     username: str | None = None
     email: str | None = None
     role: str | None = None
+    permissions: list[str] = []
 
 def get_current_user(token: str = Depends(oauth2_scheme)) -> UserData:
     credentials_exception = HTTPException(
@@ -28,7 +29,25 @@ def get_current_user(token: str = Depends(oauth2_scheme)) -> UserData:
             id=int(user_id_str),
             username=payload.get("username"),
             email=payload.get("email"),
-            role=payload.get("role")
+            role=payload.get("role"),
+            permissions=payload.get("permissions") or []
         )
     except JWTError:
         raise credentials_exception
+
+class PermissionChecker:
+    def __init__(self, required_permissions: list[str]):
+        self.required_permissions = required_permissions
+
+    def __call__(self, current_user: UserData = Depends(get_current_user)) -> UserData:
+        if "admin:all" in current_user.permissions:
+            return current_user
+
+        for permission in self.required_permissions:
+            if permission not in current_user.permissions:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Forbidden: You do not have the required permissions"
+                )
+        return current_user
+
