@@ -1,21 +1,13 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
-from database import SessionLocal
 from dependencies.auth import get_current_user, UserData
+from dependencies.db import get_db
 
 from .schema import ProfileUpdateSchema, ProfileResponseSchema
 from .service import get_or_create_profile, update_profile
 
 router = APIRouter(prefix="/users", tags=["Users"])
-
-
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
 
 
 @router.get("/me/profile", response_model=ProfileResponseSchema)
