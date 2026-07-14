@@ -1,7 +1,37 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
+from sqlalchemy.orm import Session
 
-router = APIRouter(prefix="/users", tags=["Users Dashboard"])
+from database import SessionLocal
+from dependencies.auth import get_current_user, UserData
 
-@router.get("/")
-def get_users():
-    return {"message": "Users module active"}
+from .schema import ProfileUpdateSchema, ProfileResponseSchema
+from .service import get_or_create_profile, update_profile
+
+router = APIRouter(prefix="/users", tags=["Users"])
+
+
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+
+@router.get("/me/profile", response_model=ProfileResponseSchema)
+def read_my_profile(
+    current_user: UserData = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get the logged-in user's own profile. Auto-creates an empty one if missing."""
+    return get_or_create_profile(db, current_user.id)
+
+
+@router.patch("/me/profile", response_model=ProfileResponseSchema)
+def edit_my_profile(
+    data: ProfileUpdateSchema,
+    current_user: UserData = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Partially update the logged-in user's own profile."""
+    return update_profile(db, current_user.id, data)
