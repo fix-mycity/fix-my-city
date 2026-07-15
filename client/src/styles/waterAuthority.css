@@ -1,0 +1,1252 @@
+/* Water Authority Dashboard Design System & Styling (Phase 1) */
+
+:root {
+  --water-primary-dark: #0f1e36;
+  --water-primary: #1e3a8a;
+  --water-primary-light: #2563eb;
+  --water-primary-subtle: #dbeafe;
+  --water-accent: #38bdf8;
+  --water-bg: #f1f5f9;
+  --water-card-bg: #ffffff;
+  --water-text: #0f172a;
+  --water-text-muted: #64748b;
+  --water-border: #e2e8f0;
+  
+  --water-success: #10b981;
+  --water-success-subtle: #d1fae5;
+  --water-warning: #f59e0b;
+  --water-warning-subtle: #fef3c7;
+  --water-danger: #ef4444;
+  --water-danger-subtle: #fee2e2;
+  --water-info: #06b6d4;
+  --water-info-subtle: #ecfeff;
+  
+  --water-sidebar-width: 280px;
+  --water-sidebar-collapsed-width: 80px;
+  --water-topbar-height: 70px;
+  --water-radius: 12px;
+  --water-transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  --water-shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
+  --water-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.08), 0 2px 4px -2px rgba(0, 0, 0, 0.08);
+  --water-shadow-md: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.08);
+}
+
+.water-layout, .water-layout * {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* Layout container */
+.water-layout {
+  display: flex;
+  min-height: 100vh;
+  width: 100vw;
+  overflow-x: hidden;
+  background-color: var(--water-bg);
+  color: var(--water-text);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+/* Main Content Area Wrapper */
+.water-main-wrapper {
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+  min-height: 100vh;
+  margin-left: var(--water-sidebar-width);
+  transition: var(--water-transition);
+}
+
+.water-layout.collapsed .water-main-wrapper {
+  margin-left: var(--water-sidebar-collapsed-width);
+}
+
+/* Main Content Body */
+.water-main-content {
+  padding: 2rem;
+  flex-grow: 1;
+  max-width: 1600px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+/* Sidebar Component */
+.water-sidebar {
+  width: var(--water-sidebar-width);
+  height: 100vh;
+  background-color: var(--water-primary-dark);
+  color: #ffffff;
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 4px 0 20px rgba(0, 0, 0, 0.15);
+  transition: var(--water-transition);
+}
+
+.water-sidebar.collapsed {
+  width: var(--water-sidebar-collapsed-width);
+}
+
+.water-sidebar-logo {
+  height: var(--water-topbar-height);
+  padding: 0 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.water-sidebar-logo-icon {
+  font-size: 2rem;
+  color: var(--water-accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.water-sidebar-logo-text {
+  font-size: 1.25rem;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  color: #ffffff;
+  transition: var(--water-transition);
+}
+
+.water-sidebar.collapsed .water-sidebar-logo-text {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Sidebar Nav list */
+.water-sidebar-nav {
+  flex-grow: 1;
+  overflow-y: auto;
+  padding: 1.25rem 0.75rem;
+}
+
+.water-sidebar-nav::-webkit-scrollbar {
+  width: 4px;
+}
+
+.water-sidebar-nav::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+}
+
+.water-sidebar-menu {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.water-sidebar-item {
+  width: 100%;
+}
+
+.water-sidebar-link {
+  display: flex;
+  align-items: center;
+  padding: 0.85rem 1rem;
+  color: #94a3b8;
+  text-decoration: none;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  gap: 1rem;
+  transition: var(--water-transition);
+  white-space: nowrap;
+}
+
+.water-sidebar-link:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+  color: #ffffff;
+}
+
+.water-sidebar-link.active {
+  background-color: var(--water-primary-light);
+  color: #ffffff;
+  font-weight: 600;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
+}
+
+.water-sidebar-link-icon {
+  font-size: 1.4rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: var(--water-transition);
+}
+
+.water-sidebar-link-text {
+  transition: var(--water-transition);
+}
+
+.water-sidebar.collapsed .water-sidebar-link-text {
+  opacity: 0;
+  pointer-events: none;
+  position: absolute;
+}
+
+.water-sidebar-toggle-btn {
+  background: none;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: auto;
+  transition: var(--water-transition);
+}
+
+.water-sidebar-toggle-btn:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+}
+
+.water-sidebar-header-action {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  justify-content: space-between;
+}
+
+/* Sidebar Footer (User info & logout) */
+.water-sidebar-footer {
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 1rem;
+  background-color: rgba(0, 0, 0, 0.1);
+}
+
+.water-sidebar-user-block {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  overflow: hidden;
+  margin-bottom: 0.75rem;
+}
+
+.water-sidebar.collapsed .water-sidebar-user-block {
+  justify-content: center;
+}
+
+.water-sidebar-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-cover: cover;
+  border: 2px solid var(--water-accent);
+}
+
+.water-sidebar-user-info {
+  display: flex;
+  flex-direction: column;
+  min-w: 0;
+  transition: var(--water-transition);
+}
+
+.water-sidebar.collapsed .water-sidebar-user-info {
+  display: none;
+}
+
+.water-sidebar-username {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #ffffff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.water-sidebar-user-role {
+  font-size: 0.75rem;
+  color: #94a3b8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.water-sidebar-actions-row {
+  display: flex;
+  justify-content: space-around;
+  margin-top: 0.5rem;
+}
+
+.water-sidebar.collapsed .water-sidebar-actions-row {
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.water-sidebar-footer-btn {
+  background: none;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 0.4rem;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: var(--water-transition);
+}
+
+.water-sidebar-footer-btn:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+  color: #ffffff;
+}
+
+.water-sidebar-footer-btn.logout-btn:hover {
+  color: var(--water-danger);
+  background-color: rgba(239, 68, 68, 0.1);
+}
+
+/* Topbar Component */
+.water-topbar {
+  height: var(--water-topbar-height);
+  background-color: var(--water-card-bg);
+  border-bottom: 1px solid var(--water-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 2rem;
+  position: sticky;
+  top: 0;
+  z-index: 90;
+  box-shadow: var(--water-shadow-sm);
+}
+
+.water-topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.water-mobile-toggle {
+  display: none;
+  background: none;
+  border: none;
+  font-size: 1.75rem;
+  cursor: pointer;
+  color: var(--water-text);
+}
+
+.water-topbar-title {
+  display: flex;
+  flex-direction: column;
+}
+
+.water-topbar-dept {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--water-primary-light);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.water-topbar-logo-lbl {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--water-text);
+}
+
+.water-topbar-search {
+  position: relative;
+  width: 320px;
+  display: flex;
+  align-items: center;
+}
+
+.water-topbar-search input {
+  width: 100%;
+  padding: 0.55rem 1rem 0.55rem 2.5rem;
+  border-radius: 20px;
+  border: 1px solid var(--water-border);
+  background-color: var(--water-bg);
+  outline: none;
+  font-size: 0.85rem;
+  transition: var(--water-transition);
+}
+
+.water-topbar-search input:focus {
+  border-color: var(--water-primary-light);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+  background-color: #ffffff;
+}
+
+.water-topbar-search-icon {
+  position: absolute;
+  left: 0.85rem;
+  color: var(--water-text-muted);
+  font-size: 1.2rem;
+}
+
+.water-topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.water-topbar-date {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--water-text-muted);
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.water-topbar-badge-btn {
+  background: none;
+  border: none;
+  position: relative;
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 50%;
+  color: var(--water-text);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: var(--water-transition);
+}
+
+.water-topbar-badge-btn:hover {
+  background-color: var(--water-bg);
+}
+
+.water-topbar-badge {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 8px;
+  height: 8px;
+  background-color: var(--water-danger);
+  border-radius: 50%;
+  border: 1.5px solid #ffffff;
+}
+
+.water-topbar-profile {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  cursor: pointer;
+  position: relative;
+  padding: 0.25rem 0.5rem;
+  border-radius: 8px;
+  transition: var(--water-transition);
+}
+
+.water-topbar-profile:hover {
+  background-color: var(--water-bg);
+}
+
+.water-topbar-profile img {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1.5px solid var(--water-border);
+}
+
+.water-topbar-profile-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.water-topbar-username {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--water-text);
+}
+
+.water-topbar-userrole {
+  font-size: 0.75rem;
+  color: var(--water-text-muted);
+}
+
+/* Profile Dropdown */
+.water-profile-dropdown {
+  position: absolute;
+  top: 105%;
+  right: 0;
+  width: 200px;
+  background-color: var(--water-card-bg);
+  border: 1px solid var(--water-border);
+  border-radius: 8px;
+  box-shadow: var(--water-shadow-md);
+  padding: 0.5rem 0;
+  display: flex;
+  flex-direction: column;
+  z-index: 150;
+  animation: slideDown 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.water-profile-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.7rem 1.25rem;
+  font-size: 0.85rem;
+  color: var(--water-text);
+  background: none;
+  border: none;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  transition: var(--water-transition);
+}
+
+.water-profile-dropdown-item:hover {
+  background-color: var(--water-bg);
+  color: var(--water-primary-light);
+}
+
+.water-profile-dropdown-item.logout {
+  color: var(--water-danger);
+  border-top: 1px solid var(--water-border);
+}
+
+.water-profile-dropdown-item.logout:hover {
+  background-color: var(--water-danger-subtle);
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Page Header Component */
+.water-page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+  gap: 1.5rem;
+}
+
+.water-page-header-title h1 {
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: var(--water-text);
+  letter-spacing: -0.5px;
+}
+
+.water-page-header-title p {
+  font-size: 0.85rem;
+  color: var(--water-text-muted);
+  margin-top: 0.25rem;
+}
+
+/* Quick Actions buttons */
+.water-quick-actions-row {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.water-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1.1rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  border-radius: 8px;
+  cursor: pointer;
+  border: 1px solid var(--water-border);
+  background-color: #ffffff;
+  color: var(--water-text);
+  transition: var(--water-transition);
+}
+
+.water-btn:hover {
+  background-color: var(--water-bg);
+  border-color: var(--water-text-muted);
+}
+
+.water-btn-primary {
+  background-color: var(--water-primary-light);
+  border-color: var(--water-primary-light);
+  color: #ffffff;
+}
+
+.water-btn-primary:hover {
+  background-color: var(--water-primary);
+  border-color: var(--water-primary);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
+}
+
+/* Dashboard Cards List Grid */
+.water-dashboard-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+/* Individual Dashboard Card */
+.water-card {
+  background-color: var(--water-card-bg);
+  border: 1px solid var(--water-border);
+  border-radius: var(--water-radius);
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  box-shadow: var(--water-shadow-sm);
+  transition: var(--water-transition);
+  position: relative;
+  overflow: hidden;
+  height: 145px;
+}
+
+.water-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--water-shadow-md);
+  border-color: rgba(37, 99, 235, 0.3);
+}
+
+.water-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+}
+
+.water-card-title {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--water-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding-right: 2rem;
+  line-height: 1.2;
+}
+
+.water-card-icon-container {
+  width: 38px;
+  height: 38px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: absolute;
+  top: 1.25rem;
+  right: 1.25rem;
+}
+
+.water-card-icon-container.blue { background-color: rgba(59, 130, 246, 0.1); color: #2563eb; }
+.water-card-icon-container.orange { background-color: rgba(245, 158, 11, 0.1); color: #d97706; }
+.water-card-icon-container.red { background-color: rgba(239, 68, 68, 0.1); color: #dc2626; }
+.water-card-icon-container.green { background-color: rgba(16, 185, 129, 0.1); color: #059669; }
+.water-card-icon-container.amber { background-color: rgba(251, 191, 36, 0.15); color: #b45309; }
+.water-card-icon-container.indigo { background-color: rgba(99, 102, 241, 0.1); color: #4f46e5; }
+
+.water-card-icon {
+  font-size: 1.35rem;
+}
+
+.water-card-body {
+  margin-top: auto;
+  margin-bottom: auto;
+}
+
+.water-card-count {
+  font-size: 1.85rem;
+  font-weight: 800;
+  color: var(--water-text);
+  line-height: 1;
+  margin-bottom: 0.2rem;
+}
+
+.water-card-subtitle {
+  font-size: 0.78rem;
+  color: var(--water-text-muted);
+}
+
+.water-card-footer {
+  margin-top: auto;
+  padding-top: 0.4rem;
+  border-top: 1px solid var(--water-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.water-card-trend {
+  font-size: 0.75rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+}
+
+.water-card-trend.up { color: var(--water-success); }
+.water-card-trend.down { color: var(--water-success); } /* down on complaints is good */
+.water-card-trend.warning { color: var(--water-warning); }
+.water-card-trend.danger { color: var(--water-danger); }
+.water-card-trend.neutral { color: var(--water-text-muted); }
+
+/* Quick Actions Section on Dashboard */
+.water-quick-actions-panel {
+  background-color: var(--water-card-bg);
+  border: 1px solid var(--water-border);
+  border-radius: var(--water-radius);
+  padding: 1.5rem;
+  box-shadow: var(--water-shadow-sm);
+  margin-bottom: 2rem;
+}
+
+.water-panel-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--water-text);
+  margin-bottom: 1.25rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.water-quick-action-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.water-quick-action-btn {
+  flex: 1;
+  min-width: 170px;
+  height: 95px;
+  background-color: var(--water-bg);
+  border: 1px solid var(--water-border);
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  transition: var(--water-transition);
+}
+
+.water-quick-action-btn:hover {
+  background-color: var(--water-primary-subtle);
+  border-color: var(--water-primary-light);
+  color: var(--water-primary);
+  transform: translateY(-2px);
+  box-shadow: var(--water-shadow);
+}
+
+.water-quick-action-btn span {
+  font-size: 1.6rem;
+}
+
+.water-quick-action-btn-text {
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+/* Charts Grid Layout */
+.water-charts-grid {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.water-chart-container {
+  background-color: var(--water-card-bg);
+  border: 1px solid var(--water-border);
+  border-radius: var(--water-radius);
+  padding: 1.5rem;
+  box-shadow: var(--water-shadow-sm);
+  display: flex;
+  flex-direction: column;
+  height: 380px;
+}
+
+.water-chart-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.water-chart-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--water-text);
+}
+
+.water-chart-options-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--water-text-muted);
+}
+
+.water-chart-body {
+  flex-grow: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+/* SVG Chart Visualizers */
+.chart-svg-donut {
+  transform: rotate(-90deg);
+}
+
+.donut-segment {
+  transition: stroke-dasharray 0.5s ease-in-out;
+}
+
+.chart-donut-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.donut-legend-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.82rem;
+  font-weight: 500;
+}
+
+.donut-legend-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.donut-legend-color {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+}
+
+.donut-legend-val {
+  font-weight: 700;
+}
+
+/* Horizontal Bar chart style */
+.chart-bar-horizontal-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  width: 100%;
+}
+
+.horizontal-bar-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.horizontal-bar-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.horizontal-bar-track {
+  height: 8px;
+  background-color: var(--water-bg);
+  border-radius: 4px;
+  overflow: hidden;
+  width: 100%;
+}
+
+.horizontal-bar-fill {
+  height: 100%;
+  background-color: var(--water-primary-light);
+  border-radius: 4px;
+  transition: width 1s ease-in-out;
+}
+
+/* Line chart style */
+.chart-svg-line {
+  width: 100%;
+  height: 100%;
+}
+
+.line-chart-path {
+  fill: none;
+  stroke: var(--water-primary-light);
+  stroke-width: 3;
+  stroke-linecap: round;
+  transition: stroke-dasharray 1s ease-in-out;
+}
+
+.line-chart-area {
+  fill: url(#line-grad);
+  opacity: 0.15;
+}
+
+.line-chart-gridline {
+  stroke: var(--water-border);
+  stroke-width: 1;
+  stroke-dasharray: 4 4;
+}
+
+.line-chart-point {
+  fill: #ffffff;
+  stroke: var(--water-primary-light);
+  stroke-width: 2.5;
+  cursor: pointer;
+  transition: r 0.2s ease;
+}
+
+.line-chart-point:hover {
+  r: 6;
+}
+
+/* Vertical Bar chart style */
+.chart-svg-bar-vertical {
+  width: 100%;
+  height: 100%;
+}
+
+.vertical-bar-rect {
+  fill: var(--water-accent);
+  transition: height 0.5s ease-out, y 0.5s ease-out;
+}
+
+.vertical-bar-rect:hover {
+  fill: var(--water-primary-light);
+  cursor: pointer;
+}
+
+/* Pie Chart Layout */
+.chart-pie-layout {
+  display: flex;
+  gap: 1.5rem;
+  align-items: center;
+  width: 100%;
+}
+
+/* Two Column Panels Grid (Recent Activities & Notifications) */
+.water-bottom-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.water-panel {
+  background-color: var(--water-card-bg);
+  border: 1px solid var(--water-border);
+  border-radius: var(--water-radius);
+  padding: 1.5rem;
+  box-shadow: var(--water-shadow-sm);
+  display: flex;
+  flex-direction: column;
+  max-height: 480px;
+}
+
+.water-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.25rem;
+  border-bottom: 1px solid var(--water-border);
+  padding-bottom: 0.75rem;
+}
+
+.water-panel-header-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--water-text);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.water-panel-body {
+  overflow-y: auto;
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.water-panel-body::-webkit-scrollbar {
+  width: 5px;
+}
+
+.water-panel-body::-webkit-scrollbar-thumb {
+  background: var(--water-border);
+  border-radius: 3px;
+}
+
+/* Activity item style */
+.water-activity-item {
+  display: flex;
+  gap: 1rem;
+  align-items: start;
+}
+
+.water-activity-icon-dot {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  flex-shrink: 0;
+  font-size: 1rem;
+}
+
+.water-activity-icon-dot.complaint { background-color: var(--water-warning); }
+.water-activity-icon-dot.assignment { background-color: var(--water-info); }
+.water-activity-icon-dot.supply { background-color: var(--water-success); }
+.water-activity-icon-dot.maintenance { background-color: var(--water-primary-light); }
+.water-activity-icon-dot.emergency { background-color: var(--water-danger); }
+
+.water-activity-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  flex-grow: 1;
+}
+
+.water-activity-text {
+  font-size: 0.85rem;
+  color: var(--water-text);
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.water-activity-time {
+  font-size: 0.75rem;
+  color: var(--water-text-muted);
+}
+
+.water-activity-status {
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.15rem 0.5rem;
+  border-radius: 12px;
+  background-color: var(--water-bg);
+  color: var(--water-text-muted);
+  width: fit-content;
+}
+
+.water-activity-status.Pending { background-color: var(--water-warning-subtle); color: var(--water-warning); }
+.water-activity-status.In\ Progress { background-color: var(--water-info-subtle); color: var(--water-info); }
+.water-activity-status.Success { background-color: var(--water-success-subtle); color: var(--water-success); }
+.water-activity-status.Completed { background-color: var(--water-success-subtle); color: var(--water-success); }
+.water-activity-status.Alert { background-color: var(--water-danger-subtle); color: var(--water-danger); }
+
+/* Notification item style */
+.water-notif-item {
+  display: flex;
+  gap: 1rem;
+  padding: 0.85rem;
+  border-radius: 8px;
+  background-color: var(--water-bg);
+  border-left: 4px solid var(--water-text-muted);
+  transition: var(--water-transition);
+}
+
+.water-notif-item:hover {
+  transform: translateX(4px);
+}
+
+.water-notif-item.success { border-left-color: var(--water-success); }
+.water-notif-item.warning { border-left-color: var(--water-warning); }
+.water-notif-item.danger { border-left-color: var(--water-danger); }
+.water-notif-item.info { border-left-color: var(--water-primary-light); }
+
+.water-notif-icon {
+  font-size: 1.35rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.water-notif-item.success .water-notif-icon { color: var(--water-success); }
+.water-notif-item.warning .water-notif-icon { color: var(--water-warning); }
+.water-notif-item.danger .water-notif-icon { color: var(--water-danger); }
+.water-notif-item.info .water-notif-icon { color: var(--water-primary-light); }
+
+.water-notif-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.water-notif-title {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--water-text);
+}
+
+.water-notif-msg {
+  font-size: 0.8rem;
+  color: var(--water-text-muted);
+  line-height: 1.4;
+}
+
+.water-notif-time {
+  font-size: 0.72rem;
+  color: var(--water-text-muted);
+  margin-top: 0.15rem;
+}
+
+/* Footer Section */
+.water-footer {
+  border-top: 1px solid var(--water-border);
+  padding: 1.5rem 2rem;
+  background-color: var(--water-card-bg);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.8rem;
+  color: var(--water-text-muted);
+  font-weight: 500;
+  margin-top: auto;
+}
+
+.water-footer-right {
+  display: flex;
+  gap: 1.5rem;
+}
+
+/* Skeleton Loading Component */
+.water-skeleton-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.water-skeleton-pulse {
+  background: linear-gradient(90deg, #e2e8f0 25%, #cbd5e1 50%, #e2e8f0 75%);
+  background-size: 200% 100%;
+  animation: loading-pulse 1.5s infinite;
+  border-radius: 4px;
+}
+
+.water-skeleton-header {
+  height: 60px;
+  width: 400px;
+}
+
+.water-skeleton-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 1.5rem;
+}
+
+.water-skeleton-card {
+  height: 145px;
+  border-radius: var(--water-radius);
+}
+
+.water-skeleton-charts-grid {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 1.5rem;
+}
+
+.water-skeleton-chart {
+  grid-column: span 6;
+  height: 380px;
+  border-radius: var(--water-radius);
+}
+
+@keyframes loading-pulse {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* Mobile & Tablet Responsiveness */
+@media (max-width: 1200px) {
+  .water-charts-grid {
+    grid-template-columns: 1fr;
+  }
+  .water-chart-container {
+    grid-column: span 12 !important;
+  }
+  .water-bottom-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .water-main-wrapper {
+    margin-left: 0 !important;
+    padding-top: var(--water-topbar-height);
+  }
+  
+  .water-topbar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    padding: 0 1rem;
+  }
+
+  .water-mobile-toggle {
+    display: block;
+  }
+
+  .water-topbar-search {
+    display: none; /* Hide search on small screens to save space */
+  }
+
+  .water-sidebar {
+    transform: translateX(-100%);
+  }
+
+  .water-sidebar.mobile-open {
+    transform: translateX(0);
+    width: var(--water-sidebar-width);
+  }
+
+  .water-page-header {
+    flex-direction: column;
+    align-items: start;
+  }
+
+  .water-quick-actions-row {
+    width: 100%;
+  }
+
+  .water-btn {
+    flex-grow: 1;
+  }
+
+  .water-footer {
+    flex-direction: column;
+    gap: 0.75rem;
+    text-align: center;
+  }
+}

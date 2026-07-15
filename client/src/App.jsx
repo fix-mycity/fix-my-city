@@ -12,11 +12,23 @@ import ResetPassword from './pages/auth/ResetPassword';
 import TermsOfService from './pages/TermsOfService';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import UserDashboard from './pages/UserDashboard';
-import TrafficDashboard from './pages/traffic/TrafficDashboard';
-import TrafficWorkers from './pages/traffic/TrafficWorkers';
-import TrafficMap from './pages/traffic/TrafficMap';
 import ProtectedRoute from './routes/ProtectedRoute';
 import PublicRoute from './routes/PublicRoute';
+import AdminPortal from './pages/auth/AdminPortal';
+
+// Water Management Pages
+import WaterLayout from './layout/WaterLayout';
+import WaterDashboard from './pages/waterAuthority/Dashboard';
+import ComplaintManagement from './pages/waterAuthority/ComplaintManagement';
+import ComplaintDetails from './pages/waterAuthority/ComplaintDetails';
+import WorkerManagement from './pages/waterAuthority/WorkerManagement';
+import AddWorker from './pages/waterAuthority/AddWorker';
+import EditWorker from './pages/waterAuthority/EditWorker';
+import WorkerProfile from './pages/waterAuthority/WorkerProfile';
+
+// Traffic Management Pages
+import TrafficDashboard from './pages/traffic/TrafficDashboard';
+import TrafficWorkers from './pages/traffic/TrafficWorkers';
 
 export default function App() {
   const dispatch = useDispatch();
@@ -53,6 +65,88 @@ export default function App() {
           } 
         />
         <Route 
+          path="/admin/portal" 
+          element={
+            <ProtectedRoute allowedRoles={['Department_Admin', 'Super_Admin']}>
+              <AdminPortal />
+            </ProtectedRoute>
+          } 
+        />
+        
+        {/* Water Authority Routes */}
+        <Route 
+          path="/water/dashboard" 
+          element={
+            <ProtectedRoute allowedRoles={['Department_Admin']} requiredPermissions={['dept:water']}>
+              <WaterLayout>
+                <WaterDashboard />
+              </WaterLayout>
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/water/complaints" 
+          element={
+            <ProtectedRoute allowedRoles={['Department_Admin']} requiredPermissions={['dept:water']}>
+              <WaterLayout activeTab="complaints">
+                <ComplaintManagement />
+              </WaterLayout>
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/water/complaints/:id" 
+          element={
+            <ProtectedRoute allowedRoles={['Department_Admin']} requiredPermissions={['dept:water']}>
+              <WaterLayout activeTab="complaints">
+                <ComplaintDetails />
+              </WaterLayout>
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/water/workers" 
+          element={
+            <ProtectedRoute allowedRoles={['Department_Admin']} requiredPermissions={['dept:water']}>
+              <WaterLayout activeTab="workers">
+                <WorkerManagement />
+              </WaterLayout>
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/water/workers/new" 
+          element={
+            <ProtectedRoute allowedRoles={['Department_Admin']} requiredPermissions={['dept:water']}>
+              <WaterLayout activeTab="workers">
+                <AddWorker />
+              </WaterLayout>
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/water/workers/:id" 
+          element={
+            <ProtectedRoute allowedRoles={['Department_Admin']} requiredPermissions={['dept:water']}>
+              <WaterLayout activeTab="workers">
+                <WorkerProfile />
+              </WaterLayout>
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/water/workers/:id/edit" 
+          element={
+            <ProtectedRoute allowedRoles={['Department_Admin']} requiredPermissions={['dept:water']}>
+              <WaterLayout activeTab="workers">
+                <EditWorker />
+              </WaterLayout>
+            </ProtectedRoute>
+          } 
+        />
+
+        {/* Traffic Authority Routes */}
+        <Route 
           path="/traffic/dashboard" 
           element={
             <ProtectedRoute allowedRoles={['Department_Admin']} requiredPermissions={['dept:traffic']}>
@@ -65,14 +159,6 @@ export default function App() {
           element={
             <ProtectedRoute allowedRoles={['Department_Admin']} requiredPermissions={['dept:traffic']}>
               <TrafficWorkers/>
-            </ProtectedRoute>
-          } 
-        />
-        <Route 
-          path="/traffic/live-map" 
-          element={
-            <ProtectedRoute allowedRoles={['Department_Admin']} requiredPermissions={['dept:traffic']}>
-              <TrafficMap/>
             </ProtectedRoute>
           } 
         />

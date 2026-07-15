@@ -108,12 +108,42 @@ export default function Login() {
     }
 
     try {
-      await dispatch(loginUser({
+      const result = await dispatch(loginUser({
         email: formData.email,
         password: formData.password
       })).unwrap();
       toast.success('Logged in successfully!');
-      navigate('/dashboard', { replace: true });
+
+      const user = result?.data?.user;
+      if (user) {
+        const permissions = user.permissions || [];
+        const deptPermissions = permissions.filter(p => p.startsWith('dept:'));
+
+        if (user.role === 'Citizen') {
+          navigate('/dashboard', { replace: true });
+        } else if (user.role === 'Department_Admin' || user.role === 'Super_Admin') {
+          if (deptPermissions.length === 1) {
+            const perm = deptPermissions[0];
+            if (perm === 'dept:traffic') {
+              navigate('/traffic/dashboard', { replace: true });
+            } else if (perm === 'dept:water') {
+              navigate('/water/dashboard', { replace: true });
+            } else if (perm === 'dept:waste') {
+              navigate('/waste/dashboard', { replace: true });
+            } else {
+              navigate('/dashboard', { replace: true });
+            }
+          } else if (deptPermissions.length >= 2) {
+            navigate('/admin/portal', { replace: true });
+          } else {
+            navigate('/dashboard', { replace: true });
+          }
+        } else {
+          navigate('/dashboard', { replace: true });
+        }
+      } else {
+        navigate('/dashboard', { replace: true });
+      }
     } catch (err) {
       const { errors, globalMessages } = getBackendFieldErrors(err);
 

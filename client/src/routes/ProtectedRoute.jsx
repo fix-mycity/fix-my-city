@@ -9,17 +9,18 @@ export default function ProtectedRoute({ children, allowedRoles, requiredPermiss
     return <Navigate to="/login" replace />;
   }
 
-  // Structured role-based authorization check (easy to extend later)
+  // Structured role-based authorization check
   if (allowedRoles && (!user || !allowedRoles.includes(user.role))) {
     return <Navigate to="/dashboard" replace />;
   }
 
-  // Permission Check for hybrid/super users
-  if (requiredPermissions && user.permissions) {
-     const hasAllPermissions = requiredPermissions.every(perm => user.permissions.includes(perm));
-     if (!hasAllPermissions) {
-        return <Navigate to="/dashboard" replace />;
-     }
+  // Permission-based authorization check
+  if (requiredPermissions && user) {
+    const userPermissions = user.permissions || [];
+    const hasRequired = requiredPermissions.every((p) => userPermissions.includes(p));
+    if (!hasRequired) {
+      return <Navigate to="/dashboard" replace />;
+    }
   }
 
   return children;
