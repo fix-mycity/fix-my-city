@@ -14,6 +14,14 @@ import PrivacyPolicy from './pages/PrivacyPolicy';
 import UserDashboard from './pages/UserDashboard';
 import ProtectedRoute from './routes/ProtectedRoute';
 import PublicRoute from './routes/PublicRoute';
+import WaterLayout from './layout/WaterLayout';
+import WaterDashboard from './pages/waterAuthority/Dashboard';
+import ComplaintManagement from './pages/waterAuthority/ComplaintManagement';
+import ComplaintDetails from './pages/waterAuthority/ComplaintDetails';
+import WorkerManagement from './pages/waterAuthority/WorkerManagement';
+import AddWorker from './pages/waterAuthority/AddWorker';
+import EditWorker from './pages/waterAuthority/EditWorker';
+import WorkerProfile from './pages/waterAuthority/WorkerProfile';
 
 export default function App() {
   const dispatch = useDispatch();
@@ -49,7 +57,63 @@ export default function App() {
             </ProtectedRoute>
           } 
         />
+        <Route 
+          path="/water/dashboard" 
+          element={
+            <WaterLayout>
+              <WaterDashboard />
+            </WaterLayout>
+          } 
+        />
+        <Route 
+          path="/water/complaints" 
+          element={
+            <WaterLayout activeTab="complaints">
+              <ComplaintManagement />
+            </WaterLayout>
+          } 
+        />
+        <Route 
+          path="/water/complaints/:id" 
+          element={
+            <WaterLayout activeTab="complaints">
+              <ComplaintDetails />
+            </WaterLayout>
+          } 
+        />
+        <Route 
+          path="/water/workers" 
+          element={
+            <WaterLayout activeTab="workers">
+              <WorkerManagement />
+            </WaterLayout>
+          } 
+        />
+        <Route 
+          path="/water/workers/new" 
+          element={
+            <WaterLayout activeTab="workers">
+              <AddWorker />
+            </WaterLayout>
+          } 
+        />
+        <Route 
+          path="/water/workers/:id" 
+          element={
+            <WaterLayout activeTab="workers">
+              <WorkerProfile />
+            </WaterLayout>
+          } 
+        />
+        <Route 
+          path="/water/workers/:id/edit" 
+          element={
+            <WaterLayout activeTab="workers">
+              <EditWorker />
+            </WaterLayout>
+          } 
+        />
       </Routes>
     </BrowserRouter>
   );
-}
+}

@@ -5,7 +5,8 @@ from sqlalchemy import (
     Boolean,
     DateTime,
     ForeignKey,
-    Table
+    Table,
+    Column,
 )
 
 from sqlalchemy.sql import func
