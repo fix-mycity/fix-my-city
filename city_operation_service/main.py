@@ -7,7 +7,7 @@ from modules.waste_management.router import router as waste_router
 from modules.traffic_management.router import router as traffic_router
 from modules.water_management.router import router as water_router
 
-Base.metadata.create_all(bind=engine)
+# Migrations are now handled by Alembic.
 
 app = FastAPI(
     title="Fix My City - City Operation Service",

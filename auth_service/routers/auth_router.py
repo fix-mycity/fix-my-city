@@ -4,13 +4,14 @@ from sqlalchemy.orm import Session
 from pydantic import BaseModel
 
 from dependencies.database import get_db
-from schemas.register_schema import RegisterSchema
+from schemas.register_schema import RegisterSchema, RegisterWorkerSchema
 from schemas.login_schema import LoginSchema
 from config import settings
 from services.jwt_service import decode_access_token
 
 from services.auth_service import (
     register_user,
+    register_worker,
     login_user,
     refresh_user_tokens,
     logout_user
@@ -87,7 +88,21 @@ def register(
             create_otp(db, user.email)
         except Exception as e:
             print(f"Failed to auto-send OTP during registration: {e}")
-            res["message"] += " (Failed to send verification email)"
+    return res
+
+
+@router.post("/register-worker")
+def register_worker_endpoint(
+    worker: RegisterWorkerSchema,
+    db: Session = Depends(get_db)
+):
+    # Called by City Operation Service (internally)
+    res = register_worker(db=db, worker=worker)
+    if not res["success"]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=res["message"],
+        )
     return res
 
 

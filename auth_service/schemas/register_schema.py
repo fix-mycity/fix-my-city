@@ -88,3 +88,7 @@ class RegisterSchema(BaseModel):
             raise ValueError("Passwords do not match.")
 
         return value
+
+class RegisterWorkerSchema(RegisterSchema):
+    manager_id: int
+    department: str
