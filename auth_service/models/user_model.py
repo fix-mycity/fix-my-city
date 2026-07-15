@@ -1,15 +1,16 @@
+from datetime import datetime
 from sqlalchemy import (
-    Column,
     Integer,
     String,
     Boolean,
     DateTime,
     ForeignKey,
-    Table
+    Table,
+    Column,
 )
 
 from sqlalchemy.sql import func
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, Mapped, mapped_column
 
 from database import Base
 
@@ -25,25 +26,25 @@ user_permissions = Table(
 class User(Base):
     __tablename__ = "users"
 
-    id = Column(Integer, primary_key=True, index=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
 
-    username = Column(String(100), nullable=False)
+    username: Mapped[str] = mapped_column(String(100), nullable=False)
 
-    email = Column(String(150), unique=True, nullable=False)
+    email: Mapped[str] = mapped_column(String(150), unique=True, nullable=False)
 
-    state = Column(String(100), nullable=False)
+    state: Mapped[str] = mapped_column(String(100), nullable=False)
 
-    district = Column(String(100), nullable=False)
+    district: Mapped[str] = mapped_column(String(100), nullable=False)
 
-    pincode = Column(String(10), nullable=False)
+    pincode: Mapped[str] = mapped_column(String(10), nullable=False)
 
-    password = Column(String(255), nullable=False)
+    password: Mapped[str] = mapped_column(String(255), nullable=False)
 
-    is_verified = Column(Boolean, default=False)
+    is_verified: Mapped[bool] = mapped_column(Boolean, default=False)
 
-    is_active = Column(Boolean, default=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 
-    role_id = Column(
+    role_id: Mapped[int] = mapped_column(
         Integer,
         ForeignKey("roles.id")
     )
@@ -59,7 +60,7 @@ class User(Base):
         server_default=func.now()
     )
 
-    updated_at = Column(
+    updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),
         onupdate=func.now()
