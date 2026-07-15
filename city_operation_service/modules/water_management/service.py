@@ -158,13 +158,6 @@ class WaterComplaintService:
 class WaterFieldWorkerService:
     @staticmethod
     def _validate_worker_data(db: Session, schema: WorkerCreate, current_id: Optional[int] = None):
-        existing_emp = WaterFieldWorkerRepository.get_by_employee_id(db, schema.employee_id)
-        if existing_emp and (current_id is None or existing_emp.id != current_id):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Employee ID '{schema.employee_id}' is already registered."
-            )
-
         existing_email = WaterFieldWorkerRepository.get_by_email(db, schema.email)
         if existing_email and (current_id is None or existing_email.id != current_id):
             raise HTTPException(
@@ -267,12 +260,12 @@ class WaterFieldWorkerService:
         availability: Optional[str] = None,
         employment_status: Optional[str] = None,
         skill: Optional[str] = None,
-        ward: Optional[str] = None,
-        area: Optional[str] = None
+        place: Optional[str] = None,
+        pin_code: Optional[str] = None
     ) -> Tuple[List[WaterFieldWorker], int]:
         WaterFieldWorkerService._validate_enums(availability, employment_status, skill)
         return WaterFieldWorkerRepository.list_workers(
-            db, page, page_size, search, availability, employment_status, skill, ward, area
+            db, page, page_size, search, availability, employment_status, skill, place, pin_code
         )
 
     @staticmethod

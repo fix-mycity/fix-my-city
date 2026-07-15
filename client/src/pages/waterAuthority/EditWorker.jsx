@@ -32,8 +32,6 @@ export default function EditWorker() {
       await updateWorker(id, data);
       toast.success("Field worker details updated successfully!");
       navigate('/water/workers');
-    } catch (err) {
-      toast.error(err.response?.data?.detail || "Failed to save worker modifications.");
     } finally {
       setIsSubmitting(false);
     }
@@ -52,20 +50,25 @@ export default function EditWorker() {
           </span>
           <p style={{ marginTop: '0.5rem', color: 'var(--water-text-muted)' }}>Retrieving employee details...</p>
         </div>
-      ) : isSubmitting ? (
-        <div style={{ textAlign: 'center', padding: '4rem' }}>
-          <span className="material-symbols-outlined" style={{ fontSize: '3rem', color: 'var(--water-primary-light)', animation: 'spin 1.5s linear infinite' }}>
-            sync
-          </span>
-          <p style={{ marginTop: '1rem', color: 'var(--water-text-muted)', fontWeight: '600' }}>Saving database entries...</p>
-        </div>
       ) : (
-        <WorkerForm 
-          initialData={worker}
-          onSubmit={handleSubmit}
-          onCancel={handleCancel}
-          isEdit={true}
-        />
+        <>
+          {isSubmitting && (
+            <div style={{ textAlign: 'center', padding: '4rem' }}>
+              <span className="material-symbols-outlined" style={{ fontSize: '3rem', color: 'var(--water-primary-light)', animation: 'spin 1.5s linear infinite' }}>
+                sync
+              </span>
+              <p style={{ marginTop: '1rem', color: 'var(--water-text-muted)', fontWeight: '600' }}>Saving database entries...</p>
+            </div>
+          )}
+          <div style={{ display: isSubmitting ? 'none' : 'block' }}>
+            <WorkerForm 
+              initialData={worker}
+              onSubmit={handleSubmit}
+              onCancel={handleCancel}
+              isEdit={true}
+            />
+          </div>
+        </>
       )}
     </div>
   );

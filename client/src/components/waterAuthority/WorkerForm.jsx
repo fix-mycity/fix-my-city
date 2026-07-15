@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
+import { toast } from 'react-hot-toast';
 import WorkerPhotoUpload from './WorkerPhotoUpload';
 
 export default function WorkerForm({ initialData, onSubmit, onCancel, isEdit = false }) {
   const [formData, setFormData] = useState({
-    employee_id: initialData?.employee_id || '',
     first_name: initialData?.first_name || '',
     last_name: initialData?.last_name || '',
     email: initialData?.email || '',
@@ -14,13 +14,12 @@ export default function WorkerForm({ initialData, onSubmit, onCancel, isEdit = f
     gender: initialData?.gender || 'Male',
     date_of_birth: initialData?.date_of_birth ? new Date(initialData.date_of_birth).toISOString().substring(0, 10) : '',
     address: initialData?.address || '',
-    ward: initialData?.ward || 'Ward 1',
-    area: initialData?.area || 'Green Park',
+    place: initialData?.place || '',
+    pin_code: initialData?.pin_code || '',
     designation: initialData?.designation || '',
     skill: initialData?.skill || 'Leak Repair',
     experience: initialData?.experience || 0,
     joining_date: initialData?.joining_date ? new Date(initialData.joining_date).toISOString().substring(0, 10) : new Date().toISOString().substring(0, 10),
-    emergency_contact_name: initialData?.emergency_contact_name || '',
     emergency_contact_phone: initialData?.emergency_contact_phone || '',
     availability: initialData?.availability || 'AVAILABLE',
     employment_status: initialData?.employment_status || 'ACTIVE'
@@ -36,14 +35,34 @@ export default function WorkerForm({ initialData, onSubmit, onCancel, isEdit = f
     'Quality Testing', 
     'General Maintenance'
   ];
-  const wards = ['Ward 1', 'Ward 2', 'Ward 3', 'Ward 4', 'Ward 5', 'Ward 6'];
-  const areas = ['Green Park', 'Sector 4', 'Zone B', 'Central Expressway', 'Link Road', 'Sector 12'];
   const genders = ['Male', 'Female', 'Other'];
   const availabilities = ['AVAILABLE', 'BUSY', 'ON_LEAVE', 'OFFLINE'];
   const statuses = ['ACTIVE', 'INACTIVE', 'SUSPENDED', 'RETIRED'];
 
   const handleChange = (e) => {
     const { name, value } = e.target;
+
+    // Only allow letters, spaces, hyphens, and apostrophes in name fields
+    if (name === 'first_name' || name === 'last_name') {
+      if (!/^[a-zA-Z\s\-']*$/.test(value)) {
+        return;
+      }
+    }
+
+    // Only allow digits and an optional leading plus sign in phone number
+    if (name === 'phone') {
+      if (!/^\+?[0-9]*$/.test(value)) {
+        return;
+      }
+    }
+
+    // Only allow digits in pin code
+    if (name === 'pin_code') {
+      if (!/^[0-9]*$/.test(value)) {
+        return;
+      }
+    }
+
     setFormData(prev => ({
       ...prev,
       [name]: name === 'experience' ? parseInt(value) || 0 : value
@@ -56,11 +75,41 @@ export default function WorkerForm({ initialData, onSubmit, onCancel, isEdit = f
 
   const validateForm = () => {
     const newErrors = {};
-    if (!formData.employee_id) newErrors.employee_id = 'Employee ID is required';
-    if (!formData.first_name) newErrors.first_name = 'First name is required';
-    if (!formData.last_name) newErrors.last_name = 'Last name is required';
+    if (!formData.first_name) {
+      newErrors.first_name = 'First name is required';
+    } else if (/\d/.test(formData.first_name)) {
+      newErrors.first_name = 'First name must contain only words and cannot contain numbers';
+    } else if (!/^[a-zA-Z\s\-']+$/.test(formData.first_name)) {
+      newErrors.first_name = 'First name must contain only letters';
+    }
+
+    if (!formData.last_name) {
+      newErrors.last_name = 'Last name is required';
+    } else if (/\d/.test(formData.last_name)) {
+      newErrors.last_name = 'Last name must contain only words and cannot contain numbers';
+    } else if (!/^[a-zA-Z\s\-']+$/.test(formData.last_name)) {
+      newErrors.last_name = 'Last name must contain only letters';
+    }
+
     if (!formData.email) newErrors.email = 'Email is required';
-    if (!formData.phone) newErrors.phone = 'Phone number is required';
+    
+    if (!formData.phone) {
+      newErrors.phone = 'Phone number is required';
+    } else if (/[a-zA-Z]/.test(formData.phone)) {
+      newErrors.phone = 'Phone number must contain only numbers and cannot contain letters or words';
+    } else if (!/^\+?[0-9\s\-]+$/.test(formData.phone)) {
+      newErrors.phone = 'Phone number must be a valid numeric sequence';
+    }
+
+    if (!formData.place) newErrors.place = 'Place is required';
+
+    if (!formData.pin_code) {
+      newErrors.pin_code = 'Pin code is required';
+    } else if (/[a-zA-Z]/.test(formData.pin_code)) {
+      newErrors.pin_code = 'Pin code must contain only numbers and cannot contain letters or words';
+    } else if (!/^[0-9]+$/.test(formData.pin_code)) {
+      newErrors.pin_code = 'Pin code must contain only digits';
+    }
     
     if (!isEdit) {
       if (!formData.password) newErrors.password = 'Password is required';
@@ -75,9 +124,12 @@ export default function WorkerForm({ initialData, onSubmit, onCancel, isEdit = f
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!validateForm()) return;
+    if (!validateForm()) {
+      toast.error("Please fix the validation errors in the form.");
+      return;
+    }
 
     const payload = { ...formData };
     if (!payload.password) {
@@ -96,7 +148,31 @@ export default function WorkerForm({ initialData, onSubmit, onCancel, isEdit = f
       payload.joining_date = null;
     }
 
-    onSubmit(payload);
+    try {
+      await onSubmit(payload);
+    } catch (err) {
+      const serverErrors = {};
+      const detail = err.response?.data?.detail;
+      if (Array.isArray(detail)) {
+        detail.forEach(error => {
+          const field = error.loc[error.loc.length - 1];
+          serverErrors[field] = error.msg;
+        });
+        setErrors(serverErrors);
+        toast.error("Validation failed. Please check the fields below.");
+      } else if (typeof detail === 'string') {
+        if (detail.toLowerCase().includes("email")) {
+          setErrors({ email: detail });
+        } else if (detail.toLowerCase().includes("phone")) {
+          setErrors({ phone: detail });
+        } else if (detail.toLowerCase().includes("pin")) {
+          setErrors({ pin_code: detail });
+        }
+        toast.error(detail);
+      } else {
+        toast.error("Failed to register field worker. Please verify details.");
+      }
+    }
   };
 
   return (
@@ -123,26 +199,7 @@ export default function WorkerForm({ initialData, onSubmit, onCancel, isEdit = f
         gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
         gap: '1.25rem'
       }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-          <label style={{ fontSize: '0.8rem', fontWeight: '700', color: 'var(--water-text)' }}>Employee ID *</label>
-          <input
-            type="text"
-            name="employee_id"
-            value={formData.employee_id}
-            onChange={handleChange}
-            disabled={isEdit}
-            required
-            style={{
-              padding: '0.6rem',
-              borderRadius: '6px',
-              border: errors.employee_id ? '1px solid var(--water-danger)' : '1px solid var(--water-border)',
-              fontSize: '0.85rem',
-              backgroundColor: isEdit ? '#f1f5f9' : '#ffffff',
-              outline: 'none'
-            }}
-          />
-          {errors.employee_id && <span style={{ fontSize: '0.75rem', color: 'var(--water-danger)' }}>{errors.employee_id}</span>}
-        </div>
+
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
           <label style={{ fontSize: '0.8rem', fontWeight: '700', color: 'var(--water-text)' }}>Designation</label>
@@ -308,27 +365,43 @@ export default function WorkerForm({ initialData, onSubmit, onCancel, isEdit = f
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-          <label style={{ fontSize: '0.8rem', fontWeight: '700', color: 'var(--water-text)' }}>Ward Allocation</label>
-          <select
-            name="ward"
-            value={formData.ward}
+          <label style={{ fontSize: '0.8rem', fontWeight: '700', color: 'var(--water-text)' }}>Place *</label>
+          <input
+            type="text"
+            name="place"
+            value={formData.place}
             onChange={handleChange}
-            style={{ padding: '0.6rem', borderRadius: '6px', border: '1px solid var(--water-border)', fontSize: '0.85rem', outline: 'none' }}
-          >
-            {wards.map(w => <option key={w} value={w}>{w}</option>)}
-          </select>
+            required
+            placeholder="e.g. Green Park"
+            style={{
+              padding: '0.6rem',
+              borderRadius: '6px',
+              border: errors.place ? '1px solid var(--water-danger)' : '1px solid var(--water-border)',
+              fontSize: '0.85rem',
+              outline: 'none'
+            }}
+          />
+          {errors.place && <span style={{ fontSize: '0.75rem', color: 'var(--water-danger)' }}>{errors.place}</span>}
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-          <label style={{ fontSize: '0.8rem', fontWeight: '700', color: 'var(--water-text)' }}>Area Allocation</label>
-          <select
-            name="area"
-            value={formData.area}
+          <label style={{ fontSize: '0.8rem', fontWeight: '700', color: 'var(--water-text)' }}>Pin Code *</label>
+          <input
+            type="text"
+            name="pin_code"
+            value={formData.pin_code}
             onChange={handleChange}
-            style={{ padding: '0.6rem', borderRadius: '6px', border: '1px solid var(--water-border)', fontSize: '0.85rem', outline: 'none' }}
-          >
-            {areas.map(a => <option key={a} value={a}>{a}</option>)}
-          </select>
+            required
+            placeholder="e.g. 110016"
+            style={{
+              padding: '0.6rem',
+              borderRadius: '6px',
+              border: errors.pin_code ? '1px solid var(--water-danger)' : '1px solid var(--water-border)',
+              fontSize: '0.85rem',
+              outline: 'none'
+            }}
+          />
+          {errors.pin_code && <span style={{ fontSize: '0.75rem', color: 'var(--water-danger)' }}>{errors.pin_code}</span>}
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
@@ -406,23 +479,7 @@ export default function WorkerForm({ initialData, onSubmit, onCancel, isEdit = f
           </div>
         )}
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-          <label style={{ fontSize: '0.8rem', fontWeight: '700', color: 'var(--water-text)' }}>Emergency Contact Name</label>
-          <input
-            type="text"
-            name="emergency_contact_name"
-            value={formData.emergency_contact_name}
-            onChange={handleChange}
-            placeholder="Next of kin name"
-            style={{
-              padding: '0.6rem',
-              borderRadius: '6px',
-              border: '1px solid var(--water-border)',
-              fontSize: '0.85rem',
-              outline: 'none'
-            }}
-          />
-        </div>
+
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
           <label style={{ fontSize: '0.8rem', fontWeight: '700', color: 'var(--water-text)' }}>Emergency Contact Phone</label>

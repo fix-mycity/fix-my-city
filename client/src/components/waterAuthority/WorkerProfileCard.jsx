@@ -6,7 +6,6 @@ export default function WorkerProfileCard({ worker, onEditClick, onBackClick }) 
   if (!worker) return null;
 
   const {
-    employee_id,
     first_name,
     last_name,
     email,
@@ -15,15 +14,14 @@ export default function WorkerProfileCard({ worker, onEditClick, onBackClick }) 
     gender,
     date_of_birth,
     address,
-    ward,
-    area,
+    place,
+    pin_code,
     designation,
     skill,
     experience,
     joining_date,
     availability,
     employment_status,
-    emergency_contact_name,
     emergency_contact_phone
   } = worker;
 
@@ -106,9 +104,7 @@ export default function WorkerProfileCard({ worker, onEditClick, onBackClick }) 
             <p style={{ fontSize: '0.85rem', color: 'var(--water-text-muted)', fontWeight: '600', textTransform: 'uppercase', margin: 0 }}>
               {designation || 'Field Technician'}
             </p>
-            <p style={{ fontSize: '0.8rem', color: 'var(--water-primary-light)', fontWeight: '700', margin: '0.25rem 0 0 0' }}>
-              Emp ID: {employee_id}
-            </p>
+
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', width: '100%', borderTop: '1px solid var(--water-border)', paddingTop: '1.25rem' }}>
@@ -192,12 +188,12 @@ export default function WorkerProfileCard({ worker, onEditClick, onBackClick }) 
                 <strong style={{ color: 'var(--water-text)' }}>{experience} {experience === 1 ? 'Year' : 'Years'}</strong>
               </div>
               <div>
-                <span style={{ color: 'var(--water-text-muted)', display: 'block', marginBottom: '0.2rem' }}>Ward Allocation</span>
-                <strong style={{ color: 'var(--water-text)' }}>{ward || 'Not Assigned'}</strong>
+                <span style={{ color: 'var(--water-text-muted)', display: 'block', marginBottom: '0.2rem' }}>Place</span>
+                <strong style={{ color: 'var(--water-text)' }}>{place || 'Not Assigned'}</strong>
               </div>
               <div>
-                <span style={{ color: 'var(--water-text-muted)', display: 'block', marginBottom: '0.2rem' }}>Area Allocation</span>
-                <strong style={{ color: 'var(--water-text)' }}>{area || 'Not Assigned'}</strong>
+                <span style={{ color: 'var(--water-text-muted)', display: 'block', marginBottom: '0.2rem' }}>Pin Code</span>
+                <strong style={{ color: 'var(--water-text)' }}>{pin_code || 'Not Assigned'}</strong>
               </div>
               <div>
                 <span style={{ color: 'var(--water-text-muted)', display: 'block', marginBottom: '0.2rem' }}>Joining Date</span>
@@ -235,10 +231,6 @@ export default function WorkerProfileCard({ worker, onEditClick, onBackClick }) 
               Emergency Contact
             </h3>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem 2rem', fontSize: '0.88rem' }}>
-              <div>
-                <span style={{ color: 'var(--water-text-muted)', display: 'block', marginBottom: '0.2rem' }}>Contact Person</span>
-                <strong style={{ color: 'var(--water-text)' }}>{emergency_contact_name || 'N/A'}</strong>
-              </div>
               <div>
                 <span style={{ color: 'var(--water-text-muted)', display: 'block', marginBottom: '0.2rem' }}>Contact Phone</span>
                 <strong style={{ color: 'var(--water-text)' }}>{emergency_contact_phone || 'N/A'}</strong>

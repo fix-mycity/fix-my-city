@@ -12,8 +12,7 @@ export default function WorkerFilter({ filters, onChange, onReset }) {
     'General Maintenance'
   ];
   
-  const wards = ['Ward 1', 'Ward 2', 'Ward 3', 'Ward 4', 'Ward 5', 'Ward 6'];
-  const areas = ['Green Park', 'Sector 4', 'Zone B', 'Central Expressway', 'Link Road', 'Sector 12'];
+
 
   const handleSelectChange = (key, value) => {
     onChange(key, value || null);
@@ -99,30 +98,28 @@ export default function WorkerFilter({ filters, onChange, onReset }) {
           </select>
         </div>
 
-        {/* Ward */}
+        {/* Place */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-          <label style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--water-text-muted)' }}>Ward</label>
-          <select 
-            value={filters.ward || ''} 
-            onChange={(e) => handleSelectChange('ward', e.target.value)}
+          <label style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--water-text-muted)' }}>Place</label>
+          <input 
+            type="text"
+            value={filters.place || ''} 
+            onChange={(e) => handleSelectChange('place', e.target.value)}
+            placeholder="Filter by place"
             style={{ padding: '0.45rem', borderRadius: '6px', border: '1px solid var(--water-border)', fontSize: '0.8rem', outline: 'none' }}
-          >
-            <option value="">All Wards</option>
-            {wards.map(w => <option key={w} value={w}>{w}</option>)}
-          </select>
+          />
         </div>
 
-        {/* Area */}
+        {/* Pin Code */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-          <label style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--water-text-muted)' }}>Area</label>
-          <select 
-            value={filters.area || ''} 
-            onChange={(e) => handleSelectChange('area', e.target.value)}
+          <label style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--water-text-muted)' }}>Pin Code</label>
+          <input 
+            type="text"
+            value={filters.pin_code || ''} 
+            onChange={(e) => handleSelectChange('pin_code', e.target.value)}
+            placeholder="Filter by pin code"
             style={{ padding: '0.45rem', borderRadius: '6px', border: '1px solid var(--water-border)', fontSize: '0.8rem', outline: 'none' }}
-          >
-            <option value="">All Areas</option>
-            {areas.map(a => <option key={a} value={a}>{a}</option>)}
-          </select>
+          />
         </div>
       </div>
     </div>

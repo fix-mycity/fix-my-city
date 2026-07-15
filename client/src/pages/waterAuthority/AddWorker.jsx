@@ -14,8 +14,6 @@ export default function AddWorker() {
       await createWorker(data);
       toast.success("Field worker registered successfully!");
       navigate('/water/workers');
-    } catch (err) {
-      toast.error(err.response?.data?.detail || "Failed to register field worker. Please verify details.");
     } finally {
       setIsSubmitting(false);
     }
@@ -27,20 +25,21 @@ export default function AddWorker() {
 
   return (
     <div className="water-add-worker-page" style={{ padding: '1rem 0' }}>
-      {isSubmitting ? (
+      {isSubmitting && (
         <div style={{ textAlign: 'center', padding: '4rem' }}>
           <span className="material-symbols-outlined" style={{ fontSize: '3rem', color: 'var(--water-primary-light)', animation: 'spin 1.5s linear infinite' }}>
             sync
           </span>
           <p style={{ marginTop: '1rem', color: 'var(--water-text-muted)', fontWeight: '600' }}>Encrypting password and registering worker in city databases...</p>
         </div>
-      ) : (
+      )}
+      <div style={{ display: isSubmitting ? 'none' : 'block' }}>
         <WorkerForm 
           onSubmit={handleSubmit}
           onCancel={handleCancel}
           isEdit={false}
         />
-      )}
+      </div>
     </div>
   );
 }

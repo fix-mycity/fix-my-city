@@ -206,7 +206,6 @@ class WaterFieldWorkerRepository:
     @staticmethod
     def create(db: Session, schema: WorkerCreate, password_hash: str) -> WaterFieldWorker:
         db_worker = WaterFieldWorker(
-            employee_id=schema.employee_id,
             first_name=schema.first_name,
             last_name=schema.last_name,
             email=schema.email,
@@ -216,15 +215,14 @@ class WaterFieldWorkerRepository:
             gender=schema.gender,
             date_of_birth=schema.date_of_birth,
             address=schema.address,
-            ward=schema.ward,
-            area=schema.area,
+            place=schema.place,
+            pin_code=schema.pin_code,
             designation=schema.designation,
             skill=schema.skill,
             experience=schema.experience,
             joining_date=schema.joining_date or datetime.utcnow(),
             availability=schema.availability or "AVAILABLE",
             employment_status=schema.employment_status or "ACTIVE",
-            emergency_contact_name=schema.emergency_contact_name,
             emergency_contact_phone=schema.emergency_contact_phone
         )
         db.add(db_worker)
@@ -235,10 +233,6 @@ class WaterFieldWorkerRepository:
     @staticmethod
     def get_by_id(db: Session, worker_id: int) -> Optional[WaterFieldWorker]:
         return db.query(WaterFieldWorker).filter(WaterFieldWorker.id == worker_id).first()
-
-    @staticmethod
-    def get_by_employee_id(db: Session, employee_id: str) -> Optional[WaterFieldWorker]:
-        return db.query(WaterFieldWorker).filter(WaterFieldWorker.employee_id == employee_id).first()
 
     @staticmethod
     def get_by_email(db: Session, email: str) -> Optional[WaterFieldWorker]:
@@ -288,8 +282,8 @@ class WaterFieldWorkerRepository:
         availability: Optional[str] = None,
         employment_status: Optional[str] = None,
         skill: Optional[str] = None,
-        ward: Optional[str] = None,
-        area: Optional[str] = None
+        place: Optional[str] = None,
+        pin_code: Optional[str] = None
     ) -> Tuple[List[WaterFieldWorker], int]:
         query = db.query(WaterFieldWorker)
 
@@ -299,23 +293,22 @@ class WaterFieldWorkerRepository:
             query = query.filter(WaterFieldWorker.employment_status == employment_status)
         if skill:
             query = query.filter(WaterFieldWorker.skill == skill)
-        if ward:
-            query = query.filter(WaterFieldWorker.ward == ward)
-        if area:
-            query = query.filter(WaterFieldWorker.area == area)
+        if place:
+            query = query.filter(WaterFieldWorker.place.ilike(f"%{place}%"))
+        if pin_code:
+            query = query.filter(WaterFieldWorker.pin_code == pin_code)
 
         if search:
             search_pattern = f"%{search}%"
             query = query.filter(
                 or_(
-                    WaterFieldWorker.employee_id.ilike(search_pattern),
                     WaterFieldWorker.first_name.ilike(search_pattern),
                     WaterFieldWorker.last_name.ilike(search_pattern),
                     func.concat(WaterFieldWorker.first_name, ' ', WaterFieldWorker.last_name).ilike(search_pattern),
                     WaterFieldWorker.email.ilike(search_pattern),
                     WaterFieldWorker.phone.ilike(search_pattern),
-                    WaterFieldWorker.ward.ilike(search_pattern),
-                    WaterFieldWorker.area.ilike(search_pattern)
+                    WaterFieldWorker.place.ilike(search_pattern),
+                    WaterFieldWorker.pin_code.ilike(search_pattern)
                 )
             )
 

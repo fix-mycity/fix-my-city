@@ -11,14 +11,13 @@ export default function WorkerCard({
 }) {
   const {
     id,
-    employee_id,
     first_name,
     last_name,
     phone,
     photo,
     skill,
-    ward,
-    area,
+    place,
+    pin_code,
     employment_status,
     availability
   } = worker;
@@ -68,9 +67,7 @@ export default function WorkerCard({
           <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: '700', color: 'var(--water-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
             {first_name} {last_name}
           </h4>
-          <span style={{ fontSize: '0.75rem', fontWeight: '600', color: 'var(--water-text-muted)' }}>
-            ID: {employee_id}
-          </span>
+
         </div>
       </div>
 
@@ -85,8 +82,8 @@ export default function WorkerCard({
           <span style={{ fontWeight: '700', color: 'var(--water-primary-dark)' }}>{skill || 'General'}</span>
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-          <span style={{ color: 'var(--water-text-muted)', fontWeight: '500' }}>Ward / Area:</span>
-          <span style={{ fontWeight: '600' }}>{ward} / {area}</span>
+          <span style={{ color: 'var(--water-text-muted)', fontWeight: '500' }}>Place / Pin Code:</span>
+          <span style={{ fontWeight: '600' }}>{place || 'N/A'} / {pin_code || 'N/A'}</span>
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
           <span style={{ color: 'var(--water-text-muted)', fontWeight: '500' }}>Phone:</span>

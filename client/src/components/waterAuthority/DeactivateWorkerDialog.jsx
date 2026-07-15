@@ -57,7 +57,7 @@ export default function DeactivateWorkerDialog({ isOpen, onClose, onConfirm, wor
               Are you sure you want to {actionLabel.toLowerCase()} this worker?
             </p>
             <p style={{ fontSize: '0.8rem', color: 'var(--water-text-muted)' }}>
-              Worker: <strong>{worker.first_name} {worker.last_name}</strong> (Employee ID: {worker.employee_id})
+              Worker: <strong>{worker.first_name} {worker.last_name}</strong>
             </p>
           </div>
         </div>

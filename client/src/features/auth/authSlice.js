@@ -103,6 +103,9 @@ const authSlice = createSlice({
         state.status = "succeeded";
         state.user = action.payload.data.user;
         state.isAuthenticated = true;
+        if (action.payload.data.user?.permissions) {
+          localStorage.setItem("user_permissions", JSON.stringify(action.payload.data.user.permissions));
+        }
       })
       .addCase(loginUser.rejected, (state, action) => {
         state.status = "failed";
@@ -116,7 +119,11 @@ const authSlice = createSlice({
       })
       .addCase(fetchCurrentUser.fulfilled, (state, action) => {
         state.status = "succeeded";
-        state.user = action.payload.data.user;
+        const storedPermissions = JSON.parse(localStorage.getItem("user_permissions") || "[]");
+        state.user = {
+          ...action.payload.data.user,
+          permissions: action.payload.data.user?.permissions || storedPermissions
+        };
         state.isAuthenticated = true;
       })
       .addCase(fetchCurrentUser.rejected, (state) => {
@@ -140,6 +147,7 @@ const authSlice = createSlice({
         state.isAuthenticated = false;
         state.status = "idle";
         state.error = null;
+        localStorage.removeItem("user_permissions");
       })
       .addCase(logoutUser.rejected, (state) => {
         state.user = null;

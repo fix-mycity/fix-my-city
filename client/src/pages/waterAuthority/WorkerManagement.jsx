@@ -33,8 +33,8 @@ export default function WorkerManagement() {
     availability: '',
     employment_status: '',
     skill: '',
-    ward: '',
-    area: ''
+    place: '',
+    pin_code: ''
   });
 
   // Summary statistics
@@ -79,8 +79,8 @@ export default function WorkerManagement() {
       if (filters.availability) params.availability = filters.availability;
       if (filters.employment_status) params.employment_status = filters.employment_status;
       if (filters.skill) params.skill = filters.skill;
-      if (filters.ward) params.ward = filters.ward;
-      if (filters.area) params.area = filters.area;
+      if (filters.place) params.place = filters.place;
+      if (filters.pin_code) params.pin_code = filters.pin_code;
 
       const response = await getWorkers(params);
       setWorkers(response.data.items || []);
@@ -116,8 +116,8 @@ export default function WorkerManagement() {
       availability: '',
       employment_status: '',
       skill: '',
-      ward: '',
-      area: ''
+      place: '',
+      pin_code: ''
     });
     setSearchQuery('');
     setPage(1);

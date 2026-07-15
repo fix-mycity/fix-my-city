@@ -187,21 +187,21 @@ def create_worker(
     return WaterFieldWorkerService.create_worker(db, schema)
 
 @workers_router.get("", response_model=WorkerList)
-def get_workers(
+def list_workers(
     page: int = Query(1, ge=1),
     page_size: int = Query(10, ge=1, le=100),
     search: Optional[str] = Query(None),
     availability: Optional[str] = Query(None),
     status: Optional[str] = Query(None),
     skill: Optional[str] = Query(None),
-    ward: Optional[str] = Query(None),
-    area: Optional[str] = Query(None),
+    place: Optional[str] = Query(None),
+    pin_code: Optional[str] = Query(None),
     db: Session = Depends(get_db),
     current_user: UserData = Depends(get_current_water_user)
 ):
     """Retrieve and list all field workers with support for pagination, search, and filtering."""
     items, total_items = WaterFieldWorkerService.list_workers(
-        db, page, page_size, search, availability, status, skill, ward, area
+        db, page, page_size, search, availability, status, skill, place, pin_code
     )
     total_pages = (total_items + page_size - 1) // page_size
     return {
@@ -220,7 +220,7 @@ def search_workers(
     db: Session = Depends(get_db),
     current_user: UserData = Depends(get_current_water_user)
 ):
-    """Search workers by employee_id, first_name, last_name, email, phone, ward, or area."""
+    """Search workers by first_name, last_name, email, phone, place, or pin_code."""
     items, total_items = WaterFieldWorkerService.list_workers(
         db, page=page, page_size=page_size, search=q
     )
@@ -238,17 +238,17 @@ def filter_workers(
     availability: Optional[str] = Query(None),
     status: Optional[str] = Query(None),
     skill: Optional[str] = Query(None),
-    ward: Optional[str] = Query(None),
-    area: Optional[str] = Query(None),
+    place: Optional[str] = Query(None),
+    pin_code: Optional[str] = Query(None),
     page: int = Query(1, ge=1),
     page_size: int = Query(10, ge=1, le=100),
     db: Session = Depends(get_db),
     current_user: UserData = Depends(get_current_water_user)
 ):
-    """Filter workers based on availability, status, skill, ward, or area."""
+    """Filter workers based on availability, status, skill, place, or pin_code."""
     items, total_items = WaterFieldWorkerService.list_workers(
         db, page=page, page_size=page_size, availability=availability,
-        employment_status=status, skill=skill, ward=ward, area=area
+        employment_status=status, skill=skill, place=place, pin_code=pin_code
     )
     total_pages = (total_items + page_size - 1) // page_size
     return {

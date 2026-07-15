@@ -41,11 +41,10 @@ export default function WorkerTable({
             fontWeight: '600',
             borderBottom: '2px solid var(--water-border)'
           }}>
-            <th style={{ padding: '1rem' }}>Employee ID</th>
             <th style={{ padding: '1rem' }}>Photo</th>
             <th style={{ padding: '1rem' }}>Worker Name</th>
             <th style={{ padding: '1rem' }}>Phone</th>
-            <th style={{ padding: '1rem' }}>Ward / Area</th>
+            <th style={{ padding: '1rem' }}>Place / Pin Code</th>
             <th style={{ padding: '1rem' }}>Skill</th>
             <th style={{ padding: '1rem' }}>Availability</th>
             <th style={{ padding: '1rem' }}>Employment Status</th>
@@ -73,9 +72,7 @@ export default function WorkerTable({
                   transition: 'background-color 0.2s ease'
                 }}
               >
-                <td style={{ padding: '1rem', fontWeight: '700', color: 'var(--water-primary-light)' }}>
-                  {w.employee_id}
-                </td>
+
 
                 <td style={{ padding: '1rem' }}>
                   <div style={{
@@ -105,8 +102,8 @@ export default function WorkerTable({
                 </td>
 
                 <td style={{ padding: '1rem' }}>
-                  <div style={{ fontWeight: '500' }}>{w.ward || 'N/A'}</div>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--water-text-muted)' }}>{w.area || 'N/A'}</div>
+                  <div style={{ fontWeight: '500' }}>{w.place || 'N/A'}</div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--water-text-muted)' }}>{w.pin_code || 'N/A'}</div>
                 </td>
 
                 <td style={{ padding: '1rem', fontWeight: '500' }}>
