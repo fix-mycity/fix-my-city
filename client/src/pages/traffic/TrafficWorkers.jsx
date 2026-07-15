@@ -82,10 +82,10 @@ const TrafficWorkers = () => {
             <span className="material-symbols-outlined mr-3">engineering</span>
             Workers
           </Link>
-          <a href="#" className="text-slate-400 hover:bg-slate-800 hover:text-white rounded-lg px-4 py-3 flex items-center transition-colors">
-            <span className="material-symbols-outlined mr-3">analytics</span>
-            Analytics
-          </a>
+          <Link to="/traffic/live-map" className="text-slate-400 hover:bg-slate-800 hover:text-white rounded-lg px-4 py-3 flex items-center transition-colors">
+            <span className="material-symbols-outlined mr-3">map</span>
+            Live Map
+          </Link>
         </nav>
  
         <div className="p-4 border-t border-slate-800 flex flex-col gap-4">

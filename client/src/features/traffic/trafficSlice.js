@@ -1,5 +1,11 @@
 import { createSlice } from "@reduxjs/toolkit";
-import { fetchTrafficComplaints, createTrafficWorker } from "./trafficThunks";
+import { 
+  fetchTrafficComplaints, 
+  createTrafficWorker,
+  assignTrafficIncident,
+  resolveTrafficIncident,
+  closeTrafficIncident
+} from "./trafficThunks";
 
 const initialState = {
   complaints: [],
@@ -47,6 +53,33 @@ const trafficSlice = createSlice({
       .addCase(createTrafficWorker.rejected, (state, action) => {
         state.workerCreateStatus = "failed";
         state.workerCreateError = action.payload;
+      })
+      
+      // assignTrafficIncident
+      .addCase(assignTrafficIncident.fulfilled, (state, action) => {
+        const updatedIncident = action.payload;
+        const index = state.complaints.findIndex(c => c.id === updatedIncident.id);
+        if (index !== -1) {
+          state.complaints[index] = updatedIncident;
+        }
+      })
+      
+      // resolveTrafficIncident
+      .addCase(resolveTrafficIncident.fulfilled, (state, action) => {
+        const updatedIncident = action.payload;
+        const index = state.complaints.findIndex(c => c.id === updatedIncident.id);
+        if (index !== -1) {
+          state.complaints[index] = updatedIncident;
+        }
+      })
+      
+      // closeTrafficIncident
+      .addCase(closeTrafficIncident.fulfilled, (state, action) => {
+        const updatedIncident = action.payload;
+        const index = state.complaints.findIndex(c => c.id === updatedIncident.id);
+        if (index !== -1) {
+          state.complaints[index] = updatedIncident;
+        }
       });
   },
 });

@@ -14,6 +14,7 @@ import PrivacyPolicy from './pages/PrivacyPolicy';
 import UserDashboard from './pages/UserDashboard';
 import TrafficDashboard from './pages/traffic/TrafficDashboard';
 import TrafficWorkers from './pages/traffic/TrafficWorkers';
+import TrafficMap from './pages/traffic/TrafficMap';
 import ProtectedRoute from './routes/ProtectedRoute';
 import PublicRoute from './routes/PublicRoute';
 
@@ -54,7 +55,7 @@ export default function App() {
         <Route 
           path="/traffic/dashboard" 
           element={
-            <ProtectedRoute allowedRoles={['Department_Admin']}>
+            <ProtectedRoute allowedRoles={['Department_Admin']} requiredPermissions={['dept:traffic']}>
               <TrafficDashboard/>
             </ProtectedRoute>
           } 
@@ -62,8 +63,16 @@ export default function App() {
         <Route 
           path="/traffic/workers" 
           element={
-            <ProtectedRoute allowedRoles={['Department_Admin']}>
+            <ProtectedRoute allowedRoles={['Department_Admin']} requiredPermissions={['dept:traffic']}>
               <TrafficWorkers/>
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/traffic/live-map" 
+          element={
+            <ProtectedRoute allowedRoles={['Department_Admin']} requiredPermissions={['dept:traffic']}>
+              <TrafficMap/>
             </ProtectedRoute>
           } 
         />
