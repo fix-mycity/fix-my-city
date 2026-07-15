@@ -11,8 +11,7 @@ from services.role_service import seed_roles, seed_permissions
 from services.location_service import seed_locations
 from fastapi.middleware.cors import CORSMiddleware
 
-# Create tables in PostgreSQL
-Base.metadata.create_all(bind=engine)
+# Migrations are now handled by Alembic.
 
 app = FastAPI(
     title="Fix My City Authentication Service",

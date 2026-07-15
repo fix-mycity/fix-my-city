@@ -48,6 +48,12 @@ class User(Base):
         ForeignKey("roles.id")
     )
 
+    manager_id = Column(
+        Integer,
+        ForeignKey("users.id"),
+        nullable=True
+    )
+
     created_at = Column(
         DateTime(timezone=True),
         server_default=func.now()

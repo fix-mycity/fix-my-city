@@ -1,0 +1,124 @@
+from sqlalchemy.orm import Session
+from fastapi import HTTPException, status
+from modules.complaints.model import Complaint, ComplaintStatus, ComplaintDepartment
+from modules.traffic_management.schema import WorkerAssignSchema, ResolutionReportSchema, WorkerCreateSchema
+from sqlalchemy import text
+import urllib.request
+import json
+import os
+
+def get_traffic_dashboard_complaints(db: Session, status_filter: str = None, assigned_worker_id: int = None, skip: int = 0, limit: int = 100):
+    query = db.query(Complaint).filter(Complaint.department == ComplaintDepartment.TRAFFIC.value)
+    
+    if status_filter:
+        query = query.filter(Complaint.status == status_filter)
+        
+    if assigned_worker_id is not None:
+        query = query.filter(Complaint.assigned_worker_id == assigned_worker_id)
+        
+    return query.offset(skip).limit(limit).all()
+
+def create_traffic_worker(db: Session, manager_id: int, worker: WorkerCreateSchema):
+    # Enforce MAX 5 Workers rule
+    result = db.execute(
+        text("SELECT COUNT(*) FROM users WHERE manager_id = :manager_id"),
+        {"manager_id": manager_id}
+    ).fetchone()
+    
+    current_workers = result[0] if result else 0
+    if current_workers >= 5:
+        return {"success": False, "message": "Maximum limit of 5 workers reached for this Traffic Admin."}
+
+    # Prepare data for Auth Service
+    auth_url = os.getenv("AUTH_SERVICE_URL", "http://auth_service:8001")
+    req_url = f"{auth_url}/auth/register-worker"
+    
+    payload = worker.model_dump()
+    payload["manager_id"] = manager_id
+    payload["department"] = "traffic"
+    
+    data = json.dumps(payload).encode("utf-8")
+    req = urllib.request.Request(
+        req_url, 
+        data=data, 
+        headers={'Content-Type': 'application/json'},
+        method='POST'
+    )
+    
+    try:
+        with urllib.request.urlopen(req) as response:
+            res_data = json.loads(response.read().decode())
+            return {"success": True, "message": "Worker created successfully.", "data": res_data}
+    except urllib.error.HTTPError as e:
+        error_body = e.read().decode()
+        try:
+            err_json = json.loads(error_body)
+            detail = err_json.get("detail", "Error from Auth Service")
+        except:
+            detail = error_body
+        return {"success": False, "message": str(detail)}
+    except Exception as e:
+        return {"success": False, "message": f"Failed to connect to Auth Service: {str(e)}"}
+
+def assign_worker(db: Session, incident_id: int, worker_data: WorkerAssignSchema, admin_id: int):
+    incident = db.query(Complaint).filter(
+        Complaint.id == incident_id,
+        Complaint.department == ComplaintDepartment.TRAFFIC.value
+    ).first()
+    
+    if not incident:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Traffic incident not found")
+        
+    if incident.status == ComplaintStatus.CLOSED.value:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot assign a closed incident")
+
+    # Verify that the worker being assigned actually belongs to this admin
+    query = text("SELECT id FROM users WHERE id = :worker_id AND manager_id = :admin_id")
+    result = db.execute(query, {"worker_id": worker_data.worker_id, "admin_id": admin_id}).fetchone()
+    
+    if not result:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, 
+            detail="You can only assign workers that you manage."
+        )
+
+    incident.assigned_worker_id = worker_data.worker_id
+    incident.status = ComplaintStatus.ASSIGNED.value
+    db.commit()
+    db.refresh(incident)
+    return incident
+
+def resolve_incident(db: Session, incident_id: int, report_data: ResolutionReportSchema, worker_id: int):
+    incident = db.query(Complaint).filter(
+        Complaint.id == incident_id,
+        Complaint.department == ComplaintDepartment.TRAFFIC.value
+    ).first()
+    
+    if not incident:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Traffic incident not found")
+        
+    if incident.assigned_worker_id != worker_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You are not assigned to this incident")
+        
+    incident.resolution_report = report_data.resolution_report
+    incident.status = ComplaintStatus.RESOLVED.value
+    db.commit()
+    db.refresh(incident)
+    return incident
+
+def close_incident(db: Session, incident_id: int):
+    incident = db.query(Complaint).filter(
+        Complaint.id == incident_id,
+        Complaint.department == ComplaintDepartment.TRAFFIC.value
+    ).first()
+    
+    if not incident:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Traffic incident not found")
+        
+    if incident.status != ComplaintStatus.RESOLVED.value:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Incident must be resolved before closing")
+        
+    incident.status = ComplaintStatus.CLOSED.value
+    db.commit()
+    db.refresh(incident)
+    return incident

@@ -12,6 +12,8 @@ import ResetPassword from './pages/auth/ResetPassword';
 import TermsOfService from './pages/TermsOfService';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import UserDashboard from './pages/UserDashboard';
+import TrafficDashboard from './pages/traffic/TrafficDashboard';
+import TrafficWorkers from './pages/traffic/TrafficWorkers';
 import ProtectedRoute from './routes/ProtectedRoute';
 import PublicRoute from './routes/PublicRoute';
 
@@ -46,6 +48,22 @@ export default function App() {
           element={
             <ProtectedRoute>
               <UserDashboard/>
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/traffic/dashboard" 
+          element={
+            <ProtectedRoute allowedRoles={['Department_Admin']}>
+              <TrafficDashboard/>
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/traffic/workers" 
+          element={
+            <ProtectedRoute allowedRoles={['Department_Admin']}>
+              <TrafficWorkers/>
             </ProtectedRoute>
           } 
         />

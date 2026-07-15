@@ -2,7 +2,7 @@ from sqlalchemy.orm import Session
 from datetime import datetime, timezone
 from models.user_model import User
 from models.login_history_model import LoginHistory
-from schemas.register_schema import RegisterSchema
+from schemas.register_schema import RegisterSchema, RegisterWorkerSchema
 from schemas.login_schema import LoginSchema
 from services.password_service import hash_password, verify_password
 from services.role_service import get_default_role
@@ -61,6 +61,46 @@ def register_user(db: Session, user: RegisterSchema):
             "id": new_user.id,
             "username": new_user.username,
             "email": new_user.email
+        }
+    }
+
+def register_worker(db: Session, worker: RegisterWorkerSchema):
+    existing_user = db.query(User).filter(User.email == worker.email).first()
+    if existing_user:
+        return {"success": False, "message": "Email already registered."}
+
+    if worker.password != worker.confirm_password:
+        return {"success": False, "message": "Passwords do not match."}
+
+    from models.role_model import Role
+    role = db.query(Role).filter(Role.role_name == "Worker").first()
+    if not role:
+        return {"success": False, "message": "Worker role not found in database."}
+
+    new_worker = User(
+        username=worker.username,
+        email=worker.email,
+        state=worker.state,
+        district=worker.district,
+        pincode=worker.pincode,
+        password=hash_password(worker.password),
+        role_id=role.id,
+        manager_id=worker.manager_id,
+        is_verified=True, # Workers are created by admin, auto-verify
+        is_active=True
+    )
+
+    db.add(new_worker)
+    db.commit()
+    db.refresh(new_worker)
+
+    return {
+        "success": True,
+        "message": "Worker registered successfully.",
+        "data": {
+            "id": new_worker.id,
+            "username": new_worker.username,
+            "email": new_worker.email
         }
     }
 
