@@ -1,26 +1,16 @@
-from pydantic import BaseModel, ConfigDict
-from typing import Optional
-from datetime import datetime
-from modules.traffic_management.model import IncidentStatus
+from pydantic import BaseModel
 
-class TrafficIncidentCreate(BaseModel):
-    title: str
-    description: str
-    location_lat: float
-    location_lng: float
+class WorkerAssignSchema(BaseModel):
+    worker_id: int
 
-class TrafficIncidentUpdate(BaseModel):
-    status: Optional[IncidentStatus] = None
+class ResolutionReportSchema(BaseModel):
+    resolution_report: str
 
-class TrafficIncidentResponse(BaseModel):
-    id: int
-    title: str
-    description: str
-    location_lat: float
-    location_lng: float
-    status: IncidentStatus
-    reported_by: int
-    created_at: datetime
-    updated_at: datetime
-
-    model_config = ConfigDict(from_attributes=True)
+class WorkerCreateSchema(BaseModel):
+    username: str
+    email: str
+    state: str
+    district: str
+    pincode: str
+    password: str
+    confirm_password: str

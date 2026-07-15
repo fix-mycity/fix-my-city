@@ -1,0 +1,96 @@
+import os
+import sys
+from logging.config import fileConfig
+
+from sqlalchemy import engine_from_config
+from sqlalchemy import pool
+from alembic import context
+from dotenv import load_dotenv
+
+# Add the auth_service directory to sys.path so we can import modules
+sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+
+from database import Base
+import models.user_model
+import models.role_model
+import models.permission_model
+import models.login_history_model
+import models.otp_model
+import models.refresh_token_model
+import models.location_model
+
+# Load environment variables
+load_dotenv()
+
+# Define the tables that belong to auth_service
+AUTH_TABLES = [
+    "users",
+    "roles",
+    "permissions",
+    "user_permissions",
+    "login_history",
+    "otps",
+    "refresh_tokens",
+    "locations"
+]
+
+def include_object(object, name, type_, reflected, compare_to):
+    if type_ == "table":
+        return name in AUTH_TABLES
+    return True
+
+# this is the Alembic Config object, which provides
+# access to the values within the .ini file in use.
+config = context.config
+
+# Dynamically set sqlalchemy.url from .env
+database_url = os.getenv("DATABASE_URL")
+if not database_url:
+    raise ValueError("DATABASE_URL is not set in .env")
+
+# Use postgresql:// instead of postgres:// if present
+if database_url.startswith("postgres://"):
+    database_url = database_url.replace("postgres://", "postgresql://", 1)
+
+config.set_main_option("sqlalchemy.url", database_url)
+
+# Interpret the config file for Python logging.
+if config.config_file_name is not None:
+    fileConfig(config.config_file_name)
+
+target_metadata = Base.metadata
+
+def run_migrations_offline() -> None:
+    url = config.get_main_option("sqlalchemy.url")
+    context.configure(
+        url=url,
+        target_metadata=target_metadata,
+        literal_binds=True,
+        dialect_opts={"paramstyle": "named"},
+        include_object=include_object,
+    )
+
+    with context.begin_transaction():
+        context.run_migrations()
+
+def run_migrations_online() -> None:
+    connectable = engine_from_config(
+        config.get_section(config.config_ini_section, {}),
+        prefix="sqlalchemy.",
+        poolclass=pool.NullPool,
+    )
+
+    with connectable.connect() as connection:
+        context.configure(
+            connection=connection, 
+            target_metadata=target_metadata,
+            include_object=include_object,
+        )
+
+        with context.begin_transaction():
+            context.run_migrations()
+
+if context.is_offline_mode():
+    run_migrations_offline()
+else:
+    run_migrations_online()
