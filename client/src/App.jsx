@@ -14,6 +14,8 @@ import PrivacyPolicy from './pages/PrivacyPolicy';
 import UserDashboard from './pages/UserDashboard';
 import ProtectedRoute from './routes/ProtectedRoute';
 import PublicRoute from './routes/PublicRoute';
+
+// Water Management Pages
 import WaterLayout from './layout/WaterLayout';
 import WaterDashboard from './pages/waterAuthority/Dashboard';
 import ComplaintManagement from './pages/waterAuthority/ComplaintManagement';
@@ -22,6 +24,10 @@ import WorkerManagement from './pages/waterAuthority/WorkerManagement';
 import AddWorker from './pages/waterAuthority/AddWorker';
 import EditWorker from './pages/waterAuthority/EditWorker';
 import WorkerProfile from './pages/waterAuthority/WorkerProfile';
+
+// Traffic Management Pages
+import TrafficDashboard from './pages/traffic/TrafficDashboard';
+import TrafficWorkers from './pages/traffic/TrafficWorkers';
 
 export default function App() {
   const dispatch = useDispatch();
@@ -57,6 +63,8 @@ export default function App() {
             </ProtectedRoute>
           } 
         />
+        
+        {/* Water Authority Routes */}
         <Route 
           path="/water/dashboard" 
           element={
@@ -113,7 +121,25 @@ export default function App() {
             </WaterLayout>
           } 
         />
+
+        {/* Traffic Authority Routes */}
+        <Route 
+          path="/traffic/dashboard" 
+          element={
+            <ProtectedRoute allowedRoles={['Department_Admin']}>
+              <TrafficDashboard/>
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/traffic/workers" 
+          element={
+            <ProtectedRoute allowedRoles={['Department_Admin']}>
+              <TrafficWorkers/>
+            </ProtectedRoute>
+          } 
+        />
       </Routes>
     </BrowserRouter>
   );
-}
+}

@@ -14,7 +14,9 @@ def seed_roles(db: Session):
     default_roles = [
         {"role_name": "Citizen", "description": "Default role for public citizens to report issues"},
         {"role_name": "Officer", "description": "Municipal officers who resolve city issues"},
-        {"role_name": "Admin", "description": "System administrator with full control"}
+        {"role_name": "Admin", "description": "System administrator with full control"},
+        {"role_name": "Department_Admin", "description": "Admin overseeing a specific department"},
+        {"role_name": "Worker", "description": "Field worker resolving complaints for a department"}
     ]
     
     for r in default_roles:
@@ -43,7 +45,12 @@ def seed_permissions(db: Session):
         {"permission_name": "water:write", "description": "Can manage water supply issues"},
         {"permission_name": "emergency:read", "description": "Can view emergencies"},
         {"permission_name": "emergency:write", "description": "Can manage emergencies"},
-        {"permission_name": "admin:all", "description": "Full administrative access"}
+        {"permission_name": "admin:all", "description": "Full administrative access"},
+        {"permission_name": "worker:create", "description": "Can create workers"},
+        {"permission_name": "worker:read", "description": "Can view workers"},
+        {"permission_name": "dept:traffic", "description": "Traffic Department Access"},
+        {"permission_name": "dept:waste", "description": "Waste Department Access"},
+        {"permission_name": "dept:water", "description": "Water Department Access"}
     ]
     
     for p in default_permissions:

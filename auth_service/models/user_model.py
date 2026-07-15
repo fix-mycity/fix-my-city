@@ -49,7 +49,13 @@ class User(Base):
         ForeignKey("roles.id")
     )
 
-    created_at: Mapped[datetime] = mapped_column(
+    manager_id = Column(
+        Integer,
+        ForeignKey("users.id"),
+        nullable=True
+    )
+
+    created_at = Column(
         DateTime(timezone=True),
         server_default=func.now()
     )
