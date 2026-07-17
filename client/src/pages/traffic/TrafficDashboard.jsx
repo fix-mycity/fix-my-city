@@ -6,6 +6,12 @@ import { toast } from 'react-hot-toast';
 import { toastConfirm } from '../../utils/toastConfirm';
 import { Link, useNavigate } from 'react-router-dom';
 
+const isVideoUrl = (url) => {
+  if (!url) return false;
+  const cleanUrl = url.toLowerCase().split('?')[0];
+  return cleanUrl.endsWith('.mp4') || cleanUrl.endsWith('.webm') || cleanUrl.endsWith('.ogg') || cleanUrl.endsWith('.mov') || cleanUrl.endsWith('.quicktime') || url.includes('/video');
+};
+
 const TrafficDashboard = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -149,10 +155,28 @@ const TrafficDashboard = () => {
             
             {dashboardStatus === 'succeeded' && complaints.map((report) => (
               <div key={report.id} className="p-5 hover:bg-slate-50 transition-colors flex flex-col sm:flex-row gap-5">
-                <div 
-                  className="w-full sm:w-28 h-28 rounded-lg bg-cover bg-center shrink-0 border border-slate-200" 
-                  style={{ backgroundImage: `url('${report.image_url || 'https://via.placeholder.com/150'}')` }}
-                />
+                <div className="w-full sm:w-28 h-28 rounded-lg shrink-0 border border-slate-200 bg-slate-100 flex items-center justify-center overflow-hidden relative">
+                  {report.image_url ? (
+                    isVideoUrl(report.image_url) ? (
+                      <video 
+                        src={report.image_url} 
+                        muted 
+                        playsInline 
+                        autoPlay 
+                        loop 
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <img 
+                        src={report.image_url} 
+                        alt={report.title} 
+                        className="w-full h-full object-cover"
+                      />
+                    )
+                  ) : (
+                    <span className="material-symbols-outlined text-slate-355 text-3xl text-slate-300">image</span>
+                  )}
+                </div>
                 <div className="flex-grow flex flex-col justify-between">
                   <div className="flex justify-between items-start">
                     <div>

@@ -1,7 +1,11 @@
 from fastapi import Depends, HTTPException, status, Request
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import JWTError, jwt
 from config import settings
 from pydantic import BaseModel
+
+bearer_scheme = HTTPBearer(auto_error=False)
+
 
 class UserData(BaseModel):
     id: int
@@ -10,21 +14,23 @@ class UserData(BaseModel):
     role: str | None = None
     permissions: list[str] = []
 
-def get_current_user(request: Request) -> UserData:
+def get_current_user(
+    request: Request,
+    credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme)
+) -> UserData:
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
     )
-    token = request.cookies.get("access_token")
-    if not token:
-        # Fallback to Authorization header if testing via Swagger/Postman
-        auth_header = request.headers.get("Authorization")
-        if auth_header and auth_header.startswith("Bearer "):
-            token = auth_header.split(" ")[1]
-            
+    token = None
+    if credentials:
+        token = credentials.credentials
+    else:
+        token = request.cookies.get("access_token")
+
     if not token:
         raise credentials_exception
-        
+
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
         user_id_str: str | None = payload.get("sub")

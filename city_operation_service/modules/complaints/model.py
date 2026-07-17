@@ -29,6 +29,9 @@ class Complaint(Base):
     location_lat = Column(Float, nullable=False)
     location_lng = Column(Float, nullable=False)
     
+    # Image Upload
+    image_url = Column(String(500), nullable=True)
+    
     # AI Routing & Tracking
     department = Column(String(50), default=ComplaintDepartment.GENERAL.value, nullable=False, index=True)
     status = Column(String(50), default=ComplaintStatus.PENDING.value, nullable=False, index=True)

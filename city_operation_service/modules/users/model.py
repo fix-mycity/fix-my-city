@@ -3,7 +3,8 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
-    DateTime
+    DateTime,
+    Float
 )
 from sqlalchemy.sql import func
 
@@ -34,6 +35,28 @@ class Profile(Base):
     avatar_url = Column(String(500), nullable=True)
 
     bio = Column(Text, nullable=True)
+
+    created_at = Column(
+        DateTime(timezone=True),
+        server_default=func.now()
+    )
+
+    updated_at = Column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now()
+    )
+
+
+class SavedLocation(Base):
+    __tablename__ = "saved_locations"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, nullable=False, index=True)
+    label = Column(String(100), nullable=False)  # e.g., "Home", "Office"
+    address = Column(String(500), nullable=False)
+    latitude = Column(Float, nullable=True)
+    longitude = Column(Float, nullable=True)
 
     created_at = Column(
         DateTime(timezone=True),
