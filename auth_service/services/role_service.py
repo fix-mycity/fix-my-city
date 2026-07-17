@@ -13,7 +13,6 @@ def get_default_role(db: Session) -> Role | None:
 def seed_roles(db: Session):
     default_roles = [
         {"role_name": "Citizen", "description": "Default role for public citizens to report issues"},
-        {"role_name": "Officer", "description": "Municipal officers who resolve city issues"},
         {"role_name": "Admin", "description": "System administrator with full control"},
         {"role_name": "Department_Admin", "description": "Admin overseeing a specific department"},
         {"role_name": "Worker", "description": "Field worker resolving complaints for a department"}
