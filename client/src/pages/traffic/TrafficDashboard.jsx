@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { logoutUser } from '../../features/auth/authThunks';
 import { fetchTrafficComplaints, assignTrafficIncident, closeTrafficIncident } from '../../features/traffic/trafficThunks';
 import { toast } from 'react-hot-toast';
+import { toastConfirm } from '../../utils/toastConfirm';
 import { Link, useNavigate } from 'react-router-dom';
 
 const TrafficDashboard = () => {
@@ -27,15 +28,15 @@ const TrafficDashboard = () => {
     }
   };
 
-  const handleClose = async (incidentId) => {
-    if (window.confirm("Are you sure you want to officially close this incident?")) {
+  const handleClose = (incidentId) => {
+    toastConfirm("Are you sure you want to officially close this incident?", async () => {
       try {
         await dispatch(closeTrafficIncident(incidentId)).unwrap();
         toast.success("Incident closed successfully!");
       } catch (err) {
         toast.error(err || "Failed to close incident.");
       }
-    }
+    });
   };
 
   const handleLogout = async () => {

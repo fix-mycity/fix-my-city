@@ -1,34 +1,16 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { useSelector, useDispatch } from 'react-redux';
-import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
-import { logoutUser } from '../../features/auth/authThunks';
 import tt from '@tomtom-international/web-sdk-maps';
 import '@tomtom-international/web-sdk-maps/dist/maps.css';
+import { Map as MapIcon, Search, Loader2 } from 'lucide-react';
+import TrafficLayout from '../../layout/TrafficLayout';
+import axios from 'axios';
 
 const TrafficMap = () => {
   const mapElement = useRef(null);
   const [map, setMap] = useState(null);
-  const { user } = useSelector((state) => state.auth);
-  const dispatch = useDispatch();
-  const navigate = useNavigate();
-
-  // Pre-defined areas for the dropdown
-  const cityAreas = [
-    { name: 'City Center (Thrissur)', lng: 76.2144, lat: 10.5276 },
-    { name: 'Palakkad Highway', lng: 76.6508, lat: 10.7749 },
-    { name: 'Kochi Bypass', lng: 76.3082, lat: 9.9816 }
-  ];
-
-  const handleLogout = async () => {
-    try {
-      await dispatch(logoutUser()).unwrap();
-      toast.success("Logged out successfully!");
-      navigate('/login');
-    } catch (err) {
-      toast.error(err || "Logout failed.");
-    }
-  };
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isSearching, setIsSearching] = useState(false);
 
   useEffect(() => {
     const apiKey = import.meta.env.VITE_TOMTOM_API_KEY;
@@ -38,29 +20,19 @@ const TrafficMap = () => {
       return;
     }
 
-    // Initialize TomTom Map
+    // Required for TomTom SDK v6 in Vite/modern bundlers
+    tt.setProductInfo('FixMyCity', '1.0.0');
+
+    // Initialize TomTom Map (v6 style)
     let mapInstance = tt.map({
       key: apiKey,
       container: mapElement.current,
       center: [76.2144, 10.5276], // Default Center
       zoom: 12,
-      style: 'tomtom://vector/1/basic-main'
-    });
-
-    mapInstance.on('load', () => {
-      // Add Traffic Flow Layer
-      mapInstance.addTier(new tt.TrafficFlowTier({
-        key: apiKey,
-        style: 'tomtom://vector/1/relative0'
-      }));
-      
-      // Add Traffic Incidents Layer
-      mapInstance.addTier(new tt.TrafficIncidentTier({
-        key: apiKey,
-        incidentDetails: {
-          style: 's0'
-        }
-      }));
+      stylesVisibility: {
+        trafficFlow: true,
+        trafficIncidents: true
+      }
     });
 
     mapInstance.addControl(new tt.FullscreenControl());
@@ -73,101 +45,74 @@ const TrafficMap = () => {
     };
   }, []);
 
-  const handleAreaChange = (e) => {
-    if (!map) return;
-    const selectedArea = cityAreas.find(area => area.name === e.target.value);
-    if (selectedArea) {
-      map.flyTo({
-        center: [selectedArea.lng, selectedArea.lat],
-        zoom: 14,
-        speed: 1.5
+  const handleSearch = async (e) => {
+    e.preventDefault();
+    if (!map || !searchQuery.trim()) return;
+    
+    setIsSearching(true);
+    try {
+      const apiKey = import.meta.env.VITE_TOMTOM_API_KEY;
+      const res = await axios.get(`https://api.tomtom.com/search/2/geocode/${encodeURIComponent(searchQuery)}.json`, {
+        params: { key: apiKey, countrySet: 'IN', limit: 1 }
       });
-      toast.success(`Panning to ${selectedArea.name}`);
+      
+      if (res.data.results && res.data.results.length > 0) {
+        const { position, address } = res.data.results[0];
+        map.flyTo({
+          center: [position.lon, position.lat],
+          zoom: 14,
+          speed: 1.5
+        });
+        toast.success(`Found: ${address.freeformAddress || searchQuery}`);
+      } else {
+        toast.error("Location not found");
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to search location");
+    } finally {
+      setIsSearching(false);
     }
   };
 
   return (
-    <div className="flex h-screen bg-slate-50 font-sans antialiased overflow-hidden">
-      {/* Side Navigation Bar */}
-      <aside className="w-64 bg-slate-900 text-white flex flex-col h-screen shrink-0 shadow-xl z-50">
-        <div className="p-6">
-          <div className="text-3xl font-bold tracking-tight">Fix My City</div>
-          <div className="text-xs text-amber-500 font-bold tracking-wider uppercase mt-1">Traffic Dept</div>
-        </div>
-        
-        <nav className="flex-1 px-4 space-y-2 mt-4 text-sm font-medium">
-          <Link to="/traffic/dashboard" className="text-slate-400 hover:bg-slate-800 hover:text-white rounded-lg px-4 py-3 flex items-center transition-colors">
-            <span className="material-symbols-outlined mr-3">dashboard</span>
-            Dashboard
-          </Link>
-          <Link to="/traffic/workers" className="text-slate-400 hover:bg-slate-800 hover:text-white rounded-lg px-4 py-3 flex items-center transition-colors">
-            <span className="material-symbols-outlined mr-3">engineering</span>
-            Workers
-          </Link>
-          <Link to="/traffic/live-map" className="bg-blue-600 text-white rounded-lg px-4 py-3 flex items-center transition-colors shadow-sm">
-            <span className="material-symbols-outlined mr-3">map</span>
-            Live Map
-          </Link>
-        </nav>
- 
-        <div className="p-4 border-t border-slate-800 flex flex-col gap-4">
-          <div className="flex items-center gap-3">
-            <img 
-              alt="User Avatar" 
-              className="w-10 h-10 rounded-full object-cover border-2 border-slate-700" 
-              src="https://ui-avatars.com/api/?name=Traffic+Admin&background=random" 
-            />
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-white truncate">{user?.username || 'Admin'}</p>
-              <p className="text-xs text-slate-400 truncate capitalize">{user?.role || 'Traffic Admin'}</p>
-            </div>
-          </div>
-          <div className="flex gap-2 justify-around">
-            <button className="text-slate-400 hover:text-white transition-colors p-2 rounded-lg hover:bg-slate-800" title="Settings">
-              <span className="material-symbols-outlined">settings</span>
-            </button>
-            <button 
-              onClick={handleLogout}
-              className="text-slate-400 hover:text-red-400 transition-colors p-2 rounded-lg hover:bg-slate-800" 
-              title="Logout"
-            >
-              <span className="material-symbols-outlined">logout</span>
-            </button>
-          </div>
-        </div>
-      </aside>
-
-      {/* Main Content Canvas */}
-      <main className="flex-grow p-8 max-w-[1440px] mx-auto w-full overflow-y-auto flex flex-col">
-        
+    <TrafficLayout>
+      <div className="p-8 h-[calc(100vh-2rem)] flex flex-col">
         {/* Welcome Header */}
-        <div className="mb-8 flex justify-between items-end">
+        <div className="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
           <div>
-            <h1 className="text-4xl font-extrabold text-slate-900 mb-2 tracking-tight">Real-Time Traffic Map</h1>
-            <p className="text-slate-500 font-medium">Powered by TomTom Traffic API</p>
+            <h1 className="text-3xl font-extrabold text-slate-900 mb-1 tracking-tight flex items-center gap-3">
+              <MapIcon className="w-8 h-8 text-blue-600" />
+              Real-Time Traffic Map
+            </h1>
+            <p className="text-slate-500 font-medium">Monitor traffic flow and incidents</p>
           </div>
           
-          <div className="flex items-center gap-3">
-            <label className="text-sm font-bold text-slate-700 uppercase tracking-wider">Select Area:</label>
-            <div className="relative">
-              <select 
-                onChange={handleAreaChange}
-                className="appearance-none bg-white border border-slate-300 text-slate-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-64 p-2.5 font-medium cursor-pointer transition-colors shadow-sm"
-              >
-                <option value="">-- View Entire City --</option>
-                {cityAreas.map((area, index) => (
-                  <option key={index} value={area.name}>{area.name}</option>
-                ))}
-              </select>
-              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-500">
-                <span className="material-symbols-outlined">expand_more</span>
+          <form onSubmit={handleSearch} className="flex items-center w-full sm:w-auto mt-4 sm:mt-0 shadow-sm rounded-lg">
+            <div className="relative flex-grow sm:w-80">
+              <input
+                type="text"
+                placeholder="Search by pincode or place..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-4 py-3 bg-white border border-slate-300 text-slate-900 text-sm rounded-l-lg focus:ring-blue-500 focus:border-blue-500 transition-colors outline-none"
+              />
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <Search className="h-5 w-5 text-slate-400" />
               </div>
             </div>
-          </div>
+            <button 
+              type="submit" 
+              disabled={isSearching}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-3 rounded-r-lg font-bold text-sm transition-colors flex items-center justify-center min-w-[100px] border border-blue-600"
+            >
+              {isSearching ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Search'}
+            </button>
+          </form>
         </div>
 
         {/* Map Container Card */}
-        <div className="flex-grow relative bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden min-h-[600px]">
+        <div className="flex-grow relative bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden w-full h-full min-h-[500px]">
           <div ref={mapElement} className="absolute inset-0 w-full h-full bg-slate-100" />
           
           {/* Legend Overlay */}
@@ -189,9 +134,8 @@ const TrafficMap = () => {
             </div>
           </div>
         </div>
-        
-      </main>
-    </div>
+      </div>
+    </TrafficLayout>
   );
 };
 

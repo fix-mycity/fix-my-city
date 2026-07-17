@@ -19,7 +19,6 @@ export default function WorkerForm({ initialData, onSubmit, onCancel, isEdit = f
     designation: initialData?.designation || '',
     skill: initialData?.skill || 'Leak Repair',
     experience: initialData?.experience || 0,
-    joining_date: initialData?.joining_date ? new Date(initialData.joining_date).toISOString().substring(0, 10) : new Date().toISOString().substring(0, 10),
     emergency_contact_phone: initialData?.emergency_contact_phone || '',
     availability: initialData?.availability || 'AVAILABLE',
     employment_status: initialData?.employment_status || 'ACTIVE'
@@ -42,22 +41,13 @@ export default function WorkerForm({ initialData, onSubmit, onCancel, isEdit = f
   const handleChange = (e) => {
     const { name, value } = e.target;
 
-    // Only allow letters, spaces, hyphens, and apostrophes in name fields
     if (name === 'first_name' || name === 'last_name') {
-      if (!/^[a-zA-Z\s\-']*$/.test(value)) {
+      if (!/^[a-zA-Z\s_.]*$/.test(value)) {
         return;
       }
     }
 
-    // Only allow digits and an optional leading plus sign in phone number
-    if (name === 'phone') {
-      if (!/^\+?[0-9]*$/.test(value)) {
-        return;
-      }
-    }
-
-    // Only allow digits in pin code
-    if (name === 'pin_code') {
+    if (name === 'phone' || name === 'pin_code' || name === 'emergency_contact_phone' || name === 'experience') {
       if (!/^[0-9]*$/.test(value)) {
         return;
       }
@@ -78,17 +68,13 @@ export default function WorkerForm({ initialData, onSubmit, onCancel, isEdit = f
     if (!formData.first_name) {
       newErrors.first_name = 'First name is required';
     } else if (/\d/.test(formData.first_name)) {
-      newErrors.first_name = 'First name must contain only words and cannot contain numbers';
-    } else if (!/^[a-zA-Z\s\-']+$/.test(formData.first_name)) {
-      newErrors.first_name = 'First name must contain only letters';
+      newErrors.first_name = 'First name must not contain numbers';
     }
 
     if (!formData.last_name) {
       newErrors.last_name = 'Last name is required';
     } else if (/\d/.test(formData.last_name)) {
-      newErrors.last_name = 'Last name must contain only words and cannot contain numbers';
-    } else if (!/^[a-zA-Z\s\-']+$/.test(formData.last_name)) {
-      newErrors.last_name = 'Last name must contain only letters';
+      newErrors.last_name = 'Last name must not contain numbers';
     }
 
     if (!formData.email) newErrors.email = 'Email is required';
@@ -96,9 +82,7 @@ export default function WorkerForm({ initialData, onSubmit, onCancel, isEdit = f
     if (!formData.phone) {
       newErrors.phone = 'Phone number is required';
     } else if (/[a-zA-Z]/.test(formData.phone)) {
-      newErrors.phone = 'Phone number must contain only numbers and cannot contain letters or words';
-    } else if (!/^\+?[0-9\s\-]+$/.test(formData.phone)) {
-      newErrors.phone = 'Phone number must be a valid numeric sequence';
+      newErrors.phone = 'Phone number must contain only numbers';
     }
 
     if (!formData.place) newErrors.place = 'Place is required';
@@ -106,9 +90,7 @@ export default function WorkerForm({ initialData, onSubmit, onCancel, isEdit = f
     if (!formData.pin_code) {
       newErrors.pin_code = 'Pin code is required';
     } else if (/[a-zA-Z]/.test(formData.pin_code)) {
-      newErrors.pin_code = 'Pin code must contain only numbers and cannot contain letters or words';
-    } else if (!/^[0-9]+$/.test(formData.pin_code)) {
-      newErrors.pin_code = 'Pin code must contain only digits';
+      newErrors.pin_code = 'Pin code must contain only numbers';
     }
     
     if (!isEdit) {
@@ -131,6 +113,20 @@ export default function WorkerForm({ initialData, onSubmit, onCancel, isEdit = f
       return;
     }
 
+    if (formData.date_of_birth) {
+      const today = new Date();
+      const dob = new Date(formData.date_of_birth);
+      let age = today.getFullYear() - dob.getFullYear();
+      const m = today.getMonth() - dob.getMonth();
+      if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) {
+        age--;
+      }
+      if (age < 18) {
+        toast.error('Worker must be at least 18 years old.');
+        return false;
+      }
+    }
+
     const payload = { ...formData };
     if (!payload.password) {
       delete payload.password;
@@ -141,11 +137,6 @@ export default function WorkerForm({ initialData, onSubmit, onCancel, isEdit = f
       payload.date_of_birth = new Date(payload.date_of_birth).toISOString();
     } else {
       payload.date_of_birth = null;
-    }
-    if (payload.joining_date) {
-      payload.joining_date = new Date(payload.joining_date).toISOString();
-    } else {
-      payload.joining_date = null;
     }
 
     try {
@@ -434,47 +425,19 @@ export default function WorkerForm({ initialData, onSubmit, onCancel, isEdit = f
           />
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-          <label style={{ fontSize: '0.8rem', fontWeight: '700', color: 'var(--water-text)' }}>Joining Date</label>
-          <input
-            type="date"
-            name="joining_date"
-            value={formData.joining_date}
-            onChange={handleChange}
-            style={{
-              padding: '0.6rem',
-              borderRadius: '6px',
-              border: '1px solid var(--water-border)',
-              fontSize: '0.85rem',
-              outline: 'none'
-            }}
-          />
-        </div>
-
         {isEdit && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-            <label style={{ fontSize: '0.8rem', fontWeight: '700', color: 'var(--water-text)' }}>Availability Status</label>
+            <label style={{ fontSize: '0.8rem', fontWeight: '700', color: 'var(--water-text)' }}>Current Status</label>
             <select
               name="availability"
               value={formData.availability}
               onChange={handleChange}
               style={{ padding: '0.6rem', borderRadius: '6px', border: '1px solid var(--water-border)', fontSize: '0.85rem', outline: 'none' }}
             >
-              {availabilities.map(a => <option key={a} value={a}>{a}</option>)}
-            </select>
-          </div>
-        )}
-
-        {isEdit && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-            <label style={{ fontSize: '0.8rem', fontWeight: '700', color: 'var(--water-text)' }}>Employment Status</label>
-            <select
-              name="employment_status"
-              value={formData.employment_status}
-              onChange={handleChange}
-              style={{ padding: '0.6rem', borderRadius: '6px', border: '1px solid var(--water-border)', fontSize: '0.85rem', outline: 'none' }}
-            >
-              {statuses.map(s => <option key={s} value={s}>{s}</option>)}
+              <option value="AVAILABLE">Available</option>
+              <option value="ON_WORK">On Work / Busy</option>
+              <option value="ON_LEAVE">On Leave</option>
+              <option value="INACTIVE">Inactive</option>
             </select>
           </div>
         )}

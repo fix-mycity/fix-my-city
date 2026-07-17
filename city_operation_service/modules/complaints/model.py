@@ -37,6 +37,9 @@ class Complaint(Base):
     assigned_worker_id = Column(Integer, nullable=True, index=True)
     resolution_report = Column(Text, nullable=True)
 
+    # Media
+    image_url = Column(String(500), nullable=True)
+
     # User Relationships
     reported_by = Column(Integer, nullable=False, index=True)
 

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
+import { toastConfirm } from '../../utils/toastConfirm';
 
 import PageHeader from '../../components/waterAuthority/PageHeader';
 import WorkerStats from '../../components/waterAuthority/WorkerStats';
@@ -148,16 +149,19 @@ export default function WorkerManagement() {
   };
 
   const handleDeleteWorker = async (id) => {
-    if (window.confirm("Are you sure you want to delete this field worker from the registry? This action is permanent.")) {
-      try {
-        await deleteWorker(id);
-        toast.success("Field worker deleted successfully.");
-        fetchWorkersData();
-        fetchSummaryStats();
-      } catch (err) {
-        toast.error(err.response?.data?.detail || "Failed to delete worker.");
+    toastConfirm(
+      "Are you sure you want to delete this field worker from the registry? This action is permanent.",
+      async () => {
+        try {
+          await deleteWorker(id);
+          toast.success("Field worker deleted successfully.");
+          fetchWorkersData();
+          fetchSummaryStats();
+        } catch (err) {
+          toast.error(err.response?.data?.detail || "Failed to delete worker.");
+        }
       }
-    }
+    );
   };
 
   const handleCreateNew = () => {

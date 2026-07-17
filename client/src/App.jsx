@@ -27,8 +27,13 @@ import EditWorker from './pages/waterAuthority/EditWorker';
 import WorkerProfile from './pages/waterAuthority/WorkerProfile';
 
 // Traffic Management Pages
-import TrafficDashboard from './pages/traffic/TrafficDashboard';
-import TrafficWorkers from './pages/traffic/TrafficWorkers';
+import TrafficLayout from './layout/TrafficLayout';
+import TrafficDashboard from './pages/traffic/Dashboard';
+import TrafficWorkers from './pages/traffic/WorkerManagement';
+import AddTrafficWorker from './pages/traffic/AddTrafficWorker';
+import EditTrafficWorker from './pages/traffic/EditTrafficWorker';
+import TrafficMap from './pages/traffic/TrafficMap';
+import TrafficIncidents from './pages/traffic/TrafficIncidents';
 
 export default function App() {
   const dispatch = useDispatch();
@@ -150,7 +155,19 @@ export default function App() {
           path="/traffic/dashboard" 
           element={
             <ProtectedRoute allowedRoles={['Department_Admin']} requiredPermissions={['dept:traffic']}>
-              <TrafficDashboard/>
+              <TrafficLayout>
+                <TrafficDashboard/>
+              </TrafficLayout>
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/traffic/incidents" 
+          element={
+            <ProtectedRoute allowedRoles={['Department_Admin']} requiredPermissions={['dept:traffic']}>
+              <TrafficLayout>
+                <TrafficIncidents/>
+              </TrafficLayout>
             </ProtectedRoute>
           } 
         />
@@ -158,7 +175,37 @@ export default function App() {
           path="/traffic/workers" 
           element={
             <ProtectedRoute allowedRoles={['Department_Admin']} requiredPermissions={['dept:traffic']}>
-              <TrafficWorkers/>
+              <TrafficLayout>
+                <TrafficWorkers/>
+              </TrafficLayout>
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/traffic/workers/new" 
+          element={
+            <ProtectedRoute allowedRoles={['Department_Admin']} requiredPermissions={['dept:traffic']}>
+              <TrafficLayout>
+                <AddTrafficWorker/>
+              </TrafficLayout>
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/traffic/workers/:id/edit" 
+          element={
+            <ProtectedRoute allowedRoles={['Department_Admin']} requiredPermissions={['dept:traffic']}>
+              <TrafficLayout>
+                <EditTrafficWorker/>
+              </TrafficLayout>
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/traffic/live-map"  
+          element={
+            <ProtectedRoute allowedRoles={['Department_Admin']} requiredPermissions={['dept:traffic']}>
+              <TrafficMap/>
             </ProtectedRoute>
           } 
         />
