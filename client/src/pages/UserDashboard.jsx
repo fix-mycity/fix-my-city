@@ -1,6 +1,9 @@
+
 import React, { useEffect, useState, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Link, useNavigate } from 'react-router-dom';
+
+
 import { logoutUser } from '../features/auth/authThunks';
 import { toast } from 'react-hot-toast';
 import { getMyComplaintsApi, createComplaintApi, uploadComplaintImageApi } from '../api/complaintsApi';
@@ -104,6 +107,29 @@ const Dashboard = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { user } = useSelector((state) => state.auth);
+
+  useEffect(() => {
+  if (user) {
+    if (user.role === 'Department_Admin' || user.role === 'Super_Admin') {
+      const permissions = user.permissions || [];
+      const deptPermissions = permissions.filter((p) => p.startsWith('dept:'));
+
+      if (deptPermissions.length === 1) {
+        const perm = deptPermissions[0];
+
+        if (perm === 'dept:water') {
+          navigate('/water/dashboard', { replace: true });
+        } else if (perm === 'dept:traffic') {
+          navigate('/traffic/dashboard', { replace: true });
+        } else if (perm === 'dept:waste') {
+          navigate('/waste/dashboard', { replace: true });
+        }
+      } else if (deptPermissions.length >= 2) {
+        navigate('/admin/portal', { replace: true });
+      }
+    }
+  }
+}, [user, navigate]);
 
   // Map References
   const mapRef = useRef(null);
@@ -260,6 +286,9 @@ const Dashboard = () => {
       }
     };
   }, []);
+
+  
+
 
   const handleLogout = async () => {
     try {
