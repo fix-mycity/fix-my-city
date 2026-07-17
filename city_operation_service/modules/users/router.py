@@ -1,8 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
 from sqlalchemy.orm import Session
 
 from dependencies.auth import get_current_user, UserData
 from dependencies.db import get_db
+from core.s3 import upload_file_to_s3
 
 from .schema import (
     ProfileUpdateSchema,
@@ -17,7 +18,8 @@ from .service import (
     create_saved_location,
     get_saved_locations,
     update_saved_location,
-    delete_saved_location
+    delete_saved_location,
+    update_avatar_url
 )
 
 router = APIRouter(prefix="/users", tags=["Users"])
@@ -40,6 +42,41 @@ def edit_my_profile(
 ):
     """Partially update the logged-in user's own profile."""
     return update_profile(db, current_user.id, data)
+
+
+@router.post("/me/profile/avatar", response_model=ProfileResponseSchema)
+def upload_avatar(
+    file: UploadFile = File(...),
+    current_user: UserData = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Upload an avatar image to S3 and update the profile's avatar_url."""
+    if not file.content_type.startswith("image/"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="File must be an image"
+        )
+    
+    # Enforce 10MB file size limit
+    file.file.seek(0, 2)
+    file_size = file.file.tell()
+    file.file.seek(0)
+    
+    MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
+    if file_size > MAX_FILE_SIZE:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="File size exceeds the limit of 10MB"
+        )
+    
+    try:
+        file_url = upload_file_to_s3(file.file, folder="avatars", filename=file.filename)
+        return update_avatar_url(db, current_user.id, file_url)
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"S3 Upload failed: {str(e)}"
+        )
 
 
 @router.post("/me/locations", response_model=SavedLocationResponseSchema, status_code=status.HTTP_201_CREATED)

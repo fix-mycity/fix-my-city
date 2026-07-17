@@ -129,3 +129,11 @@ def delete_saved_location(db: Session, user_id: int, location_id: int) -> bool:
     db.delete(location)
     db.commit()
     return True
+
+
+def update_avatar_url(db: Session, user_id: int, avatar_url: str) -> Profile:
+    profile = get_or_create_profile(db, user_id)
+    profile.avatar_url = avatar_url
+    db.commit()
+    db.refresh(profile)
+    return profile

@@ -41,6 +41,14 @@ class ProfileResponseSchema(BaseModel):
     created_at: datetime
     updated_at: datetime
 
+    @field_validator("avatar_url", mode="before")
+    @classmethod
+    def sign_avatar_url(cls, v: Optional[str]) -> Optional[str]:
+        from core.s3 import generate_presigned_url
+        if v:
+            return generate_presigned_url(v)
+        return v
+
 
 class SavedLocationCreateSchema(BaseModel):
     label: str = Field(..., min_length=2, max_length=50)

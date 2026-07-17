@@ -287,6 +287,11 @@ def test_update_saved_location_service(db_session):
     db_session.add(loc)
     db_session.commit()
 
+    # Attempt update with coordinate co-dependence failure (latitude only)
+    invalid_update = SavedLocationUpdateSchema(latitude=12.0)
+    with pytest.raises(ValueError):
+        update_saved_location(db_session, user_id=1, location_id=loc.id, data=invalid_update)
+
     # Successful update (must provide both coordinates to pass coordinate co-dependence check)
     update_data = SavedLocationUpdateSchema(label="Sweet Home", latitude=45.0, longitude=45.0)
     updated = update_saved_location(db_session, user_id=1, location_id=loc.id, data=update_data)
@@ -295,11 +300,6 @@ def test_update_saved_location_service(db_session):
     assert updated.latitude == 45.0
     assert updated.longitude == 45.0
     assert updated.address == "Address 1"  # Unchanged
-
-    # Attempt update with coordinate co-dependence failure (latitude only)
-    invalid_update = SavedLocationUpdateSchema(latitude=12.0)
-    with pytest.raises(ValueError):
-        update_saved_location(db_session, user_id=1, location_id=loc.id, data=invalid_update)
 
     # Attempt update by wrong user
     update_data_ok = SavedLocationUpdateSchema(label="Other Home")
