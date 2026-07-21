@@ -138,6 +138,7 @@ const Dashboard = () => {
   // States
   const [complaints, setComplaints] = useState([]);
   const [profileAvatar, setProfileAvatar] = useState('');
+  const [userProfile, setUserProfile] = useState(null);
   const [loading, setLoading] = useState(true);
 
   // Modal State
@@ -171,6 +172,7 @@ const Dashboard = () => {
         getUserProfileApi().catch(() => ({ data: {} })),
         getMyComplaintsApi()
       ]);
+      setUserProfile(profileRes.data || null);
       setProfileAvatar(profileRes.data?.avatar_url || '');
       setComplaints(complaintsRes.data || []);
     } catch (err) {
@@ -179,6 +181,15 @@ const Dashboard = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleReportNewIssue = () => {
+    if (!userProfile || !userProfile.phone_number || !userProfile.phone_number.trim()) {
+      toast.error("Please add a mobile number to your profile before reporting an issue.");
+      navigate("/profile");
+      return;
+    }
+    setShowModal(true);
   };
 
   useEffect(() => {
@@ -618,7 +629,7 @@ const Dashboard = () => {
             <p className="text-sm sm:text-slate-500 font-medium">You have filed {totalReports} issue reports to improve our city.</p>
           </div>
           <button 
-            onClick={() => setShowModal(true)}
+            onClick={handleReportNewIssue}
             className="w-full sm:w-auto bg-blue-600 hover:bg-blue-500 text-white px-5 py-3 rounded-lg text-sm font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition-all hover:shadow-lg hover:shadow-blue-500/20 shrink-0"
           >
             <span className="material-symbols-outlined text-base">add</span> Report New Issue
@@ -709,7 +720,7 @@ const Dashboard = () => {
                     <span className="material-symbols-outlined text-slate-200 text-5xl">assignment_late</span>
                     <p className="text-slate-400 font-semibold mt-4">You have not reported any issues yet.</p>
                     <button 
-                      onClick={() => setShowModal(true)} 
+                      onClick={handleReportNewIssue} 
                       className="mt-2 text-blue-600 hover:text-blue-500 font-bold text-sm"
                     >
                       Report your first issue now &rarr;

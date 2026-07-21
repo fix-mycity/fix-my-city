@@ -92,6 +92,12 @@ export default function ProfilePage() {
       };
 
       // Basic local validation for phone number
+      if (!data.phone_number || !data.phone_number.trim()) {
+        toast.error("Phone number is required.");
+        setUpdatingProfile(false);
+        return;
+      }
+
       if (data.phone_number && !/^\d{10}$/.test(data.phone_number)) {
         toast.error("Phone number must be exactly 10 digits.");
         setUpdatingProfile(false);
@@ -394,7 +400,10 @@ export default function ProfilePage() {
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Phone Number</label>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                      Phone Number <span className="text-red-500">*</span>
+                      <span className="text-[10px] text-slate-400 normal-case block mt-0.5 font-medium">(Required to file complaints)</span>
+                    </label>
                     <input 
                       type="text" 
                       className="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 text-slate-900 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"

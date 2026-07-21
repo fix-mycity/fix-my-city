@@ -17,6 +17,7 @@ from dependencies.db import get_db
 from dependencies.auth import get_current_user, UserData
 from modules.complaints.model import Complaint, ComplaintStatus, ComplaintDepartment
 from modules.complaints.schema import ComplaintCreate
+from modules.users.model import Profile
 from modules.complaints.service import (
     classify_department,
     create_complaint,
@@ -154,7 +155,12 @@ def test_update_complaint_image_service(db_session):
 # =====================================================================
 
 @patch("modules.complaints.router.upload_file_to_s3")
-def test_api_create_complaint(mock_upload, client):
+def test_api_create_complaint(mock_upload, client, db_session):
+    # Set up user profile with a phone number
+    profile = Profile(user_id=1, phone_number="1234567890")
+    db_session.add(profile)
+    db_session.commit()
+
     mock_upload.return_value = "https://s3.amazonaws.com/fixmycity/complaints/test-image.jpg"
     file_data = {"file": ("test.jpg", BytesIO(b"dummy image data"), "image/jpeg")}
     form_data = {
@@ -175,6 +181,30 @@ def test_api_create_complaint(mock_upload, client):
     assert data["department"] == "traffic"
     assert data["status"] == "PENDING"
     assert data["image_url"] == "https://s3.amazonaws.com/fixmycity/complaints/test-image.jpg"
+
+
+@patch("modules.complaints.router.upload_file_to_s3")
+def test_api_create_complaint_fails_without_phone_number(mock_upload, client, db_session):
+    # Set up user profile with NO phone number
+    profile = Profile(user_id=1, phone_number=None)
+    db_session.add(profile)
+    db_session.commit()
+
+    mock_upload.return_value = "https://s3.amazonaws.com/fixmycity/complaints/test-image.jpg"
+    file_data = {"file": ("test.jpg", BytesIO(b"dummy image data"), "image/jpeg")}
+    form_data = {
+        "title": "Road pothole near intersection",
+        "description": "Deep pothole causing slow traffic",
+        "location_lat": 13.01,
+        "location_lng": 80.22
+    }
+    response = client.post(
+        "/complaints/",
+        data=form_data,
+        files=file_data
+    )
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Mobile number is required to report complaints. Please update your profile."
 
 
 def test_api_read_my_complaints(client, db_session):

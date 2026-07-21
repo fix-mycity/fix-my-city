@@ -56,6 +56,14 @@ def create_new_complaint(
             detail=f"S3 Upload failed: {str(e)}"
         )
 
+    from modules.users.service import get_or_create_profile
+    profile = get_or_create_profile(db, current_user.id)
+    if not profile or not profile.phone_number or not profile.phone_number.strip():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Mobile number is required to report complaints. Please update your profile."
+        )
+
     data = ComplaintCreate(
         title=title,
         description=description,
@@ -64,6 +72,7 @@ def create_new_complaint(
         image_url=file_url
     )
     return create_complaint(db, current_user.id, data)
+
 
 
 @router.get("/me", response_model=list[ComplaintResponse])
