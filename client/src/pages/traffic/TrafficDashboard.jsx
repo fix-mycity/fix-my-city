@@ -2,6 +2,9 @@ import React, { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { logoutUser } from '../../features/auth/authThunks';
 import { fetchTrafficComplaints, assignTrafficIncident, closeTrafficIncident } from '../../features/traffic/trafficThunks';
+import TrafficPageHeader from '../../components/traffic/TrafficPageHeader';
+import TrafficStatsCard from '../../components/traffic/TrafficStatsCard';
+import ComplaintLocation from '../../components/shared/ComplaintLocation';
 import { toast } from 'react-hot-toast';
 import { toastConfirm } from '../../utils/toastConfirm';
 import { Link, useNavigate } from 'react-router-dom';
@@ -199,7 +202,8 @@ const TrafficDashboard = () => {
                   <div className="flex justify-between items-center mt-4 sm:mt-0">
                     <div className="flex items-center gap-4 text-xs font-medium text-slate-500">
                       <span className="flex items-center gap-1">
-                        <span className="material-symbols-outlined text-[16px]">location_on</span> {report.location_lat}, {report.location_lng}
+                        <span className="material-symbols-outlined text-[16px]">location_on</span> 
+                        <ComplaintLocation lat={Number(report.location_lat || 0)} lng={Number(report.location_lng || 0)} />
                       </span>
                       <span className="flex items-center gap-1">
                         <span className="material-symbols-outlined text-[16px]">calendar_today</span> 

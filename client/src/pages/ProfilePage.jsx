@@ -302,7 +302,7 @@ export default function ProfilePage() {
     }
   };
 
-  const defaultAvatar = "https://lh3.googleusercontent.com/aida-public/AB6AXuAjXV44J7hHagG25vu-i0QNfHuE6FUQYoz9M1qZy8QPGMTNifXENQJw-o5BCCpb1iU8jbphl-_vCcEpwdZoNqtmYsynhYuKhEn45buuwq0qUJVLsK5WsnvpKGFa28EiLLLGiH8QWrull36_OiRSwJHgY0v-lQxpJ2YA5KHMjKrwH9NGHLruawNgFjzBClUyp1BQfaAWhjtb8St-cd8O4RbMgeUlJqf0nQOkQ0rDMiScYOzUBLWc3FkV90i4E-aksBuTi63NTrGkKA";
+  const defaultAvatar = "https://ui-avatars.com/api/?name=Citizen&background=cbd5e1&color=334155&rounded=true";
 
   if (loading) {
     return (

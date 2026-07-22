@@ -1,16 +1,7 @@
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, field_validator
 from typing import Optional, List
 from datetime import datetime
 from core.s3 import generate_presigned_url
-
-class WorkerAssignSchema(BaseModel):
-    worker_id: int
-
-class ResolutionReportSchema(BaseModel):
-    resolution_report: str
-
-class StatusUpdateSchema(BaseModel):
-    status: str
 
 class WorkerCreateSchema(BaseModel):
     username: str
@@ -53,44 +44,10 @@ class WorkerUpdateSchema(BaseModel):
     availability: Optional[str] = None
     employment_status: Optional[str] = None
 
-# Complaint Schemas
-class ComplaintResponse(BaseModel):
-    id: int
-    title: str
-    description: str
-    location_lat: float
-    location_lng: float
-    department: str
-    status: str
-    assigned_worker_id: Optional[int]
-    resolution_report: Optional[str]
-    reported_by: int
-    created_at: datetime
-    updated_at: datetime
-    category: str = "TRAFFIC_INCIDENT" # Mocking category to match UI
-    image_url: Optional[str] = None
-
-    class Config:
-        from_attributes = True
-
-    @field_validator("image_url", mode="before")
-    @classmethod
-    def sign_image_url(cls, v: Optional[str]) -> Optional[str]:
-        if v:
-            return generate_presigned_url(v)
-        return v
-
-class ComplaintList(BaseModel):
-    items: List[ComplaintResponse]
-    total_items: int
-    page: int
-    page_size: int
-    total_pages: int
-
-# Worker Schemas
 class WorkerResponse(BaseModel):
     id: int
     is_active: bool = True
+    department: str
     first_name: Optional[str] = None
     last_name: Optional[str] = None
     email: str
@@ -125,3 +82,67 @@ class WorkerList(BaseModel):
     page: int
     page_size: int
     total_pages: int
+
+class LeaveRequestCreate(BaseModel):
+    reason: str
+    start_date: datetime
+    end_date: datetime
+
+class LeaveRequestUpdate(BaseModel):
+    status: str
+    admin_notes: Optional[str] = None
+
+class LeaveRequestResponse(BaseModel):
+    id: int
+    worker_id: int
+    department: str
+    reason: str
+    start_date: datetime
+    end_date: datetime
+    status: str
+    admin_notes: Optional[str] = None
+    created_at: Optional[datetime] = None
+    worker_name: Optional[str] = None
+    
+    class Config:
+        from_attributes = True
+
+class LeaveRequestList(BaseModel):
+    items: List[LeaveRequestResponse]
+    total_items: int
+    page: int
+    page_size: int
+    total_pages: int
+
+class WorkerTaskResponse(BaseModel):
+    id: int
+    title: str
+    description: Optional[str] = None
+    category: Optional[str] = None
+    department: str
+    status: str
+    priority: Optional[str] = None
+    location_lat: Optional[float] = None
+    location_lng: Optional[float] = None
+    area: Optional[str] = None
+    address: Optional[str] = None
+    image_url: Optional[str] = None
+    created_at: datetime
+    resolved_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+    @field_validator("image_url", mode="before")
+    @classmethod
+    def sign_image_url(cls, v: Optional[str]) -> Optional[str]:
+        if v:
+            return generate_presigned_url(v)
+        return v
+
+class WorkerTaskList(BaseModel):
+    items: List[WorkerTaskResponse]
+    total_items: int
+
+class WorkerTaskResolution(BaseModel):
+    resolution_report: str

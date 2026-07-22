@@ -3,6 +3,7 @@ from fastapi import HTTPException, status
 from modules.complaints.model import Complaint, ComplaintStatus, ComplaintDepartment
 from modules.traffic_management.schema import WorkerAssignSchema, ResolutionReportSchema, WorkerCreateSchema, WorkerUpdateSchema
 from modules.traffic_management.repository import TrafficComplaintRepository, TrafficWorkerRepository
+from modules.workers.repository import WorkerRepository
 from sqlalchemy import text
 import urllib.request
 import json
@@ -143,6 +144,28 @@ def assign_worker(db: Session, incident_id: int, worker_data: WorkerAssignSchema
             detail="You can only assign workers that you manage."
         )
 
+    # Validate worker availability
+    worker_profile = TrafficWorkerRepository.get_worker_profile(db, worker_data.worker_id)
+    central_worker_profile = WorkerRepository.get_worker_profile(db, worker_data.worker_id)
+    
+    # Check central profile first as it's the source of truth for global updates like ON_LEAVE
+    central_status = central_worker_profile.availability if central_worker_profile else None
+    traffic_status = worker_profile.availability if worker_profile else "UNAVAILABLE"
+    
+    current_status = central_status if central_status is not None else traffic_status
+    
+    if current_status != "AVAILABLE":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Worker is not available for assignment. Current status: {current_status}"
+        )
+
+    # Change worker status to BUSY in both profiles
+    if worker_profile:
+        worker_profile.availability = "BUSY"
+    if central_worker_profile:
+        central_worker_profile.availability = "BUSY"
+
     incident.assigned_worker_id = worker_data.worker_id
     incident.status = ComplaintStatus.ASSIGNED.value
     db.commit()
@@ -160,6 +183,16 @@ def resolve_incident(db: Session, incident_id: int, report_data: ResolutionRepor
         
     incident.resolution_report = report_data.resolution_report
     incident.status = ComplaintStatus.RESOLVED.value
+
+    # Revert worker status to AVAILABLE in both profiles
+    worker_profile = TrafficWorkerRepository.get_worker_profile(db, worker_id)
+    if worker_profile:
+        worker_profile.availability = "AVAILABLE"
+        
+    central_worker_profile = WorkerRepository.get_worker_profile(db, worker_id)
+    if central_worker_profile:
+        central_worker_profile.availability = "AVAILABLE"
+
     db.commit()
     db.refresh(incident)
     return incident

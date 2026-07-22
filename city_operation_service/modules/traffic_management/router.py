@@ -14,7 +14,7 @@ from modules.traffic_management.schema import (
     StatusUpdateSchema,
     WorkerUpdateSchema
 )
-from typing import Optional
+from typing import Optional, List
 
 router = APIRouter(prefix="/traffic", tags=["Traffic Management"])
 
@@ -37,7 +37,7 @@ def get_traffic_dashboard_summary(
     """Fetch aggregated summary stats for the traffic dashboard"""
     return service.get_traffic_dashboard_summary(db)
 
-@router.get("/dashboard/complaints")
+@router.get("/dashboard/complaints", response_model=List[ComplaintResponse])
 def get_traffic_dashboard_complaints(
     status_filter: Optional[str] = None,
     assigned_worker_id: Optional[int] = None,
@@ -78,7 +78,7 @@ def get_incident_by_id(
     """Fetch details of a single traffic incident"""
     return service.get_complaint_by_id(db, incident_id)
 
-@router.post("/incidents/{incident_id}/assign")
+@router.post("/incidents/{incident_id}/assign", response_model=ComplaintResponse)
 def assign_worker(
     incident_id: int,
     worker_data: WorkerAssignSchema,
@@ -88,7 +88,7 @@ def assign_worker(
     """Admin assigns a worker to a traffic incident"""
     return service.assign_worker(db, incident_id, worker_data, user.id)
 
-@router.post("/incidents/{incident_id}/resolve")
+@router.post("/incidents/{incident_id}/resolve", response_model=ComplaintResponse)
 def resolve_incident(
     incident_id: int,
     report_data: ResolutionReportSchema,
@@ -98,7 +98,7 @@ def resolve_incident(
     """Worker submits a resolution report for a traffic incident"""
     return service.resolve_incident(db, incident_id, report_data, user.id)
 
-@router.post("/incidents/{incident_id}/close")
+@router.post("/incidents/{incident_id}/close", response_model=ComplaintResponse)
 def close_incident(
     incident_id: int,
     db: Session = Depends(get_db),
@@ -107,7 +107,7 @@ def close_incident(
     """Admin reviews and closes a resolved traffic incident"""
     return service.close_incident(db, incident_id)
 
-@router.patch("/incidents/{incident_id}/status")
+@router.patch("/incidents/{incident_id}/status", response_model=ComplaintResponse)
 def update_incident_status(
     incident_id: int,
     status_data: StatusUpdateSchema,

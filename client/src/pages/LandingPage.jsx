@@ -49,6 +49,10 @@ export default function LandingPage() {
           <nav className="hidden md:flex items-center gap-8">
             <a className="text-slate-300 hover:text-white transition-colors font-medium" href="#how-it-works">How It Works</a>
             <a className="text-slate-300 hover:text-white transition-colors font-medium" href="#features">Features</a>
+            <button onClick={() => navigate("/worker")} className="text-blue-300 hover:text-white transition-colors font-bold flex items-center gap-1">
+              <span className="material-symbols-outlined text-base">engineering</span>
+              Field Operations
+            </button>
             <a className="text-slate-300 hover:text-white transition-colors font-medium" href="#testimonials">Stories</a>
           </nav>
 
@@ -71,6 +75,10 @@ export default function LandingPage() {
           <div className="md:hidden bg-[#1A365D] border-t border-slate-700 px-6 py-4 flex flex-col gap-4 shadow-xl">
             <a onClick={() => setIsMobileMenuOpen(false)} className="text-slate-200 font-medium py-2" href="#how-it-works">How It Works</a>
             <a onClick={() => setIsMobileMenuOpen(false)} className="text-slate-200 font-medium py-2" href="#features">Features</a>
+            <button onClick={() => { setIsMobileMenuOpen(false); navigate("/worker"); }} className="text-left text-blue-300 font-bold py-2 flex items-center gap-2">
+              <span className="material-symbols-outlined">engineering</span>
+              Field Operations Portal
+            </button>
             <a onClick={() => setIsMobileMenuOpen(false)} className="text-slate-200 font-medium py-2" href="#testimonials">Stories</a>
             <hr className="border-slate-700" />
             <button onClick={() => { setIsMobileMenuOpen(false); navigate("/login"); }} className="w-full text-center py-2.5 text-white font-semibold border border-slate-500 rounded-lg">
@@ -93,17 +101,17 @@ export default function LandingPage() {
                 Report It. <span className="text-blue-400">Track It.</span> Fix It.
               </h1>
               <p className="text-slate-300 text-lg md:text-xl max-w-xl leading-relaxed">
-                A smarter way for citizens and city authorities to work together. Report local issues in seconds and watch your community improve.
+                A smarter way for citizens, field officers, and city authorities to work together. Report local issues in seconds and watch your community improve.
               </p>
               <div className="flex flex-col sm:flex-row gap-4 mt-4">
                 <button onClick={handleReportClick} className="bg-blue-500 text-white font-bold px-8 py-4 rounded-lg hover:bg-blue-400 transition-colors shadow-lg flex items-center justify-center gap-2">
                   <span className="material-symbols-outlined">report</span>
                   Report an Issue
                 </button>
-                <a href="#how-it-works" className="border-2 border-slate-400 text-white font-bold px-8 py-4 rounded-lg hover:bg-slate-800 transition-colors flex items-center justify-center gap-2">
-                  <span className="material-symbols-outlined">info</span>
-                  Learn More
-                </a>
+                <button onClick={() => navigate("/worker")} className="border-2 border-blue-400 text-blue-200 font-bold px-8 py-4 rounded-lg hover:bg-blue-900/50 transition-colors flex items-center justify-center gap-2">
+                  <span className="material-symbols-outlined">engineering</span>
+                  Field Worker Portal
+                </button>
               </div>
             </div>
 
@@ -157,7 +165,7 @@ export default function LandingPage() {
             {[
               { title: "1. Report Issue", desc: "Submit details, location, and photos.", icon: "add_a_photo" },
               { title: "2. Auto Route", desc: "System directs it to the right department.", icon: "smart_toy" },
-              { title: "3. Fast Fix", desc: "Local teams address the problem.", icon: "engineering" },
+              { title: "3. Fast Fix", desc: "Local field officers address the problem.", icon: "engineering" },
               { title: "4. Get Updates", desc: "Receive real-time status notifications.", icon: "notifications_active" },
             ].map((step, idx) => (
               <div key={idx} className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100 flex flex-col items-center text-center">
@@ -171,7 +179,7 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* Simplified Features Section */}
+        {/* Features Section */}
         <section id="features" className="py-20 bg-slate-100 px-6 md:px-12 w-full scroll-mt-24">
           <div className="max-w-7xl mx-auto">
             <div className="text-center mb-16">
@@ -197,6 +205,29 @@ export default function LandingPage() {
                 </div>
               ))}
             </div>
+
+            {/* Dedicated Worker Banner inside Landing Page */}
+            <div className="mt-12 bg-gradient-to-r from-slate-900 via-slate-800 to-blue-900 rounded-3xl p-8 md:p-12 text-white shadow-xl flex flex-col md:flex-row items-center justify-between gap-8 border border-slate-700">
+              <div className="space-y-3 max-w-xl">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/20 text-blue-300 text-xs font-bold uppercase tracking-wider">
+                  <span className="material-symbols-outlined text-sm">handyman</span>
+                  Field Workforce Portal
+                </div>
+                <h3 className="text-2xl md:text-3xl font-extrabold">Are you a Municipal Field Officer?</h3>
+                <p className="text-slate-300 text-sm leading-relaxed">
+                  Access real-time task dispatches, update your duty availability status, and manage leave applications directly on the officer portal.
+                </p>
+              </div>
+
+              <button 
+                onClick={() => navigate("/worker")}
+                className="bg-blue-500 hover:bg-blue-400 text-white font-extrabold px-8 py-4 rounded-2xl shadow-lg transition-all flex items-center gap-2 shrink-0"
+              >
+                <span className="material-symbols-outlined">engineering</span>
+                Open Worker Portal
+              </button>
+            </div>
+
           </div>
         </section>
 
@@ -261,7 +292,7 @@ export default function LandingPage() {
             <div className="flex flex-col gap-3">
               <h4 className="text-blue-400 font-bold uppercase tracking-wider text-xs mb-2">Product</h4>
               <a className="text-sm text-slate-300 hover:text-white transition-colors" href="#features">Features</a>
-              <button onClick={() => navigate("/docs")} className="text-left text-sm text-slate-300 hover:text-white transition-colors">Documentation</button>
+              <button onClick={() => navigate("/worker")} className="text-left text-sm text-slate-300 hover:text-white transition-colors">Worker Portal</button>
             </div>
             <div className="flex flex-col gap-3">
               <h4 className="text-blue-400 font-bold uppercase tracking-wider text-xs mb-2">Company</h4>

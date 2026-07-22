@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { assignTrafficIncident, closeTrafficIncident, updateTrafficIncidentStatus, fetchTrafficWorkers } from '../../features/traffic/trafficThunks';
 import { toast } from 'react-hot-toast';
-import { MapPin, Calendar, HardHat, AlertTriangle, CheckCircle, ChevronDown } from 'lucide-react';
+import { MapPin, Calendar, HardHat, AlertTriangle, CheckCircle, ChevronDown, Image as ImageIcon } from 'lucide-react';
 import { toastConfirm } from '../../utils/toastConfirm';
+import ComplaintLocation from '../shared/ComplaintLocation';
 
 const TrafficIncidentList = ({ incidents, status, readOnly = false }) => {
   const dispatch = useDispatch();
@@ -90,12 +91,19 @@ const TrafficIncidentList = ({ incidents, status, readOnly = false }) => {
       <div className="divide-y divide-slate-100">
         {incidents.map((report) => (
           <div key={report.id} className="p-5 hover:bg-slate-50 transition-colors flex flex-col sm:flex-row gap-5">
-            <div className="w-full sm:w-32 h-32 rounded-xl shrink-0 border border-slate-200 shadow-sm overflow-hidden">
-              <img 
-                src={report.image_url || 'https://images.unsplash.com/photo-1566839352932-506085db21d8?q=80&w=300&auto=format&fit=crop'} 
-                alt="Traffic Incident" 
-                className="w-full h-full object-cover"
-              />
+            <div className="w-full sm:w-32 h-32 rounded-xl shrink-0 border border-slate-200 shadow-sm overflow-hidden bg-slate-50 flex items-center justify-center">
+              {report.image_url ? (
+                <img 
+                  src={report.image_url} 
+                  alt="Traffic Incident" 
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div className="flex flex-col items-center justify-center text-slate-400">
+                  <ImageIcon className="w-8 h-8 mb-1 opacity-50" />
+                  <span className="text-xs font-medium">No Image</span>
+                </div>
+              )}
             </div>
             <div className="flex-grow flex flex-col justify-between">
               <div className="flex justify-between items-start">
@@ -135,7 +143,8 @@ const TrafficIncidentList = ({ incidents, status, readOnly = false }) => {
               <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mt-2 gap-4">
                 <div className="flex flex-wrap items-center gap-4 text-xs font-medium text-slate-500">
                   <span className="flex items-center gap-1">
-                    <MapPin className="w-4 h-4" /> {Number(report.location_lat || 0).toFixed(4)}, {Number(report.location_lng || 0).toFixed(4)}
+                    <MapPin className="w-4 h-4" /> 
+                    <ComplaintLocation lat={Number(report.location_lat || 0)} lng={Number(report.location_lng || 0)} />
                   </span>
                   <span className="flex items-center gap-1">
                     <Calendar className="w-4 h-4" /> 

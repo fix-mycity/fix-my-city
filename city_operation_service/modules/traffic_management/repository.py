@@ -76,12 +76,24 @@ class TrafficWorkerRepository:
         # Query for items using LEFT JOIN with traffic_worker_profiles
         data_query = """
             SELECT u.id, u.username, u.email, u.is_active, u.created_at,
-                   p.first_name, p.last_name, p.phone, p.photo, p.gender, 
-                   p.date_of_birth, p.address, p.place, p.designation, 
-                   p.skill, p.experience, p.joining_date, p.emergency_contact_phone,
-                   p.availability, p.employment_status
+                   COALESCE(wp.first_name, p.first_name) as first_name, 
+                   COALESCE(wp.last_name, p.last_name) as last_name, 
+                   COALESCE(wp.phone, p.phone) as phone, 
+                   COALESCE(wp.photo, p.photo) as photo, 
+                   COALESCE(wp.gender, p.gender) as gender, 
+                   COALESCE(wp.date_of_birth, p.date_of_birth) as date_of_birth, 
+                   COALESCE(wp.address, p.address) as address, 
+                   COALESCE(wp.place, p.place) as place, 
+                   COALESCE(wp.designation, p.designation) as designation, 
+                   COALESCE(wp.skill, p.skill) as skill, 
+                   COALESCE(wp.experience, p.experience) as experience, 
+                   COALESCE(wp.joining_date, p.joining_date) as joining_date, 
+                   COALESCE(wp.emergency_contact_phone, p.emergency_contact_phone) as emergency_contact_phone,
+                   COALESCE(wp.availability, p.availability) as availability, 
+                   COALESCE(wp.employment_status, p.employment_status) as employment_status
             FROM users u
             LEFT JOIN traffic_worker_profiles p ON u.id = p.user_id
+            LEFT JOIN worker_profiles wp ON u.id = wp.user_id
             WHERE u.manager_id = :manager_id
         """
         if search:
