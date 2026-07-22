@@ -9,6 +9,7 @@ import PageHeader from '../../components/waterAuthority/PageHeader';
 import EmptyState from '../../components/waterAuthority/EmptyState';
 import AssignWorkerModal from '../../components/waterAuthority/AssignWorkerModal';
 import StatusUpdateModal from '../../components/waterAuthority/StatusUpdateModal';
+import { toastConfirm } from '../../utils/toastConfirm';
 
 import { 
   getComplaints, 
@@ -165,15 +166,16 @@ export default function ComplaintManagement() {
   };
 
   const handleCloseComplaintDirect = async (id) => {
-    if (!window.confirm("Are you sure you want to close this complaint?")) return;
-    try {
-      await updateComplaintStatus(id, "CLOSED", "Archived from control panel");
-      toast.success("Complaint closed successfully.");
-      fetchComplaintsData();
-      fetchSummary();
-    } catch (err) {
-      toast.error(err.response?.data?.detail || "Failed to close complaint.");
-    }
+    toastConfirm("Are you sure you want to close this complaint?", async () => {
+      try {
+        await updateComplaintStatus(id, "CLOSED", "Archived from control panel");
+        toast.success("Complaint closed successfully.");
+        fetchComplaintsData();
+        fetchSummary();
+      } catch (err) {
+        toast.error(err.response?.data?.detail || "Failed to close complaint.");
+      }
+    });
   };
 
   return (

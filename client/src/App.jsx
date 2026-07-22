@@ -22,19 +22,26 @@ import PublicRoute from './routes/PublicRoute';
 
 import AdminPortal from './pages/auth/AdminPortal';
 
+// Shared Unified Worker Components
+import WorkerList from './components/workers/WorkerList';
+import WorkerForm from './components/workers/WorkerForm';
+
+// Worker Role Interface
+import WorkerLayout from './layout/WorkerLayout';
+import WorkerDashboard from './pages/worker/WorkerDashboard';
+
 // Water Management
 import WaterLayout from './layout/WaterLayout';
 import WaterDashboard from './pages/waterAuthority/Dashboard';
 import ComplaintManagement from './pages/waterAuthority/ComplaintManagement';
 import ComplaintDetails from './pages/waterAuthority/ComplaintDetails';
-import WorkerManagement from './pages/waterAuthority/WorkerManagement';
-import AddWorker from './pages/waterAuthority/AddWorker';
-import EditWorker from './pages/waterAuthority/EditWorker';
 import WorkerProfile from './pages/waterAuthority/WorkerProfile';
 
-// Traffic Management
-import TrafficDashboard from './pages/traffic/TrafficDashboard';
-import TrafficWorkers from './pages/traffic/TrafficWorkers';
+// Traffic Management Pages
+import TrafficLayout from './layout/TrafficLayout';
+import TrafficDashboard from './pages/traffic/Dashboard';
+import TrafficMap from './pages/traffic/TrafficMap';
+import TrafficIncidents from './pages/traffic/TrafficIncidents';
 
 export default function App() {
   const dispatch = useDispatch();
@@ -147,6 +154,18 @@ export default function App() {
           }
         />
 
+        {/* Worker Portal */}
+        <Route
+          path="/worker/dashboard"
+          element={
+            <ProtectedRoute allowedRoles={['Worker']}>
+              <WorkerLayout>
+                <WorkerDashboard />
+              </WorkerLayout>
+            </ProtectedRoute>
+          }
+        />
+
         {/* Water Authority */}
 
         <Route
@@ -199,7 +218,7 @@ export default function App() {
               requiredPermissions={['dept:water']}
             >
               <WaterLayout activeTab="workers">
-                <WorkerManagement />
+                <WorkerList department="water" />
               </WaterLayout>
             </ProtectedRoute>
           }
@@ -213,7 +232,7 @@ export default function App() {
               requiredPermissions={['dept:water']}
             >
               <WaterLayout activeTab="workers">
-                <AddWorker />
+                <WorkerForm department="water" />
               </WaterLayout>
             </ProtectedRoute>
           }
@@ -241,7 +260,7 @@ export default function App() {
               requiredPermissions={['dept:water']}
             >
               <WaterLayout activeTab="workers">
-                <EditWorker />
+                <WorkerForm department="water" />
               </WaterLayout>
             </ProtectedRoute>
           }
@@ -252,11 +271,20 @@ export default function App() {
         <Route
           path="/traffic/dashboard"
           element={
-            <ProtectedRoute
-              allowedRoles={['Department_Admin']}
-              requiredPermissions={['dept:traffic']}
-            >
-              <TrafficDashboard />
+            <ProtectedRoute allowedRoles={['Department_Admin']} requiredPermissions={['dept:traffic']}>
+              <TrafficLayout>
+                <TrafficDashboard/>
+              </TrafficLayout>
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/traffic/incidents" 
+          element={
+            <ProtectedRoute allowedRoles={['Department_Admin']} requiredPermissions={['dept:traffic']}>
+              <TrafficLayout>
+                <TrafficIncidents/>
+              </TrafficLayout>
             </ProtectedRoute>
           }
         />
@@ -264,11 +292,38 @@ export default function App() {
         <Route
           path="/traffic/workers"
           element={
-            <ProtectedRoute
-              allowedRoles={['Department_Admin']}
-              requiredPermissions={['dept:traffic']}
-            >
-              <TrafficWorkers />
+            <ProtectedRoute allowedRoles={['Department_Admin']} requiredPermissions={['dept:traffic']}>
+              <TrafficLayout>
+                <WorkerList department="traffic" />
+              </TrafficLayout>
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/traffic/workers/new" 
+          element={
+            <ProtectedRoute allowedRoles={['Department_Admin']} requiredPermissions={['dept:traffic']}>
+              <TrafficLayout>
+                <WorkerForm department="traffic" />
+              </TrafficLayout>
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/traffic/workers/:id/edit" 
+          element={
+            <ProtectedRoute allowedRoles={['Department_Admin']} requiredPermissions={['dept:traffic']}>
+              <TrafficLayout>
+                <WorkerForm department="traffic" />
+              </TrafficLayout>
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/traffic/live-map"  
+          element={
+            <ProtectedRoute allowedRoles={['Department_Admin']} requiredPermissions={['dept:traffic']}>
+              <TrafficMap/>
             </ProtectedRoute>
           }
         />
