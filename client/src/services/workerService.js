@@ -56,8 +56,12 @@ export const getMyTasks = () => {
   return axiosInstance.get("/city/workers/me/tasks");
 };
 
-export const resolveTask = (taskId, resolution_report) => {
-  return axiosInstance.post(`/city/workers/me/tasks/${taskId}/resolve`, { resolution_report });
+export const resolveTask = (taskId, resolution_report, after_image = null) => {
+  return axiosInstance.post(`/city/workers/me/tasks/${taskId}/resolve`, { resolution_report, after_image });
+};
+
+export const downloadTaskPdfReport = (taskId) => {
+  return axiosInstance.get(`/city/workers/tasks/${taskId}/pdf-report`);
 };
 
 // --- Leave Requests endpoints ---

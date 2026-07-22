@@ -27,7 +27,6 @@ import WorkerList from './components/workers/WorkerList';
 import WorkerForm from './components/workers/WorkerForm';
 
 // Worker Role Interface
-import WorkerLanding from './pages/worker/WorkerLanding';
 import WorkerLayout from './layout/WorkerLayout';
 import WorkerDashboard from './pages/worker/WorkerDashboard';
 
@@ -66,7 +65,6 @@ export default function App() {
 
         {/* Public Routes */}
         <Route path="/" element={<LandingPage />} />
-        <Route path="/worker" element={<WorkerLanding />} />
 
         <Route
           path="/login"

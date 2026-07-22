@@ -126,14 +126,17 @@ class WorkerTaskResponse(BaseModel):
     location_lng: Optional[float] = None
     area: Optional[str] = None
     address: Optional[str] = None
+    before_image: Optional[str] = None
+    after_image: Optional[str] = None
     image_url: Optional[str] = None
+    resolution_report: Optional[str] = None
     created_at: datetime
     resolved_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True
 
-    @field_validator("image_url", mode="before")
+    @field_validator("before_image", "after_image", "image_url", mode="before")
     @classmethod
     def sign_image_url(cls, v: Optional[str]) -> Optional[str]:
         if v:
@@ -146,3 +149,4 @@ class WorkerTaskList(BaseModel):
 
 class WorkerTaskResolution(BaseModel):
     resolution_report: str
+    after_image: Optional[str] = None

@@ -139,13 +139,33 @@ def resolve_my_task(
     """Worker: Resolve an assigned task"""
     if user.role != "Worker":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only workers can access this endpoint")
-    return service.resolve_my_task(db, user.id, task_id, schema.resolution_report)
+    return service.resolve_my_task(db, user.id, task_id, schema.resolution_report, schema.after_image)
+
+@router.get("/tasks/{task_id}/pdf-report")
+def get_task_pdf_report(
+    task_id: int,
+    user: UserData = Depends(PermissionChecker([]))
+):
+    """Generate and return Celery-powered PDF Work Completion Report for a task"""
+    from tasks.pdf_tasks import generate_complaint_pdf_report
+    try:
+        res = generate_complaint_pdf_report(task_id)
+        if not res.get("success"):
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=res.get("message"))
+        return res
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to generate PDF report: {str(e)}"
+        )
 
 # 3. Photo Upload & Leave Requests Routes (MUST be before /{worker_id})
 @router.post("/upload-photo")
 def upload_worker_photo(
     file: UploadFile = File(...),
-    user: UserData = Depends(PermissionChecker(["worker:create"]))
+    user: UserData = Depends(PermissionChecker([]))
 ):
     """Admin: Upload a worker profile photo to S3 and get the URL."""
     try:

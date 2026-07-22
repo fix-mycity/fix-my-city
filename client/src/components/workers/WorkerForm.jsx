@@ -125,6 +125,9 @@ export default function WorkerForm({ department }) {
         } else {
           delete updateData.joining_date;
         }
+        if (updateData.photo) {
+          updateData.photo = updateData.photo.split('?')[0];
+        }
         await updateWorker(id, updateData, department);
         toast.success("Worker updated successfully");
       } else {
@@ -133,6 +136,9 @@ export default function WorkerForm({ department }) {
           payload.joining_date = new Date(payload.joining_date).toISOString();
         } else {
           delete payload.joining_date;
+        }
+        if (payload.photo) {
+          payload.photo = payload.photo.split('?')[0];
         }
         await createWorker(payload, department);
         toast.success("Worker registered successfully");

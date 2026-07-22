@@ -144,7 +144,10 @@ class WorkerRepository:
             profile = WorkerProfile(user_id=worker_id, manager_id=manager_id, department=department)
             db.add(profile)
             
+        from core.s3 import clean_s3_url
         for key, value in schema.model_dump(exclude_unset=True).items():
+            if key == "photo" and value:
+                value = clean_s3_url(value)
             setattr(profile, key, value)
             
         db.commit()
@@ -323,15 +326,21 @@ class WorkerTaskRepository:
                     "location_lng": item.location_lng,
                     "area": "N/A",
                     "address": "N/A",
-                    "image_url": item.image_url,
+                    "before_image": getattr(item, "image_url", None),
+                    "after_image": getattr(item, "resolution_image", None),
+                    "image_url": getattr(item, "image_url", None),
+                    "resolution_report": getattr(item, "resolution_report", None),
                     "created_at": item.created_at,
-                    "resolved_at": None
+                    "resolved_at": getattr(item, "resolved_at", None)
                 })
             return mapped_items, total
 
     @staticmethod
-    def resolve_task(db: Session, worker_id: int, department: str, task_id: int, resolution_report: str):
+    def resolve_task(db: Session, worker_id: int, department: str, task_id: int, resolution_report: str, after_image: Optional[str] = None):
         import datetime
+        from core.s3 import clean_s3_url
+        clean_after = clean_s3_url(after_image) if after_image else None
+
         if department == "water":
             from modules.water_management.model import WaterComplaint
             item = db.query(WaterComplaint).filter(WaterComplaint.id == task_id, WaterComplaint.assigned_worker_id == worker_id).first()
@@ -339,16 +348,20 @@ class WorkerTaskRepository:
             
             item.status = "RESOLVED"
             item.resolution_notes = resolution_report
+            if hasattr(item, "after_image") and clean_after:
+                item.after_image = clean_after
             item.resolved_at = datetime.datetime.utcnow()
             db.commit()
             return True
         else:
-            from modules.complaints.model import Complaint
-            from modules.complaints.model import ComplaintStatus
+            from modules.complaints.model import Complaint, ComplaintStatus
             item = db.query(Complaint).filter(Complaint.id == task_id, Complaint.assigned_worker_id == worker_id).first()
             if not item: return None
             
             item.status = ComplaintStatus.RESOLVED.value
             item.resolution_report = resolution_report
+            if clean_after:
+                item.resolution_image = clean_after
+            item.resolved_at = datetime.datetime.utcnow()
             db.commit()
             return True

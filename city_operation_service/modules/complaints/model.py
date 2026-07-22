@@ -29,7 +29,7 @@ class Complaint(Base):
     location_lat = Column(Float, nullable=False)
     location_lng = Column(Float, nullable=False)
     
-    # Image Upload
+    # Before Fix Image (Uploaded by Citizen)
     image_url = Column(String(500), nullable=True)
     
     # AI Routing & Tracking
@@ -39,9 +39,10 @@ class Complaint(Base):
     # Worker Assignment & Resolution
     assigned_worker_id = Column(Integer, nullable=True, index=True)
     resolution_report = Column(Text, nullable=True)
-
-    # Media
-    image_url = Column(String(500), nullable=True)
+    
+    # After Fix Image (Uploaded by Worker upon completion)
+    resolution_image = Column(String(500), nullable=True)
+    resolved_at = Column(DateTime(timezone=True), nullable=True)
 
     # User Relationships
     reported_by = Column(Integer, nullable=False, index=True)

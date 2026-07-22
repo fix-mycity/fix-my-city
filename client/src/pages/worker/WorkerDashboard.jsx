@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
-import { getMyProfile, updateMyProfile, getMyTasks, resolveTask, submitLeaveRequest, getMyLeaveRequests } from '../../services/workerService';
+import { getMyProfile, updateMyProfile, getMyTasks, resolveTask, submitLeaveRequest, getMyLeaveRequests, uploadWorkerPhoto, downloadTaskPdfReport } from '../../services/workerService';
 import WorkerAvailabilityBadge from '../../components/workers/WorkerAvailabilityBadge';
 import WorkerStatusBadge from '../../components/workers/WorkerStatusBadge';
+import ComplaintDetailsModal from '../../components/shared/ComplaintDetailsModal';
 
 export default function WorkerDashboard() {
   const [profile, setProfile] = useState(null);
@@ -12,6 +13,11 @@ export default function WorkerDashboard() {
   const [isUpdating, setIsUpdating] = useState(false);
   const [resolvingTaskId, setResolvingTaskId] = useState(null);
   const [resolutionReport, setResolutionReport] = useState("");
+  const [afterImage, setAfterImage] = useState("");
+  const [isUploadingAfter, setIsUploadingAfter] = useState(false);
+  const [previewImage, setPreviewImage] = useState(null);
+  const [downloadingPdfId, setDownloadingPdfId] = useState(null);
+  const [selectedTaskForDetails, setSelectedTaskForDetails] = useState(null);
   
   // Filter for tasks
   const [taskFilter, setTaskFilter] = useState('ALL'); // ALL, PENDING, RESOLVED
@@ -83,6 +89,28 @@ export default function WorkerDashboard() {
     }
   };
 
+  const handleAfterImageUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("File size must be less than 5MB");
+      return;
+    }
+    setIsUploadingAfter(true);
+    try {
+      const res = await uploadWorkerPhoto(file);
+      if (res.data.success) {
+        setAfterImage(res.data.url);
+        toast.success("After Fix photo uploaded successfully!");
+      }
+    } catch (err) {
+      toast.error("Failed to upload After Fix photo");
+      console.error(err);
+    } finally {
+      setIsUploadingAfter(false);
+    }
+  };
+
   const handleResolveTask = async (taskId) => {
     if (!resolutionReport.trim()) {
       toast.error("Please provide a brief resolution report describing work done.");
@@ -90,10 +118,11 @@ export default function WorkerDashboard() {
     }
     setIsUpdating(true);
     try {
-      await resolveTask(taskId, resolutionReport);
+      await resolveTask(taskId, resolutionReport, afterImage);
       toast.success("Task resolved and report submitted successfully!");
       setResolvingTaskId(null);
       setResolutionReport("");
+      setAfterImage("");
       
       const tasksRes = await getMyTasks();
       setTasks(Array.isArray(tasksRes.data?.items) ? tasksRes.data.items : []);
@@ -106,6 +135,23 @@ export default function WorkerDashboard() {
       toast.error(err.response?.data?.detail || "Failed to submit resolution report");
     } finally {
       setIsUpdating(false);
+    }
+  };
+
+  const handleDownloadPdf = async (taskId) => {
+    setDownloadingPdfId(taskId);
+    try {
+      const res = await downloadTaskPdfReport(taskId);
+      if (res.data?.pdf_url) {
+        window.open(res.data.pdf_url, '_blank');
+        toast.success("PDF Work Completion Report opened!");
+      } else {
+        toast.error(res.data?.message || "Failed to generate PDF report.");
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.detail || "Could not generate PDF report.");
+    } finally {
+      setDownloadingPdfId(null);
     }
   };
 
@@ -420,16 +466,19 @@ export default function WorkerDashboard() {
                 </p>
               </div>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-6">
                 {displayedTasks.map(task => {
                   const isResolved = task.status === "RESOLVED" || task.status === "CLOSED";
+                  const beforeImg = task.before_image || task.image_url;
+                  const afterImg = task.after_image;
+
                   return (
-                    <div key={task.id} className={`border rounded-2xl p-5 transition-all relative overflow-hidden bg-white ${isResolved ? 'border-emerald-200 hover:border-emerald-300' : 'border-slate-200 hover:border-blue-300 shadow-sm'}`}>
+                    <div key={task.id} className={`border rounded-2xl p-6 transition-all relative overflow-hidden bg-white ${isResolved ? 'border-emerald-200 hover:border-emerald-300' : 'border-slate-200 hover:border-blue-300 shadow-sm'}`}>
                       
                       {/* Left accent border */}
                       <div className={`absolute top-0 left-0 bottom-0 w-1.5 ${isResolved ? 'bg-emerald-500' : 'bg-amber-500'}`}></div>
 
-                      <div className="pl-3 space-y-3">
+                      <div className="pl-3 space-y-4">
                         <div className="flex flex-wrap justify-between items-start gap-2">
                           <div>
                             <div className="flex items-center gap-2 mb-1">
@@ -449,7 +498,7 @@ export default function WorkerDashboard() {
                           </span>
                         </div>
 
-                        <p className="text-sm text-slate-600 leading-relaxed bg-slate-50 p-3 rounded-xl border border-slate-100">
+                        <p className="text-sm text-slate-600 leading-relaxed bg-slate-50 p-3.5 rounded-xl border border-slate-100">
                           {task.description}
                         </p>
 
@@ -468,32 +517,179 @@ export default function WorkerDashboard() {
                           )}
                         </div>
 
+                        {/* VISUAL BEFORE VS AFTER IMAGE SECTION */}
+                        <div className="pt-2">
+                          <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2 flex items-center gap-1">
+                            <span className="material-symbols-outlined text-blue-600 text-base">photo_library</span>
+                            Incident Visual Evidence
+                          </h4>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            {/* Before Image */}
+                            <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-2">
+                              <div className="flex items-center justify-between text-xs font-bold text-slate-700">
+                                <span className="flex items-center gap-1 text-amber-700">
+                                  <span className="w-2 h-2 rounded-full bg-amber-500"></span>
+                                  Before Fix (Citizen Photo)
+                                </span>
+                              </div>
+                              {beforeImg ? (
+                                <div 
+                                  onClick={() => setPreviewImage(beforeImg)}
+                                  className="w-full h-44 rounded-lg overflow-hidden border border-slate-200 cursor-pointer relative group bg-slate-900/10"
+                                >
+                                  <img src={beforeImg} alt="Before Fix" className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                                  <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white font-bold text-xs gap-1">
+                                    <span className="material-symbols-outlined text-base">zoom_in</span>
+                                    Enlarge
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="w-full h-44 rounded-lg border border-dashed border-slate-300 bg-white flex flex-col items-center justify-center text-slate-400 text-xs">
+                                  <span className="material-symbols-outlined text-3xl mb-1">image_not_supported</span>
+                                  No before photo attached
+                                </div>
+                              )}
+                            </div>
+
+                            {/* After Image */}
+                            <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-2">
+                              <div className="flex items-center justify-between text-xs font-bold text-slate-700">
+                                <span className="flex items-center gap-1 text-emerald-700">
+                                  <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                                  After Fix (Officer Proof)
+                                </span>
+                              </div>
+                              {afterImg ? (
+                                <div 
+                                  onClick={() => setPreviewImage(afterImg)}
+                                  className="w-full h-44 rounded-lg overflow-hidden border border-slate-200 cursor-pointer relative group bg-slate-900/10"
+                                >
+                                  <img src={afterImg} alt="After Fix" className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                                  <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white font-bold text-xs gap-1">
+                                    <span className="material-symbols-outlined text-base">zoom_in</span>
+                                    Enlarge
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="w-full h-44 rounded-lg border border-dashed border-slate-300 bg-white flex flex-col items-center justify-center text-slate-400 text-xs">
+                                  <span className="material-symbols-outlined text-3xl mb-1">add_a_photo</span>
+                                  {isResolved ? 'No after photo provided' : 'Awaiting worker completion upload'}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Resolution Summary display if resolved */}
+                        {isResolved && task.resolution_report && (
+                          <div className="bg-emerald-50/70 p-4 rounded-xl border border-emerald-200 space-y-1">
+                            <span className="text-xs font-bold text-emerald-900 flex items-center gap-1 uppercase tracking-wider">
+                              <span className="material-symbols-outlined text-sm">task_alt</span>
+                              Resolution Summary
+                            </span>
+                            <p className="text-xs text-emerald-950 font-medium leading-relaxed">
+                              {task.resolution_report}
+                            </p>
+                          </div>
+                        )}
+
+                        {/* Download PDF Work Report Button & View Details */}
+                        <div className="pt-2 flex flex-wrap justify-end gap-2">
+                          <button
+                            onClick={() => setSelectedTaskForDetails(task)}
+                            className="px-3.5 py-2 text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-xl transition-colors flex items-center gap-1.5 shadow-sm"
+                          >
+                            <span className="material-symbols-outlined text-sm">visibility</span>
+                            View Full Details
+                          </button>
+
+                          {isResolved && (
+                            <button
+                              onClick={() => handleDownloadPdf(task.id)}
+                              disabled={downloadingPdfId === task.id}
+                              className="px-4 py-2 text-xs font-bold text-slate-800 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded-xl transition-all shadow-sm flex items-center gap-1.5 disabled:opacity-50"
+                            >
+                              {downloadingPdfId === task.id ? (
+                                <span className="material-symbols-outlined animate-spin text-sm text-blue-600">sync</span>
+                              ) : (
+                                <span className="material-symbols-outlined text-sm text-rose-600">picture_as_pdf</span>
+                              )}
+                              Download PDF Work Report
+                            </button>
+                          )}
+                        </div>
+
                         {/* Interactive Resolution Action */}
                         {!isResolved && (
                           <div className="pt-3 border-t border-slate-100 mt-2">
                             {resolvingTaskId === task.id ? (
-                              <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-200 space-y-3">
-                                <label className="block text-xs font-bold text-slate-800 uppercase tracking-wider">
-                                  Task Resolution Summary *
-                                </label>
-                                <textarea
-                                  value={resolutionReport}
-                                  onChange={(e) => setResolutionReport(e.target.value)}
-                                  placeholder="Describe work completed, components fixed, or findings on site..."
-                                  className="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none resize-none bg-white"
-                                  rows="3"
-                                ></textarea>
+                              <div className="bg-blue-50/50 p-5 rounded-2xl border border-blue-200 space-y-4">
+                                <h4 className="text-sm font-bold text-slate-900 flex items-center gap-1.5">
+                                  <span className="material-symbols-outlined text-blue-600">build</span>
+                                  Submit Resolution & Work Report
+                                </h4>
+
+                                <div className="space-y-1.5">
+                                  <label className="block text-xs font-bold text-slate-800 uppercase tracking-wider">
+                                    Resolution Work Summary *
+                                  </label>
+                                  <textarea
+                                    value={resolutionReport}
+                                    onChange={(e) => setResolutionReport(e.target.value)}
+                                    placeholder="Describe work completed, components fixed, or findings on site..."
+                                    className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none resize-none bg-white"
+                                    rows="3"
+                                  ></textarea>
+                                </div>
+
+                                {/* After Image Upload Field */}
+                                <div className="space-y-2">
+                                  <label className="block text-xs font-bold text-slate-800 uppercase tracking-wider">
+                                    After Fix Photo Proof (Optional)
+                                  </label>
+
+                                  <div className="flex items-center gap-4">
+                                    {afterImage ? (
+                                      <div className="relative w-20 h-20 rounded-xl overflow-hidden border border-slate-300">
+                                        <img src={afterImage} alt="After Fix Preview" className="w-full h-full object-cover" />
+                                        <button 
+                                          onClick={() => setAfterImage("")}
+                                          className="absolute top-1 right-1 bg-red-600 text-white rounded-full p-0.5 shadow hover:bg-red-700"
+                                        >
+                                          <span className="material-symbols-outlined text-xs">close</span>
+                                        </button>
+                                      </div>
+                                    ) : (
+                                      <label className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-300 hover:border-blue-400 rounded-xl text-xs font-semibold text-slate-700 cursor-pointer shadow-sm transition-all">
+                                        {isUploadingAfter ? (
+                                          <span className="material-symbols-outlined animate-spin text-sm text-blue-600">sync</span>
+                                        ) : (
+                                          <span className="material-symbols-outlined text-sm text-blue-600">add_photo_alternate</span>
+                                        )}
+                                        {isUploadingAfter ? 'Uploading Photo...' : 'Upload After Fix Photo'}
+                                        <input 
+                                          type="file" 
+                                          accept="image/*" 
+                                          className="hidden" 
+                                          onChange={handleAfterImageUpload} 
+                                          disabled={isUploadingAfter} 
+                                        />
+                                      </label>
+                                    )}
+                                  </div>
+                                </div>
                                 
-                                <div className="flex justify-end gap-2">
+                                <div className="flex justify-end gap-2 pt-2 border-t border-blue-200/60">
                                   <button 
-                                    onClick={() => { setResolvingTaskId(null); setResolutionReport(""); }}
+                                    onClick={() => { setResolvingTaskId(null); setResolutionReport(""); setAfterImage(""); }}
                                     className="px-4 py-2 text-xs font-medium text-slate-600 hover:bg-slate-200/60 rounded-xl transition-colors"
                                   >
                                     Cancel
                                   </button>
                                   <button 
                                     onClick={() => handleResolveTask(task.id)}
-                                    disabled={isUpdating || !resolutionReport.trim()}
+                                    disabled={isUpdating || !resolutionReport.trim() || isUploadingAfter}
                                     className="px-4 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition-all shadow-sm flex items-center gap-1.5 disabled:opacity-50"
                                   >
                                     {isUpdating ? <span className="material-symbols-outlined animate-spin text-sm">sync</span> : <span className="material-symbols-outlined text-sm">task_alt</span>}
@@ -837,6 +1033,30 @@ export default function WorkerDashboard() {
             </form>
           </div>
         </div>
+      )}
+
+      {/* IMAGE PREVIEW LIGHTBOX MODAL */}
+      {previewImage && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-md animate-fadeIn" onClick={() => setPreviewImage(null)}>
+          <div className="relative max-w-4xl max-h-[90vh] overflow-hidden rounded-2xl bg-black p-2 border border-slate-700 shadow-2xl" onClick={e => e.stopPropagation()}>
+            <button 
+              onClick={() => setPreviewImage(null)}
+              className="absolute top-4 right-4 bg-slate-900/80 hover:bg-slate-800 text-white p-2 rounded-full z-10 transition-colors"
+            >
+              <span className="material-symbols-outlined text-xl">close</span>
+            </button>
+            <img src={previewImage} alt="Enlarged Preview" className="max-w-full max-h-[85vh] object-contain rounded-xl" />
+          </div>
+        </div>
+      )}
+
+      {/* COMPLAINT DETAILS MODAL */}
+      {selectedTaskForDetails && (
+        <ComplaintDetailsModal
+          complaint={selectedTaskForDetails}
+          onClose={() => setSelectedTaskForDetails(null)}
+          workerName={profile ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim() : null}
+        />
       )}
 
     </div>

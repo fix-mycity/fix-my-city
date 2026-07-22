@@ -230,13 +230,13 @@ def get_my_tasks(db: Session, user_id: int):
     items, total = WorkerTaskRepository.list_assigned_tasks(db, user_id, profile.department)
     return {"items": items, "total_items": total}
 
-def resolve_my_task(db: Session, user_id: int, task_id: int, resolution_report: str):
+def resolve_my_task(db: Session, user_id: int, task_id: int, resolution_report: str, after_image: Optional[str] = None):
     profile = WorkerRepository.get_worker_profile(db, user_id)
     if not profile:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Worker profile not found")
         
     from modules.workers.repository import WorkerTaskRepository
-    success = WorkerTaskRepository.resolve_task(db, user_id, profile.department, task_id, resolution_report)
+    success = WorkerTaskRepository.resolve_task(db, user_id, profile.department, task_id, resolution_report, after_image)
     if not success:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found or not assigned to you")
         

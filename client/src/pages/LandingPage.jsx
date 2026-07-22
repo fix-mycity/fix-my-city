@@ -4,7 +4,6 @@ import { useSelector } from "react-redux";
 
 export default function LandingPage() {
   const navigate = useNavigate();
-  // Ensure your Redux state matches this structure, or provide a fallback
   const isAuthenticated = useSelector((state) => state.auth?.isAuthenticated || false);
 
   const [isScrolled, setIsScrolled] = useState(false);
@@ -30,7 +29,7 @@ export default function LandingPage() {
   return (
     <div className="antialiased min-h-screen flex flex-col font-sans text-slate-900 bg-slate-50">
       
-      {/* Navigation - Uses Footer Color Theme */}
+      {/* Navigation */}
       <header
         className={`fixed top-0 left-0 right-0 z-50 w-full transition-all duration-300 ${
           isScrolled ? "bg-[#1A365D] shadow-lg py-2" : "bg-[#1A365D] py-4"
@@ -49,10 +48,6 @@ export default function LandingPage() {
           <nav className="hidden md:flex items-center gap-8">
             <a className="text-slate-300 hover:text-white transition-colors font-medium" href="#how-it-works">How It Works</a>
             <a className="text-slate-300 hover:text-white transition-colors font-medium" href="#features">Features</a>
-            <button onClick={() => navigate("/worker")} className="text-blue-300 hover:text-white transition-colors font-bold flex items-center gap-1">
-              <span className="material-symbols-outlined text-base">engineering</span>
-              Field Operations
-            </button>
             <a className="text-slate-300 hover:text-white transition-colors font-medium" href="#testimonials">Stories</a>
           </nav>
 
@@ -75,10 +70,6 @@ export default function LandingPage() {
           <div className="md:hidden bg-[#1A365D] border-t border-slate-700 px-6 py-4 flex flex-col gap-4 shadow-xl">
             <a onClick={() => setIsMobileMenuOpen(false)} className="text-slate-200 font-medium py-2" href="#how-it-works">How It Works</a>
             <a onClick={() => setIsMobileMenuOpen(false)} className="text-slate-200 font-medium py-2" href="#features">Features</a>
-            <button onClick={() => { setIsMobileMenuOpen(false); navigate("/worker"); }} className="text-left text-blue-300 font-bold py-2 flex items-center gap-2">
-              <span className="material-symbols-outlined">engineering</span>
-              Field Operations Portal
-            </button>
             <a onClick={() => setIsMobileMenuOpen(false)} className="text-slate-200 font-medium py-2" href="#testimonials">Stories</a>
             <hr className="border-slate-700" />
             <button onClick={() => { setIsMobileMenuOpen(false); navigate("/login"); }} className="w-full text-center py-2.5 text-white font-semibold border border-slate-500 rounded-lg">
@@ -93,7 +84,7 @@ export default function LandingPage() {
 
       <main className="flex-grow flex flex-col mt-20 md:mt-24">
         
-        {/* Hero Section - Uses Footer Color Theme */}
+        {/* Hero Section */}
         <section className="bg-[#1A365D] text-white py-16 md:py-20 px-6 md:px-12 w-full">
           <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             <div className="flex flex-col gap-6">
@@ -107,10 +98,6 @@ export default function LandingPage() {
                 <button onClick={handleReportClick} className="bg-blue-500 text-white font-bold px-8 py-4 rounded-lg hover:bg-blue-400 transition-colors shadow-lg flex items-center justify-center gap-2">
                   <span className="material-symbols-outlined">report</span>
                   Report an Issue
-                </button>
-                <button onClick={() => navigate("/worker")} className="border-2 border-blue-400 text-blue-200 font-bold px-8 py-4 rounded-lg hover:bg-blue-900/50 transition-colors flex items-center justify-center gap-2">
-                  <span className="material-symbols-outlined">engineering</span>
-                  Field Worker Portal
                 </button>
               </div>
             </div>
@@ -205,29 +192,6 @@ export default function LandingPage() {
                 </div>
               ))}
             </div>
-
-            {/* Dedicated Worker Banner inside Landing Page */}
-            <div className="mt-12 bg-gradient-to-r from-slate-900 via-slate-800 to-blue-900 rounded-3xl p-8 md:p-12 text-white shadow-xl flex flex-col md:flex-row items-center justify-between gap-8 border border-slate-700">
-              <div className="space-y-3 max-w-xl">
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/20 text-blue-300 text-xs font-bold uppercase tracking-wider">
-                  <span className="material-symbols-outlined text-sm">handyman</span>
-                  Field Workforce Portal
-                </div>
-                <h3 className="text-2xl md:text-3xl font-extrabold">Are you a Municipal Field Officer?</h3>
-                <p className="text-slate-300 text-sm leading-relaxed">
-                  Access real-time task dispatches, update your duty availability status, and manage leave applications directly on the officer portal.
-                </p>
-              </div>
-
-              <button 
-                onClick={() => navigate("/worker")}
-                className="bg-blue-500 hover:bg-blue-400 text-white font-extrabold px-8 py-4 rounded-2xl shadow-lg transition-all flex items-center gap-2 shrink-0"
-              >
-                <span className="material-symbols-outlined">engineering</span>
-                Open Worker Portal
-              </button>
-            </div>
-
           </div>
         </section>
 
@@ -292,7 +256,6 @@ export default function LandingPage() {
             <div className="flex flex-col gap-3">
               <h4 className="text-blue-400 font-bold uppercase tracking-wider text-xs mb-2">Product</h4>
               <a className="text-sm text-slate-300 hover:text-white transition-colors" href="#features">Features</a>
-              <button onClick={() => navigate("/worker")} className="text-left text-sm text-slate-300 hover:text-white transition-colors">Worker Portal</button>
             </div>
             <div className="flex flex-col gap-3">
               <h4 className="text-blue-400 font-bold uppercase tracking-wider text-xs mb-2">Company</h4>
