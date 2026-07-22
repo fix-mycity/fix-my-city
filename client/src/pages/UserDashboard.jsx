@@ -625,7 +625,12 @@ const Dashboard = () => {
         {/* Welcome Header */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 sm:mb-8">
           <div>
-            <h1 className="text-2xl sm:text-4xl font-extrabold text-slate-900 mb-2 tracking-tight">Welcome back, {user?.username || 'Citizen'}</h1>
+            <h1 className="text-2xl sm:text-4xl font-extrabold text-slate-900 mb-2 tracking-tight flex items-center gap-2">
+              Welcome back, {user?.username || 'Citizen'}
+              {userProfile?.is_aadhaar_verified && (
+                <span className="material-symbols-outlined text-emerald-500 text-2xl sm:text-3xl" title="Aadhaar Verified Citizen">verified</span>
+              )}
+            </h1>
             <p className="text-sm sm:text-slate-500 font-medium">You have filed {totalReports} issue reports to improve our city.</p>
           </div>
           <button 
