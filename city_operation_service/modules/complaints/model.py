@@ -16,6 +16,11 @@ class ComplaintDepartment(str, enum.Enum):
     WATER = "water"
     GENERAL = "general"
 
+class ComplaintMediaStatus(str, enum.Enum):
+    PENDING = "MEDIA_PENDING"
+    READY = "MEDIA_READY"
+    FAILED = "MEDIA_FAILED"
+
 class Complaint(Base):
     __tablename__ = "complaints"
 
@@ -31,6 +36,8 @@ class Complaint(Base):
     
     # Image Upload
     image_url = Column(String(500), nullable=True)
+    media_status = Column(String(50), default=ComplaintMediaStatus.PENDING.value, nullable=True, index=True)
+
     
     # AI Routing & Tracking
     department = Column(String(50), default=ComplaintDepartment.GENERAL.value, nullable=False, index=True)

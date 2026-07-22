@@ -1,11 +1,16 @@
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
 from sqlalchemy.orm import Session
+import shutil
+import uuid
+import os
 
 from dependencies.auth import get_current_user, UserData
 from dependencies.db import get_db
 from core.s3 import upload_file_to_s3
 
-from .schema import ComplaintCreate, ComplaintResponse
+from modules.complaints.tasks import upload_complaint_media_task
+from .schema import ComplaintCreate, ComplaintResponse, ComplaintMediaStatusResponse
+
 from .service import (
     create_complaint,
     get_complaint_by_id,
@@ -27,7 +32,7 @@ def create_new_complaint(
     current_user: UserData = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Create a new complaint, upload its image/video to S3, and auto-classify department."""
+    """Create a new complaint, save its media locally, trigger async S3 upload, and auto-classify department."""
     is_image = file.content_type.startswith("image/")
     is_video = file.content_type.startswith("video/")
     if not is_image and not is_video:
@@ -48,17 +53,27 @@ def create_new_complaint(
             detail="File size exceeds the limit of 50MB"
         )
 
+    # Save upload to a local temporary folder shared with celery worker
+    TEMP_DIR = os.path.join(os.getcwd(), "temp_uploads")
+    os.makedirs(TEMP_DIR, exist_ok=True)
+    unique_filename = f"{uuid.uuid4()}_{file.filename}"
+    temp_file_path = os.path.join(TEMP_DIR, unique_filename)
+
     try:
-        file_url = upload_file_to_s3(file.file, folder="complaints", filename=file.filename)
+        with open(temp_file_path, "wb") as f_out:
+            shutil.copyfileobj(file.file, f_out)
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"S3 Upload failed: {str(e)}"
+            detail=f"Local temporary file write failed: {str(e)}"
         )
 
     from modules.users.service import get_or_create_profile
     profile = get_or_create_profile(db, current_user.id)
     if not profile or not profile.phone_number or not profile.phone_number.strip():
+        # Clean up the temporary file if validation fails
+        if os.path.exists(temp_file_path):
+            os.remove(temp_file_path)
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Mobile number is required to report complaints. Please update your profile."
@@ -69,9 +84,15 @@ def create_new_complaint(
         description=description,
         location_lat=location_lat,
         location_lng=location_lng,
-        image_url=file_url
+        image_url=None
     )
-    return create_complaint(db, current_user.id, data)
+    complaint = create_complaint(db, current_user.id, data)
+    
+    # Trigger Celery background task for S3 upload
+    upload_complaint_media_task.delay(complaint.id, temp_file_path, file.filename)
+    
+    return complaint
+
 
 
 
@@ -160,3 +181,20 @@ def upload_complaint_image(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"S3 Upload failed: {str(e)}"
         )
+
+
+@router.get("/{complaint_id}/media-status", response_model=ComplaintMediaStatusResponse)
+def read_complaint_media_status(
+    complaint_id: int,
+    current_user: UserData = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Retrieve the media upload status and S3 image URL (if ready) of a specific complaint."""
+    complaint = get_complaint_by_id(db, complaint_id)
+    if not complaint:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Complaint not found"
+        )
+    return complaint
+

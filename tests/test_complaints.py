@@ -151,17 +151,16 @@ def test_update_complaint_image_service(db_session):
 
 
 # =====================================================================
-# API Integration Tests (Mocking S3 upload)
+# API Integration Tests (Mocking S3 upload via Celery)
 # =====================================================================
 
-@patch("modules.complaints.router.upload_file_to_s3")
-def test_api_create_complaint(mock_upload, client, db_session):
+@patch("modules.complaints.router.upload_complaint_media_task.delay")
+def test_api_create_complaint(mock_delay, client, db_session):
     # Set up user profile with a phone number
     profile = Profile(user_id=1, phone_number="1234567890")
     db_session.add(profile)
     db_session.commit()
 
-    mock_upload.return_value = "https://s3.amazonaws.com/fixmycity/complaints/test-image.jpg"
     file_data = {"file": ("test.jpg", BytesIO(b"dummy image data"), "image/jpeg")}
     form_data = {
         "title": "Road pothole near intersection",
@@ -180,17 +179,26 @@ def test_api_create_complaint(mock_upload, client, db_session):
     assert data["reported_by"] == 1
     assert data["department"] == "traffic"
     assert data["status"] == "PENDING"
-    assert data["image_url"] == "https://s3.amazonaws.com/fixmycity/complaints/test-image.jpg"
+    assert data["media_status"] == "MEDIA_PENDING"
+    assert data["image_url"] is None
+
+    mock_delay.assert_called_once()
+    assert mock_delay.call_args[0][0] == data["id"]
+    temp_path = mock_delay.call_args[0][1]
+    assert mock_delay.call_args[0][2] == "test.jpg"
+
+    # Clean up temp file
+    if os.path.exists(temp_path):
+        os.remove(temp_path)
 
 
-@patch("modules.complaints.router.upload_file_to_s3")
-def test_api_create_complaint_fails_without_phone_number(mock_upload, client, db_session):
+@patch("modules.complaints.router.upload_complaint_media_task.delay")
+def test_api_create_complaint_fails_without_phone_number(mock_delay, client, db_session):
     # Set up user profile with NO phone number
     profile = Profile(user_id=1, phone_number=None)
     db_session.add(profile)
     db_session.commit()
 
-    mock_upload.return_value = "https://s3.amazonaws.com/fixmycity/complaints/test-image.jpg"
     file_data = {"file": ("test.jpg", BytesIO(b"dummy image data"), "image/jpeg")}
     form_data = {
         "title": "Road pothole near intersection",
@@ -205,6 +213,8 @@ def test_api_create_complaint_fails_without_phone_number(mock_upload, client, db
     )
     assert response.status_code == 400
     assert response.json()["detail"] == "Mobile number is required to report complaints. Please update your profile."
+    mock_delay.assert_not_called()
+
 
 
 def test_api_read_my_complaints(client, db_session):
@@ -319,3 +329,38 @@ def test_api_upload_profile_avatar(mock_upload, client):
     response_invalid = client.post("/users/me/profile/avatar", files=file_data_invalid)
     assert response_invalid.status_code == 400
     assert "must be an image" in response_invalid.json()["detail"]
+
+
+@patch("modules.complaints.schema.generate_presigned_url")
+def test_api_complaint_media_status(mock_presign, client, db_session):
+    mock_presign.side_effect = lambda x: f"presigned-{x}"
+
+    # 1. Create a dummy complaint with media status PENDING
+    c1 = Complaint(
+        title="Water pipe leak", description="Leaking water",
+        location_lat=1.0, location_lng=2.0, reported_by=1, department="water",
+        media_status="MEDIA_PENDING"
+    )
+    db_session.add(c1)
+    db_session.commit()
+
+    # 2. Call the endpoint
+    response = client.get(f"/complaints/{c1.id}/media-status")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["id"] == c1.id
+    assert data["media_status"] == "MEDIA_PENDING"
+    assert data["image_url"] is None
+
+    # 3. Update status to READY and image_url
+    c1.media_status = "MEDIA_READY"
+    c1.image_url = "complaints/test-image.jpg"
+    db_session.commit()
+
+    # 4. Call again and verify pre-signed URL is generated/returned
+    response = client.get(f"/complaints/{c1.id}/media-status")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["media_status"] == "MEDIA_READY"
+    assert data["image_url"] == "presigned-complaints/test-image.jpg"
+

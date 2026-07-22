@@ -25,6 +25,9 @@ class Settings:
     CASHFREE_CLIENT_SECRET = os.getenv("CASHFREE_CLIENT_SECRET")
     CASHFREE_API_VERSION = os.getenv("CASHFREE_API_VERSION", "2022-10-26")
 
+    # Celery & RabbitMQ Configuration
+    CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", "amqp://guest:guest@localhost:5672//")
+
 
 settings = Settings()
 
