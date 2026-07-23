@@ -11,6 +11,7 @@ export default function Navbar() {
   const location = useLocation();
   const { user } = useSelector((state) => state.auth);
   const [profileAvatar, setProfileAvatar] = useState('');
+  const [isVerified, setIsVerified] = useState(false);
 
   const defaultAvatar = "https://ui-avatars.com/api/?name=Citizen&background=cbd5e1&color=334155&rounded=true";
 
@@ -19,6 +20,7 @@ export default function Navbar() {
       try {
         const res = await getUserProfileApi();
         setProfileAvatar(res.data?.avatar_url || '');
+        setIsVerified(res.data?.is_aadhaar_verified || false);
       } catch (err) {
         console.error("Failed to load user avatar in navbar:", err);
       }
@@ -106,7 +108,12 @@ export default function Navbar() {
                 src={profileAvatar || defaultAvatar}
               />
               <div className="hidden sm:block text-left">
-                <p className="text-xs font-bold text-slate-900 leading-tight group-hover:text-blue-600 transition-colors duration-200">{user?.username || 'Citizen'}</p>
+                <p className="text-xs font-bold text-slate-900 leading-tight group-hover:text-blue-600 transition-colors duration-200 flex items-center gap-1">
+                  {user?.username || 'Citizen'}
+                  {isVerified && (
+                    <span className="material-symbols-outlined text-emerald-500 text-[14px]" title="Aadhaar Verified Citizen">verified</span>
+                  )}
+                </p>
                 <p className="text-[10px] text-slate-500 leading-none capitalize mt-0.5">{user?.role || 'Citizen'}</p>
               </div>
             </Link>

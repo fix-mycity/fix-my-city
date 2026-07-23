@@ -19,6 +19,14 @@ services:
     ports:
       - "6379:6379"
 
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: fixmycity_rabbitmq
+    restart: always
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+
   auth-service:
     build:
       context: .
@@ -50,6 +58,7 @@ services:
     depends_on:
       - postgres
       - redis
+      - rabbitmq
     volumes:
       - ./city_operation_service:/app/city_operation_service
     command: sh -c "alembic upgrade head && uvicorn main:app --host 0.0.0.0 --port 8002 --reload"
@@ -64,9 +73,11 @@ services:
       DATABASE_URL: postgresql://fixmycity:fixmycity_pass@postgres:5432/fixmycity_db
       CELERY_BROKER_URL: redis://redis:6379/0
       CELERY_RESULT_BACKEND: redis://redis:6379/0
+      PYTHONPATH: /app/city_operation_service
     depends_on:
       - postgres
       - redis
+      - rabbitmq
     volumes:
       - ./city_operation_service:/app/city_operation_service
     command: sh -c "celery -A celery_app.celery_app worker --loglevel=info"

@@ -19,6 +19,7 @@ const isVideoUrl = (url) => {
 };
 
 import ComplaintLocation from '../components/shared/ComplaintLocation';
+import ComplaintDetailsModal from '../components/shared/ComplaintDetailsModal';
 
 const Dashboard = () => {
   const dispatch = useDispatch();
@@ -55,6 +56,7 @@ const Dashboard = () => {
   // States
   const [complaints, setComplaints] = useState([]);
   const [profileAvatar, setProfileAvatar] = useState('');
+  const [userProfile, setUserProfile] = useState(null);
   const [loading, setLoading] = useState(true);
 
   // Modal State
@@ -73,6 +75,17 @@ const Dashboard = () => {
   const [isCameraActive, setIsCameraActive] = useState(false);
   const [cameraStream, setCameraStream] = useState(null);
   const [cameraPreviewUrl, setCameraPreviewUrl] = useState('');
+  
+  // Video Recording States & Refs
+  const [cameraMode, setCameraMode] = useState(null); // 'photo' | 'video' | null
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingTime, setRecordingTime] = useState(0);
+  const mediaRecorderRef = useRef(null);
+  const recordedChunksRef = useRef([]);
+  const recordingIntervalRef = useRef(null);
+
+  // Details Modal State
+  const [selectedComplaintForDetails, setSelectedComplaintForDetails] = useState(null);
 
   // New Location Picker States
   const [locationSearchQuery, setLocationSearchQuery] = useState('');
@@ -88,6 +101,7 @@ const Dashboard = () => {
         getUserProfileApi().catch(() => ({ data: {} })),
         getMyComplaintsApi()
       ]);
+      setUserProfile(profileRes.data || null);
       setProfileAvatar(profileRes.data?.avatar_url || '');
       setComplaints(complaintsRes.data || []);
     } catch (err) {
@@ -96,6 +110,15 @@ const Dashboard = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleReportNewIssue = () => {
+    if (!userProfile || !userProfile.phone_number || !userProfile.phone_number.trim()) {
+      toast.error("Please add a mobile number to your profile before reporting an issue.");
+      navigate("/profile");
+      return;
+    }
+    setShowModal(true);
   };
 
   useEffect(() => {
@@ -301,29 +324,129 @@ const Dashboard = () => {
     setLocationResults([]);
   };
 
-  const startCamera = async () => {
+  const startCamera = async (mode = 'photo') => {
+    setCameraMode(mode);
     setIsCameraActive(true);
     setCameraPreviewUrl('');
     setSelectedFile(null);
+    setIsRecording(false);
+    setRecordingTime(0);
+    recordedChunksRef.current = [];
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
+      const constraints = {
         video: { facingMode: 'environment' },
-        audio: false
-      });
+        audio: mode === 'video'
+      };
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
       setCameraStream(stream);
     } catch (err) {
       console.error("Camera access failed: ", err);
+      if (mode === 'video') {
+        try {
+          // Fallback to video only if microphone access is blocked/fails
+          const stream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: 'environment' },
+            audio: false
+          });
+          setCameraStream(stream);
+          toast.success("Camera accessed without microphone.");
+          return;
+        } catch (fallbackErr) {
+          console.error("Camera fallback access failed: ", fallbackErr);
+        }
+      }
       toast.error("Could not access camera. Please check permissions.");
       setIsCameraActive(false);
+      setCameraMode(null);
     }
   };
 
   const stopCamera = () => {
+    if (recordingIntervalRef.current) {
+      clearInterval(recordingIntervalRef.current);
+      recordingIntervalRef.current = null;
+    }
     if (cameraStream) {
       cameraStream.getTracks().forEach((track) => track.stop());
       setCameraStream(null);
     }
     setIsCameraActive(false);
+    setIsRecording(false);
+    setRecordingTime(0);
+  };
+
+  const startRecording = () => {
+    if (!cameraStream) return;
+    
+    recordedChunksRef.current = [];
+    let options = { mimeType: 'video/webm;codecs=vp9,opus' };
+    if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+      options = { mimeType: 'video/webm;codecs=vp8,opus' };
+      if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+        options = { mimeType: 'video/webm' };
+        if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+          options = { mimeType: 'video/mp4' }; // Safari fallback
+        }
+      }
+    }
+
+    try {
+      const mediaRecorder = new MediaRecorder(cameraStream, options);
+      mediaRecorderRef.current = mediaRecorder;
+      
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data && event.data.size > 0) {
+          recordedChunksRef.current.push(event.data);
+        }
+      };
+
+      mediaRecorder.onstop = () => {
+        const blob = new Blob(recordedChunksRef.current, {
+          type: options.mimeType || 'video/webm'
+        });
+        const extension = (options.mimeType && options.mimeType.includes('mp4')) ? 'mp4' : 'webm';
+        const file = new File([blob], `camera_recording_${Date.now()}.${extension}`, {
+          type: blob.type
+        });
+        setSelectedFile(file);
+        
+        const previewUrl = URL.createObjectURL(blob);
+        setCameraPreviewUrl(previewUrl);
+        
+        stopCamera();
+        toast.success("Video recorded successfully!");
+      };
+
+      mediaRecorder.start(1000);
+      setIsRecording(true);
+      setRecordingTime(0);
+
+      recordingIntervalRef.current = setInterval(() => {
+        setRecordingTime((prev) => {
+          if (prev >= 30) { // Limit to 30 seconds
+            stopRecording();
+            return 30;
+          }
+          return prev + 1;
+        });
+      }, 1000);
+
+      toast.success("Recording started!");
+    } catch (err) {
+      console.error("Failed to start MediaRecorder: ", err);
+      toast.error("Could not start video recording.");
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      mediaRecorderRef.current.stop();
+    }
+    if (recordingIntervalRef.current) {
+      clearInterval(recordingIntervalRef.current);
+      recordingIntervalRef.current = null;
+    }
+    setIsRecording(false);
   };
 
   const capturePhoto = () => {
@@ -369,6 +492,7 @@ const Dashboard = () => {
     if (!showModal) {
       handleClearLocation();
       stopCamera();
+      setCameraMode(null);
       if (cameraPreviewUrl) {
         URL.revokeObjectURL(cameraPreviewUrl);
         setCameraPreviewUrl('');
@@ -531,11 +655,16 @@ const Dashboard = () => {
         {/* Welcome Header */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 sm:mb-8">
           <div>
-            <h1 className="text-2xl sm:text-4xl font-extrabold text-slate-900 mb-2 tracking-tight">Welcome back, {user?.username || 'Citizen'}</h1>
+            <h1 className="text-2xl sm:text-4xl font-extrabold text-slate-900 mb-2 tracking-tight flex items-center gap-2">
+              Welcome back, {user?.username || 'Citizen'}
+              {userProfile?.is_aadhaar_verified && (
+                <span className="material-symbols-outlined text-emerald-500 text-2xl sm:text-3xl" title="Aadhaar Verified Citizen">verified</span>
+              )}
+            </h1>
             <p className="text-sm sm:text-slate-500 font-medium">You have filed {totalReports} issue reports to improve our city.</p>
           </div>
           <button 
-            onClick={() => setShowModal(true)}
+            onClick={handleReportNewIssue}
             className="w-full sm:w-auto bg-blue-600 hover:bg-blue-500 text-white px-5 py-3 rounded-lg text-sm font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition-all hover:shadow-lg hover:shadow-blue-500/20 shrink-0"
           >
             <span className="material-symbols-outlined text-base">add</span> Report New Issue
@@ -572,7 +701,7 @@ const Dashboard = () => {
               <div className="divide-y divide-slate-100">
                 {complaints.length > 0 ? (
                   complaints.map((report) => (
-                    <div key={report.id} className="p-4 sm:p-5 hover:bg-slate-50 transition-colors flex gap-4 sm:gap-5 items-start">
+                    <div key={report.id} onClick={() => setSelectedComplaintForDetails(report)} className="p-4 sm:p-5 hover:bg-slate-50 transition-colors flex gap-4 sm:gap-5 items-start cursor-pointer">
                       <div className="w-20 h-20 sm:w-28 sm:h-28 rounded-lg shrink-0 border border-slate-200 bg-slate-100 flex items-center justify-center overflow-hidden relative">
                         {report.image_url ? (
                           isVideoUrl(report.image_url) ? (
@@ -626,7 +755,7 @@ const Dashboard = () => {
                     <span className="material-symbols-outlined text-slate-200 text-5xl">assignment_late</span>
                     <p className="text-slate-400 font-semibold mt-4">You have not reported any issues yet.</p>
                     <button 
-                      onClick={() => setShowModal(true)} 
+                      onClick={handleReportNewIssue} 
                       className="mt-2 text-blue-600 hover:text-blue-500 font-bold text-sm"
                     >
                       Report your first issue now &rarr;
@@ -811,8 +940,8 @@ const Dashboard = () => {
                 <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">Attachment (Required)</label>
                 
                 {!isCameraActive && !cameraPreviewUrl && (
-                  <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
-                    <div className="flex-grow w-full">
+                  <div className="flex flex-col gap-3">
+                    <div className="w-full">
                       <input 
                         type="file" 
                         accept="image/*,video/*"
@@ -821,14 +950,24 @@ const Dashboard = () => {
                         className="w-full text-slate-500 text-sm file:mr-4 file:py-2.5 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
                       />
                     </div>
-                    <button
-                      type="button"
-                      onClick={startCamera}
-                      className="w-full sm:w-auto flex items-center justify-center gap-1.5 px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-sm font-bold transition-all hover:shadow-md shrink-0"
-                    >
-                      <span className="material-symbols-outlined text-[18px]">photo_camera</span>
-                      Take Photo
-                    </button>
+                    <div className="flex flex-col sm:flex-row gap-2.5 w-full">
+                      <button
+                        type="button"
+                        onClick={() => startCamera('photo')}
+                        className="flex-grow flex items-center justify-center gap-1.5 px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-sm font-bold transition-all hover:shadow-md"
+                      >
+                        <span className="material-symbols-outlined text-[18px]">photo_camera</span>
+                        Take Photo
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => startCamera('video')}
+                        className="flex-grow flex items-center justify-center gap-1.5 px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-bold transition-all hover:shadow-md"
+                      >
+                        <span className="material-symbols-outlined text-[18px]">videocam</span>
+                        Record Video
+                      </button>
+                    </div>
                   </div>
                 )}
 
@@ -843,6 +982,14 @@ const Dashboard = () => {
                       className="w-full aspect-video object-cover bg-slate-955"
                     />
                     
+                    {/* Recording Timer Display */}
+                    {cameraMode === 'video' && isRecording && (
+                      <div className="absolute top-4 left-4 bg-red-600/95 text-white px-3 py-1.5 rounded-full text-[11px] font-extrabold flex items-center gap-1.5 animate-pulse shadow-md z-10">
+                        <span className="w-2 h-2 rounded-full bg-white animate-ping"></span>
+                        <span>0:{recordingTime < 10 ? `0${recordingTime}` : recordingTime} / 0:30</span>
+                      </div>
+                    )}
+
                     {/* Shutter Overlay Controls */}
                     <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-4 z-10 px-4">
                       <button
@@ -854,37 +1001,71 @@ const Dashboard = () => {
                         Cancel
                       </button>
                       
-                      <button
-                        type="button"
-                        onClick={capturePhoto}
-                        className="flex items-center gap-1.5 px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-full text-xs font-black transition-all shadow-lg hover:shadow-blue-500/30 scale-105"
-                      >
-                        <span className="material-symbols-outlined text-sm">camera_alt</span>
-                        Capture
-                      </button>
+                      {cameraMode === 'photo' ? (
+                        <button
+                          type="button"
+                          onClick={capturePhoto}
+                          className="flex items-center gap-1.5 px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-full text-xs font-black transition-all shadow-lg hover:shadow-blue-500/30 scale-105"
+                        >
+                          <span className="material-symbols-outlined text-sm">camera_alt</span>
+                          Capture
+                        </button>
+                      ) : (
+                        isRecording ? (
+                          <button
+                            type="button"
+                            onClick={stopRecording}
+                            className="flex items-center gap-1.5 px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-full text-xs font-black transition-all shadow-lg scale-105"
+                          >
+                            <span className="material-symbols-outlined text-sm">stop</span>
+                            Stop Recording
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={startRecording}
+                            className="flex items-center gap-1.5 px-5 py-2.5 bg-red-600 hover:bg-red-500 text-white rounded-full text-xs font-black transition-all shadow-lg scale-105"
+                          >
+                            <span className="material-symbols-outlined text-sm">videocam</span>
+                            Start Recording
+                          </button>
+                        )
+                      )}
                     </div>
                   </div>
                 )}
 
-                {/* Captured Photo Preview Badge */}
-                {cameraPreviewUrl && (
+                {/* Captured Media Preview Badge */}
+                {cameraPreviewUrl && selectedFile && (
                   <div className="p-3 bg-blue-50/50 rounded-lg border border-blue-100/50 flex items-center justify-between transition-all">
                     <div className="flex gap-3 items-center flex-grow pr-4">
-                      <img 
-                        src={cameraPreviewUrl} 
-                        alt="Camera capture preview" 
-                        className="w-12 h-12 object-cover rounded-lg border border-blue-200"
-                      />
+                      {selectedFile.type.startsWith('video/') ? (
+                        <video 
+                          src={cameraPreviewUrl} 
+                          controls
+                          className="w-16 h-12 object-cover rounded-lg border border-blue-200 bg-slate-900"
+                        />
+                      ) : (
+                        <img 
+                          src={cameraPreviewUrl} 
+                          alt="Camera capture preview" 
+                          className="w-12 h-12 object-cover rounded-lg border border-blue-200"
+                        />
+                      )}
                       <div>
-                        <p className="text-xs font-bold text-slate-800 leading-tight">Camera Capture Photo</p>
-                        <p className="text-[10px] text-slate-500 font-semibold mt-0.5">JPEG Image (Required)</p>
+                        <p className="text-xs font-bold text-slate-800 leading-tight">
+                          {selectedFile.type.startsWith('video/') ? 'Camera Video Recording' : 'Camera Capture Photo'}
+                        </p>
+                        <p className="text-[10px] text-slate-500 font-semibold mt-0.5">
+                          {selectedFile.type.startsWith('video/') ? 'Video Recording (Required)' : 'JPEG Image (Required)'}
+                        </p>
                       </div>
                     </div>
                     <button
                       type="button"
                       onClick={handleClearPhoto}
                       className="text-slate-400 hover:text-red-500 transition-colors p-1.5 rounded-full hover:bg-slate-100 flex-shrink-0"
-                      title="Remove Photo"
+                      title="Remove Attachment"
                     >
                       <span className="material-symbols-outlined text-sm font-bold">close</span>
                     </button>
@@ -912,6 +1093,13 @@ const Dashboard = () => {
             </form>
           </div>
         </div>
+      )}
+
+      {selectedComplaintForDetails && (
+        <ComplaintDetailsModal 
+          complaint={selectedComplaintForDetails} 
+          onClose={() => setSelectedComplaintForDetails(null)} 
+        />
       )}
     </div>
   );

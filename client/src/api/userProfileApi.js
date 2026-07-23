@@ -29,3 +29,13 @@ export const addSavedLocationApi = (data) => {
 export const deleteSavedLocationApi = (locationId) => {
   return axiosInstance.delete(`/city/users/me/locations/${locationId}`);
 };
+
+export const initDigiLockerApi = (redirectUrl) => {
+  return axiosInstance.post("/city/users/me/aadhaar/digilocker/init", { redirect_url: redirectUrl });
+};
+
+export const checkDigiLockerStatusApi = (verificationId) => {
+  return axiosInstance.post("/city/users/me/aadhaar/digilocker/status", { verification_id: verificationId });
+};
+
+

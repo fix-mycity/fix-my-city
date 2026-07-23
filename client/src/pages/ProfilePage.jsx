@@ -9,7 +9,9 @@ import {
   uploadAvatarApi,
   getSavedLocationsApi,
   addSavedLocationApi,
-  deleteSavedLocationApi
+  deleteSavedLocationApi,
+  initDigiLockerApi,
+  checkDigiLockerStatusApi
 } from '../api/userProfileApi';
 import Navbar from '../components/Navbar';
 
@@ -23,9 +25,15 @@ export default function ProfilePage() {
     full_name: '',
     phone_number: '',
     bio: '',
-    avatar_url: ''
+    avatar_url: '',
+    is_aadhaar_verified: false,
+    aadhaar_name: ''
   });
   const [locations, setLocations] = useState([]);
+  
+  // DigiLocker flow states
+  const [digilockerVerifying, setDigilockerVerifying] = useState(false);
+  const [checkingStatus, setCheckingStatus] = useState(false);
   const [loading, setLoading] = useState(true);
   const [updatingProfile, setUpdatingProfile] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
@@ -58,7 +66,9 @@ export default function ProfilePage() {
           full_name: profileRes.data.full_name || '',
           phone_number: profileRes.data.phone_number || '',
           bio: profileRes.data.bio || '',
-          avatar_url: profileRes.data.avatar_url || ''
+          avatar_url: profileRes.data.avatar_url || '',
+          is_aadhaar_verified: profileRes.data.is_aadhaar_verified || false,
+          aadhaar_name: profileRes.data.aadhaar_name || ''
         });
         setLocations(locationsRes.data);
       } catch (err) {
@@ -81,6 +91,64 @@ export default function ProfilePage() {
     }
   };
 
+  // Handle DigiLocker callback status check
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const verificationId = params.get('verification_id');
+    
+    if (verificationId) {
+      async function checkStatus() {
+        setCheckingStatus(true);
+        try {
+          const res = await checkDigiLockerStatusApi(verificationId);
+          if (res.data.status === 'SUCCESS') {
+            setProfile((prev) => ({
+              ...prev,
+              is_aadhaar_verified: true,
+              aadhaar_name: res.data.name || "Verified Citizen"
+            }));
+            toast.success("Aadhaar verified successfully via DigiLocker!");
+          } else if (res.data.status === 'FAILED') {
+            toast.error(res.data.message || "DigiLocker verification failed.");
+          } else if (res.data.status === 'PENDING') {
+            toast.loading("Verification is in progress, please refresh in a moment...", { id: "dl-status" });
+          }
+        } catch (err) {
+          console.error(err);
+          const detail = err.response?.data?.detail;
+          toast.error(typeof detail === 'string' ? detail : "Failed to verify DigiLocker status.");
+        } finally {
+          setCheckingStatus(false);
+          navigate('/profile', { replace: true });
+        }
+      }
+      checkStatus();
+    }
+  }, [navigate]);
+
+  const handleVerifyWithDigiLocker = async () => {
+    setDigilockerVerifying(true);
+    try {
+      const currentOrigin = window.location.origin.replace(/^http:/, 'https:');
+      const redirectUrl = `${currentOrigin}/profile`;
+      
+      const res = await initDigiLockerApi(redirectUrl);
+      if (res.data && res.data.url) {
+        toast.loading("Redirecting to DigiLocker...", { duration: 2000 });
+        window.location.href = res.data.url;
+      } else {
+        toast.error("Failed to generate DigiLocker verification URL.");
+      }
+    } catch (err) {
+      console.error(err);
+      const detail = err.response?.data?.detail;
+      toast.error(typeof detail === 'string' ? detail : "Failed to initiate DigiLocker verification.");
+    } finally {
+      setDigilockerVerifying(false);
+    }
+  };
+
+
   const handleProfileSubmit = async (e) => {
     e.preventDefault();
     setUpdatingProfile(true);
@@ -92,6 +160,12 @@ export default function ProfilePage() {
       };
 
       // Basic local validation for phone number
+      if (!data.phone_number || !data.phone_number.trim()) {
+        toast.error("Phone number is required.");
+        setUpdatingProfile(false);
+        return;
+      }
+
       if (data.phone_number && !/^\d{10}$/.test(data.phone_number)) {
         toast.error("Phone number must be exactly 10 digits.");
         setUpdatingProfile(false);
@@ -360,13 +434,55 @@ export default function ProfilePage() {
                 )}
               </div>
               
-              <h2 className="text-xl font-bold text-slate-900">{profile.full_name || user?.username}</h2>
+              <h2 className="text-xl font-bold text-slate-900 flex items-center justify-center gap-1.5">
+                {profile.full_name || user?.username}
+                {profile.is_aadhaar_verified && (
+                  <span className="material-symbols-outlined text-emerald-500 text-xl font-bold" title="Aadhaar Verified Citizen">verified</span>
+                )}
+              </h2>
               <p className="text-sm font-semibold text-slate-400 uppercase tracking-wider mt-1">{user?.role || 'Citizen'}</p>
               
               {profile.bio ? (
                 <p className="text-sm text-slate-600 mt-4 leading-relaxed italic">"{profile.bio}"</p>
               ) : (
                 <p className="text-sm text-slate-400 mt-4 leading-relaxed italic">No bio written yet.</p>
+              )}
+            </div>
+
+            {/* Aadhaar Verification Card */}
+            <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+              <h3 className="text-lg font-bold text-slate-950 mb-4 flex items-center gap-2">
+                <span className="material-symbols-outlined text-blue-600">fingerprint</span>
+                Aadhaar Verification
+              </h3>
+              
+              {profile.is_aadhaar_verified ? (
+                <div className="space-y-4">
+                  <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-4 flex items-start gap-3 text-left">
+                    <span className="material-symbols-outlined text-emerald-600 mt-0.5">verified_user</span>
+                    <div>
+                      <h4 className="text-sm font-bold text-emerald-800">Verified Identity</h4>
+                      <p className="text-[11px] text-emerald-700 font-semibold mt-1">Name: {profile.aadhaar_name}</p>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-4 text-left">
+                  <p className="text-xs text-slate-500 font-medium">Verify your identity securely using government-approved DigiLocker to become a verified citizen reporter.</p>
+                  
+                  <button
+                    onClick={handleVerifyWithDigiLocker}
+                    disabled={digilockerVerifying || checkingStatus}
+                    className="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-bold py-2.5 rounded-lg text-xs transition-all flex items-center justify-center gap-2"
+                  >
+                    {(digilockerVerifying || checkingStatus) ? (
+                      <span className="material-symbols-outlined animate-spin text-xs">sync</span>
+                    ) : (
+                      <span className="material-symbols-outlined text-sm">fingerprint</span>
+                    )}
+                    Verify with DigiLocker
+                  </button>
+                </div>
               )}
             </div>
           </div>
@@ -394,7 +510,10 @@ export default function ProfilePage() {
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Phone Number</label>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                      Phone Number <span className="text-red-500">*</span>
+                      <span className="text-[10px] text-slate-400 normal-case block mt-0.5 font-medium">(Required to file complaints)</span>
+                    </label>
                     <input 
                       type="text" 
                       className="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 text-slate-900 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
