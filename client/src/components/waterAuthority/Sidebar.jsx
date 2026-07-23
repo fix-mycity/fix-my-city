@@ -1,21 +1,32 @@
 import React from 'react';
 import { sidebarItems } from '../../utils/waterMockData';
 import { Link } from 'react-router-dom';
+import { useSelector } from 'react-redux';
 
-export default function Sidebar({ 
-  isCollapsed, 
-  setIsCollapsed, 
-  isMobileOpen, 
-  setIsMobileOpen, 
-  activeTab, 
+export default function Sidebar({
+  isCollapsed,
+  setIsCollapsed,
+  isMobileOpen,
+  setIsMobileOpen,
+  activeTab,
   setActiveTab,
-  onLogout 
+  onLogout
 }) {
-  const user = {
-    username: "Jamsheed K.",
-    role: "Water Authority Admin",
-    avatar: "https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&q=80&w=100"
+  const { user: reduxUser } = useSelector((state) => state.auth);
+
+  const displayUser = {
+    username: reduxUser?.username || "Jamsheed K.",
+    role: reduxUser?.role === "Department_Admin" ? "Water Authority Admin" : (reduxUser?.role || "Water Authority Admin"),
+    avatar: reduxUser?.avatar_url || "https://www.shutterstock.com/shutterstock/photos/2436095397/display_1500/stock-vector-user-glyph-vector-icon-isolated-user-stock-vector-icon-for-web-mobile-app-and-ui-design-2436095397.jpg"
   };
+
+  const workerSidebarItems = [
+    { id: 'dashboard', label: 'Dashboard', icon: 'dashboard', path: '/worker/dashboard' },
+    { id: 'tasks', label: 'My Tasks', icon: 'engineering', path: '/worker/tasks' },
+    { id: 'history', label: 'Task History', icon: 'history', path: '/worker/history' }
+  ];
+
+  const itemsToRender = reduxUser?.role === "Worker" ? workerSidebarItems : sidebarItems;
 
   const handleItemClick = (id) => {
     setActiveTab(id);
@@ -28,7 +39,7 @@ export default function Sidebar({
         <span className="water-sidebar-logo-icon material-symbols-outlined">water_drop</span>
         <div className="water-sidebar-header-action">
           <span className="water-sidebar-logo-text">Water Authority</span>
-          <button 
+          <button
             className="water-sidebar-toggle-btn"
             onClick={() => setIsCollapsed(!isCollapsed)}
             title={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
@@ -42,7 +53,7 @@ export default function Sidebar({
 
       <nav className="water-sidebar-nav">
         <ul className="water-sidebar-menu">
-          {sidebarItems.map((item) => (
+          {itemsToRender.map((item) => (
             <li key={item.id} className="water-sidebar-item">
               {item.path.startsWith('#') ? (
                 <a
@@ -75,10 +86,10 @@ export default function Sidebar({
 
       <div className="water-sidebar-footer">
         <div className="water-sidebar-user-block">
-          <img src={user.avatar} alt="User Profile" className="water-sidebar-avatar" />
+          <img src={displayUser.avatar} alt="User Profile" className="water-sidebar-avatar" />
           <div className="water-sidebar-user-info">
-            <span className="water-sidebar-username">{user.username}</span>
-            <span className="water-sidebar-user-role">{user.role}</span>
+            <span className="water-sidebar-username">{displayUser.username}</span>
+            <span className="water-sidebar-user-role">{displayUser.role}</span>
           </div>
         </div>
         <div className="water-sidebar-actions-row">
@@ -88,8 +99,8 @@ export default function Sidebar({
           <button className="water-sidebar-footer-btn" title="Settings">
             <span className="material-symbols-outlined">settings</span>
           </button>
-          <button 
-            className="water-sidebar-footer-btn logout-btn" 
+          <button
+            className="water-sidebar-footer-btn logout-btn"
             onClick={onLogout}
             title="Log Out"
           >

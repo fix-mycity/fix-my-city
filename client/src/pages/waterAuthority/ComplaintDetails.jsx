@@ -16,6 +16,7 @@ import {
   assignWorker, 
   updateComplaint 
 } from '../../services/waterComplaintService';
+import { createAssignment } from '../../services/assignmentService';
 
 export default function ComplaintDetails() {
   const { id } = useParams();
@@ -58,11 +59,18 @@ export default function ComplaintDetails() {
     }
   };
 
-  const handleAssignWorkerSubmit = async (workerId, notes = "") => {
+  const handleAssignWorkerSubmit = async (workerId, notes = "", priority = "MEDIUM", deadline = "") => {
     try {
-      const response = await assignWorker(id, workerId, notes);
+      await createAssignment({
+        complaint_id: parseInt(id),
+        worker_id: parseInt(workerId),
+        deadline: new Date(deadline).toISOString(),
+        priority,
+        remarks: notes
+      });
+      const response = await getComplaintById(id);
       setComplaint(response.data);
-      toast.success(`Worker assigned successfully.`);
+      toast.success(`Worker assigned successfully via Work Assignment workflow.`);
     } catch (err) {
       toast.error(err.response?.data?.detail || "Failed to assign worker.");
     }

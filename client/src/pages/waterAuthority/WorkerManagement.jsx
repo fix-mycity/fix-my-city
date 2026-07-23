@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 
 import PageHeader from '../../components/waterAuthority/PageHeader';
@@ -27,8 +27,10 @@ export default function WorkerManagement() {
   const [isLoading, setIsLoading] = useState(true);
   const [viewMode, setViewMode] = useState('table'); // 'table' or 'grid'
 
+  const [searchParams] = useSearchParams();
+  
   // Search & Filter state
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState(searchParams.get('search') || '');
   const [filters, setFilters] = useState({
     availability: '',
     employment_status: '',
@@ -92,6 +94,10 @@ export default function WorkerManagement() {
       setIsLoading(false);
     }
   };
+
+  useEffect(() => {
+    setSearchQuery(searchParams.get('search') || '');
+  }, [searchParams]);
 
   useEffect(() => {
     fetchSummaryStats();

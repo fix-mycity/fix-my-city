@@ -176,127 +176,237 @@ export default function WorkerForm({ initialData, onSubmit, onCancel, isEdit = f
   };
 
   return (
-    <form onSubmit={handleSubmit} style={{
-      backgroundColor: '#ffffff',
-      border: '1px solid var(--water-border)',
-      borderRadius: 'var(--water-radius)',
-      padding: '2rem',
-      boxShadow: 'var(--water-shadow)',
-      display: 'flex',
-      flexDirection: 'column',
-      gap: '1.5rem',
-      maxWidth: '800px',
-      margin: '0 auto'
-    }}>
-      <h3 style={{ fontSize: '1.2rem', fontWeight: '700', borderBottom: '1px solid var(--water-border)', paddingBottom: '0.75rem', marginBottom: '0.5rem', color: 'var(--water-primary-dark)' }}>
-        {isEdit ? 'Edit Field Worker Details' : 'Register New Field Worker'}
-      </h3>
+    <form onSubmit={handleSubmit} className="premium-form-container">
+      <div className="premium-form-header">
+        <h3>
+          <span className="material-symbols-outlined" style={{ fontSize: '1.6rem', color: 'var(--water-primary-light)' }}>
+            {isEdit ? 'edit_square' : 'person_add'}
+          </span>
+          {isEdit ? 'Edit Field Worker Details' : 'Register New Field Worker'}
+        </h3>
+      </div>
 
       <WorkerPhotoUpload currentPhoto={formData.photo} onChange={handlePhotoChange} />
 
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-        gap: '1.25rem'
-      }}>
-
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-          <label style={{ fontSize: '0.8rem', fontWeight: '700', color: 'var(--water-text)' }}>Designation</label>
-          <input
-            type="text"
-            name="designation"
-            value={formData.designation}
-            onChange={handleChange}
-            placeholder="e.g. Senior Valve Inspector"
-            style={{
-              padding: '0.6rem',
-              borderRadius: '6px',
-              border: '1px solid var(--water-border)',
-              fontSize: '0.85rem',
-              outline: 'none'
-            }}
-          />
-        </div>
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-          <label style={{ fontSize: '0.8rem', fontWeight: '700', color: 'var(--water-text)' }}>First Name *</label>
+      <h4 className="premium-form-section-title">Personal Details</h4>
+      <div className="premium-form-grid">
+        <div className="premium-field-group">
+          <label className="premium-label">First Name *</label>
           <input
             type="text"
             name="first_name"
             value={formData.first_name}
             onChange={handleChange}
             required
-            style={{
-              padding: '0.6rem',
-              borderRadius: '6px',
-              border: errors.first_name ? '1px solid var(--water-danger)' : '1px solid var(--water-border)',
-              fontSize: '0.85rem',
-              outline: 'none'
-            }}
+            className={`premium-input ${errors.first_name ? 'error' : ''}`}
+            placeholder="e.g. Sahil"
           />
-          {errors.first_name && <span style={{ fontSize: '0.75rem', color: 'var(--water-danger)' }}>{errors.first_name}</span>}
+          {errors.first_name && <span className="premium-error-text">{errors.first_name}</span>}
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-          <label style={{ fontSize: '0.8rem', fontWeight: '700', color: 'var(--water-text)' }}>Last Name *</label>
+        <div className="premium-field-group">
+          <label className="premium-label">Last Name *</label>
           <input
             type="text"
             name="last_name"
             value={formData.last_name}
             onChange={handleChange}
             required
-            style={{
-              padding: '0.6rem',
-              borderRadius: '6px',
-              border: errors.last_name ? '1px solid var(--water-danger)' : '1px solid var(--water-border)',
-              fontSize: '0.85rem',
-              outline: 'none'
-            }}
+            className={`premium-input ${errors.last_name ? 'error' : ''}`}
+            placeholder="e.g. Jiggle"
           />
-          {errors.last_name && <span style={{ fontSize: '0.75rem', color: 'var(--water-danger)' }}>{errors.last_name}</span>}
+          {errors.last_name && <span className="premium-error-text">{errors.last_name}</span>}
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-          <label style={{ fontSize: '0.8rem', fontWeight: '700', color: 'var(--water-text)' }}>Email Address *</label>
+        <div className="premium-field-group">
+          <label className="premium-label">Email Address *</label>
           <input
             type="email"
             name="email"
             value={formData.email}
             onChange={handleChange}
             required
-            style={{
-              padding: '0.6rem',
-              borderRadius: '6px',
-              border: errors.email ? '1px solid var(--water-danger)' : '1px solid var(--water-border)',
-              fontSize: '0.85rem',
-              outline: 'none'
-            }}
+            className={`premium-input ${errors.email ? 'error' : ''}`}
+            placeholder="e.g. sahil.jiggle@example.com"
           />
-          {errors.email && <span style={{ fontSize: '0.75rem', color: 'var(--water-danger)' }}>{errors.email}</span>}
+          {errors.email && <span className="premium-error-text">{errors.email}</span>}
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-          <label style={{ fontSize: '0.8rem', fontWeight: '700', color: 'var(--water-text)' }}>Phone Number *</label>
+        <div className="premium-field-group">
+          <label className="premium-label">Phone Number *</label>
           <input
             type="text"
             name="phone"
             value={formData.phone}
             onChange={handleChange}
             required
-            style={{
-              padding: '0.6rem',
-              borderRadius: '6px',
-              border: errors.phone ? '1px solid var(--water-danger)' : '1px solid var(--water-border)',
-              fontSize: '0.85rem',
-              outline: 'none'
-            }}
+            className={`premium-input ${errors.phone ? 'error' : ''}`}
+            placeholder="e.g. 8139065847"
           />
-          {errors.phone && <span style={{ fontSize: '0.75rem', color: 'var(--water-danger)' }}>{errors.phone}</span>}
+          {errors.phone && <span className="premium-error-text">{errors.phone}</span>}
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-          <label style={{ fontSize: '0.8rem', fontWeight: '700', color: 'var(--water-text)' }}>
+        <div className="premium-field-group">
+          <label className="premium-label">Gender</label>
+          <select
+            name="gender"
+            value={formData.gender}
+            onChange={handleChange}
+            className="premium-select"
+          >
+            {genders.map(g => <option key={g} value={g}>{g}</option>)}
+          </select>
+        </div>
+
+        <div className="premium-field-group">
+          <label className="premium-label">Date of Birth</label>
+          <input
+            type="date"
+            name="date_of_birth"
+            value={formData.date_of_birth}
+            onChange={handleChange}
+            className="premium-input"
+          />
+        </div>
+      </div>
+
+      <h4 className="premium-form-section-title">Professional Details</h4>
+      <div className="premium-form-grid">
+        <div className="premium-field-group">
+          <label className="premium-label">Designation</label>
+          <input
+            type="text"
+            name="designation"
+            value={formData.designation}
+            onChange={handleChange}
+            placeholder="e.g. Senior Valve Inspector"
+            className="premium-input"
+          />
+        </div>
+
+        <div className="premium-field-group">
+          <label className="premium-label">Skill / Specialty</label>
+          <select
+            name="skill"
+            value={formData.skill}
+            onChange={handleChange}
+            className="premium-select"
+          >
+            {skills.map(s => <option key={s} value={s}>{s}</option>)}
+          </select>
+        </div>
+
+        <div className="premium-field-group">
+          <label className="premium-label">Experience (Years)</label>
+          <input
+            type="number"
+            name="experience"
+            min="0"
+            value={formData.experience}
+            onChange={handleChange}
+            className="premium-input"
+          />
+        </div>
+
+        <div className="premium-field-group">
+          <label className="premium-label">Joining Date</label>
+          <input
+            type="date"
+            name="joining_date"
+            value={formData.joining_date}
+            onChange={handleChange}
+            className="premium-input"
+          />
+        </div>
+
+        <div className="premium-field-group">
+          <label className="premium-label">Emergency Contact Phone</label>
+          <input
+            type="text"
+            name="emergency_contact_phone"
+            value={formData.emergency_contact_phone}
+            onChange={handleChange}
+            placeholder="e.g. 9876543210"
+            className="premium-input"
+          />
+        </div>
+
+        {isEdit && (
+          <div className="premium-field-group">
+            <label className="premium-label">Availability Status</label>
+            <select
+              name="availability"
+              value={formData.availability}
+              onChange={handleChange}
+              className="premium-select"
+            >
+              {availabilities.map(a => <option key={a} value={a}>{a}</option>)}
+            </select>
+          </div>
+        )}
+
+        {isEdit && (
+          <div className="premium-field-group">
+            <label className="premium-label">Employment Status</label>
+            <select
+              name="employment_status"
+              value={formData.employment_status}
+              onChange={handleChange}
+              className="premium-select"
+            >
+              {statuses.map(s => <option key={s} value={s}>{s}</option>)}
+            </select>
+          </div>
+        )}
+      </div>
+
+      <h4 className="premium-form-section-title">Residential Details</h4>
+      <div className="premium-form-grid">
+        <div className="premium-field-group">
+          <label className="premium-label">Place *</label>
+          <input
+            type="text"
+            name="place"
+            value={formData.place}
+            onChange={handleChange}
+            required
+            placeholder="e.g. Green Park"
+            className={`premium-input ${errors.place ? 'error' : ''}`}
+          />
+          {errors.place && <span className="premium-error-text">{errors.place}</span>}
+        </div>
+
+        <div className="premium-field-group">
+          <label className="premium-label">Pin Code *</label>
+          <input
+            type="text"
+            name="pin_code"
+            value={formData.pin_code}
+            onChange={handleChange}
+            required
+            placeholder="e.g. 110016"
+            className={`premium-input ${errors.pin_code ? 'error' : ''}`}
+          />
+          {errors.pin_code && <span className="premium-error-text">{errors.pin_code}</span>}
+        </div>
+
+        <div className="premium-field-group full-width">
+          <label className="premium-label">Residential Address</label>
+          <textarea
+            name="address"
+            value={formData.address}
+            onChange={handleChange}
+            rows={3}
+            placeholder="Enter full street address"
+            className="premium-textarea"
+          />
+        </div>
+      </div>
+
+      <h4 className="premium-form-section-title">Credentials & Security</h4>
+      <div className="premium-form-grid">
+        <div className="premium-field-group">
+          <label className="premium-label">
             Password {isEdit ? '(Leave blank to keep current)' : '*'}
           </label>
           <input
@@ -305,232 +415,40 @@ export default function WorkerForm({ initialData, onSubmit, onCancel, isEdit = f
             value={formData.password}
             onChange={handleChange}
             required={!isEdit}
-            style={{
-              padding: '0.6rem',
-              borderRadius: '6px',
-              border: errors.password ? '1px solid var(--water-danger)' : '1px solid var(--water-border)',
-              fontSize: '0.85rem',
-              outline: 'none'
-            }}
+            className={`premium-input ${errors.password ? 'error' : ''}`}
+            placeholder="••••••••"
           />
-          {errors.password && <span style={{ fontSize: '0.75rem', color: 'var(--water-danger)' }}>{errors.password}</span>}
+          {errors.password && <span className="premium-error-text">{errors.password}</span>}
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-          <label style={{ fontSize: '0.8rem', fontWeight: '700', color: 'var(--water-text)' }}>Confirm Password *</label>
+        <div className="premium-field-group">
+          <label className="premium-label">Confirm Password *</label>
           <input
             type="password"
             name="confirmPassword"
             value={formData.confirmPassword}
             onChange={handleChange}
             required={!isEdit ? true : !!formData.password}
-            style={{
-              padding: '0.6rem',
-              borderRadius: '6px',
-              border: errors.confirmPassword ? '1px solid var(--water-danger)' : '1px solid var(--water-border)',
-              fontSize: '0.85rem',
-              outline: 'none'
-            }}
+            className={`premium-input ${errors.confirmPassword ? 'error' : ''}`}
+            placeholder="••••••••"
           />
-          {errors.confirmPassword && <span style={{ fontSize: '0.75rem', color: 'var(--water-danger)' }}>{errors.confirmPassword}</span>}
-        </div>
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-          <label style={{ fontSize: '0.8rem', fontWeight: '700', color: 'var(--water-text)' }}>Gender</label>
-          <select
-            name="gender"
-            value={formData.gender}
-            onChange={handleChange}
-            style={{ padding: '0.6rem', borderRadius: '6px', border: '1px solid var(--water-border)', fontSize: '0.85rem', outline: 'none' }}
-          >
-            {genders.map(g => <option key={g} value={g}>{g}</option>)}
-          </select>
-        </div>
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-          <label style={{ fontSize: '0.8rem', fontWeight: '700', color: 'var(--water-text)' }}>Date of Birth</label>
-          <input
-            type="date"
-            name="date_of_birth"
-            value={formData.date_of_birth}
-            onChange={handleChange}
-            style={{
-              padding: '0.6rem',
-              borderRadius: '6px',
-              border: '1px solid var(--water-border)',
-              fontSize: '0.85rem',
-              outline: 'none'
-            }}
-          />
-        </div>
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-          <label style={{ fontSize: '0.8rem', fontWeight: '700', color: 'var(--water-text)' }}>Place *</label>
-          <input
-            type="text"
-            name="place"
-            value={formData.place}
-            onChange={handleChange}
-            required
-            placeholder="e.g. Green Park"
-            style={{
-              padding: '0.6rem',
-              borderRadius: '6px',
-              border: errors.place ? '1px solid var(--water-danger)' : '1px solid var(--water-border)',
-              fontSize: '0.85rem',
-              outline: 'none'
-            }}
-          />
-          {errors.place && <span style={{ fontSize: '0.75rem', color: 'var(--water-danger)' }}>{errors.place}</span>}
-        </div>
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-          <label style={{ fontSize: '0.8rem', fontWeight: '700', color: 'var(--water-text)' }}>Pin Code *</label>
-          <input
-            type="text"
-            name="pin_code"
-            value={formData.pin_code}
-            onChange={handleChange}
-            required
-            placeholder="e.g. 110016"
-            style={{
-              padding: '0.6rem',
-              borderRadius: '6px',
-              border: errors.pin_code ? '1px solid var(--water-danger)' : '1px solid var(--water-border)',
-              fontSize: '0.85rem',
-              outline: 'none'
-            }}
-          />
-          {errors.pin_code && <span style={{ fontSize: '0.75rem', color: 'var(--water-danger)' }}>{errors.pin_code}</span>}
-        </div>
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-          <label style={{ fontSize: '0.8rem', fontWeight: '700', color: 'var(--water-text)' }}>Skill / Specialty</label>
-          <select
-            name="skill"
-            value={formData.skill}
-            onChange={handleChange}
-            style={{ padding: '0.6rem', borderRadius: '6px', border: '1px solid var(--water-border)', fontSize: '0.85rem', outline: 'none' }}
-          >
-            {skills.map(s => <option key={s} value={s}>{s}</option>)}
-          </select>
-        </div>
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-          <label style={{ fontSize: '0.8rem', fontWeight: '700', color: 'var(--water-text)' }}>Experience (Years)</label>
-          <input
-            type="number"
-            name="experience"
-            min="0"
-            value={formData.experience}
-            onChange={handleChange}
-            style={{
-              padding: '0.6rem',
-              borderRadius: '6px',
-              border: '1px solid var(--water-border)',
-              fontSize: '0.85rem',
-              outline: 'none'
-            }}
-          />
-        </div>
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-          <label style={{ fontSize: '0.8rem', fontWeight: '700', color: 'var(--water-text)' }}>Joining Date</label>
-          <input
-            type="date"
-            name="joining_date"
-            value={formData.joining_date}
-            onChange={handleChange}
-            style={{
-              padding: '0.6rem',
-              borderRadius: '6px',
-              border: '1px solid var(--water-border)',
-              fontSize: '0.85rem',
-              outline: 'none'
-            }}
-          />
-        </div>
-
-        {isEdit && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-            <label style={{ fontSize: '0.8rem', fontWeight: '700', color: 'var(--water-text)' }}>Availability Status</label>
-            <select
-              name="availability"
-              value={formData.availability}
-              onChange={handleChange}
-              style={{ padding: '0.6rem', borderRadius: '6px', border: '1px solid var(--water-border)', fontSize: '0.85rem', outline: 'none' }}
-            >
-              {availabilities.map(a => <option key={a} value={a}>{a}</option>)}
-            </select>
-          </div>
-        )}
-
-        {isEdit && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-            <label style={{ fontSize: '0.8rem', fontWeight: '700', color: 'var(--water-text)' }}>Employment Status</label>
-            <select
-              name="employment_status"
-              value={formData.employment_status}
-              onChange={handleChange}
-              style={{ padding: '0.6rem', borderRadius: '6px', border: '1px solid var(--water-border)', fontSize: '0.85rem', outline: 'none' }}
-            >
-              {statuses.map(s => <option key={s} value={s}>{s}</option>)}
-            </select>
-          </div>
-        )}
-
-
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-          <label style={{ fontSize: '0.8rem', fontWeight: '700', color: 'var(--water-text)' }}>Emergency Contact Phone</label>
-          <input
-            type="text"
-            name="emergency_contact_phone"
-            value={formData.emergency_contact_phone}
-            onChange={handleChange}
-            placeholder="Next of kin phone"
-            style={{
-              padding: '0.6rem',
-              borderRadius: '6px',
-              border: '1px solid var(--water-border)',
-              fontSize: '0.85rem',
-              outline: 'none'
-            }}
-          />
+          {errors.confirmPassword && <span className="premium-error-text">{errors.confirmPassword}</span>}
         </div>
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-        <label style={{ fontSize: '0.8rem', fontWeight: '700', color: 'var(--water-text)' }}>Residential Address</label>
-        <textarea
-          name="address"
-          value={formData.address}
-          onChange={handleChange}
-          rows={3}
-          style={{
-            padding: '0.6rem',
-            borderRadius: '6px',
-            border: '1px solid var(--water-border)',
-            fontSize: '0.85rem',
-            outline: 'none',
-            resize: 'vertical'
-          }}
-        />
-      </div>
-
-      <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', marginTop: '1rem' }}>
+      <div className="premium-btn-row">
         <button
           type="button"
           onClick={onCancel}
           className="water-btn"
-          style={{ padding: '0.6rem 1.5rem', fontWeight: '600' }}
+          style={{ padding: '0.65rem 1.75rem', fontWeight: '600', borderRadius: '10px' }}
         >
           Cancel
         </button>
         <button
           type="submit"
           className="water-btn water-btn-primary"
-          style={{ padding: '0.6rem 1.5rem', fontWeight: '700' }}
+          style={{ padding: '0.65rem 1.75rem', fontWeight: '700', borderRadius: '10px' }}
         >
           {isEdit ? 'Save Changes' : 'Register Worker'}
         </button>
