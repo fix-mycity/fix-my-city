@@ -138,6 +138,8 @@ export default function Login() {
           } else {
             navigate('/dashboard', { replace: true });
           }
+        } else if (user.role === 'Worker') {
+          navigate('/worker/dashboard', { replace: true });
         } else {
           navigate('/dashboard', { replace: true });
         }

@@ -44,6 +44,15 @@ def get_content_type(ext: str) -> str:
     }
     return mime_types.get(ext.lower(), "application/octet-stream")
 
+def clean_s3_url(s3_url: str) -> str:
+    """
+    Strips query string parameters (such as presigned signature parameters)
+    from an S3 URL to return the raw, clean base S3 URL.
+    """
+    if not s3_url:
+        return s3_url
+    return s3_url.split("?")[0]
+
 def generate_presigned_url(s3_url: str) -> str:
     """
     Generates a pre-signed URL given a full S3 URL of the format:
@@ -54,15 +63,17 @@ def generate_presigned_url(s3_url: str) -> str:
     if not s3_url:
         return s3_url
     
+    clean_url = clean_s3_url(s3_url)
+    
     # Check if this is an S3 URL pointing to our bucket
     prefix = f"https://{settings.S3_BUCKET_NAME}.s3"
-    if not s3_url.startswith(prefix):
+    if not clean_url.startswith(prefix):
         alt_prefix = f"https://{settings.S3_BUCKET_NAME}.s3.amazonaws.com"
-        if not s3_url.startswith(alt_prefix):
+        if not clean_url.startswith(alt_prefix):
             return s3_url
             
     try:
-        parts = s3_url.split(".amazonaws.com/")
+        parts = clean_url.split(".amazonaws.com/")
         if len(parts) < 2:
             return s3_url
         key = parts[1]

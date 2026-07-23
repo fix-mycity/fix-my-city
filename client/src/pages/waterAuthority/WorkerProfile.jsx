@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
-import WorkerProfileCard from '../../components/waterAuthority/WorkerProfileCard';
+import WorkerProfileCard from '../../components/workers/WorkerProfileCard';
 import { getWorkerById } from '../../services/workerService';
 
 export default function WorkerProfile() {
@@ -34,13 +34,11 @@ export default function WorkerProfile() {
   };
 
   return (
-    <div className="water-worker-profile-page" style={{ padding: '1rem 0' }}>
+    <div className="p-4 md:p-6">
       {isLoading ? (
-        <div style={{ textAlign: 'center', padding: '5rem' }}>
-          <span className="material-symbols-outlined" style={{ fontSize: '2.5rem', color: 'var(--water-primary-light)', animation: 'spin 1.5s linear infinite' }}>
-            sync
-          </span>
-          <p style={{ marginTop: '0.5rem', color: 'var(--water-text-muted)' }}>Retrieving profile...</p>
+        <div className="flex flex-col items-center justify-center py-20 text-slate-400 gap-2">
+          <span className="material-symbols-outlined animate-spin text-4xl text-blue-600">sync</span>
+          <p className="text-sm font-medium text-slate-500">Retrieving worker profile...</p>
         </div>
       ) : (
         <WorkerProfileCard 

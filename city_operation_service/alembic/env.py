@@ -13,6 +13,8 @@ sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 from database import Base
 import modules.complaints.model
 import modules.users.model
+import modules.traffic_management.model
+import modules.workers.model
 
 # Load environment variables
 load_dotenv()
@@ -21,7 +23,9 @@ load_dotenv()
 CITY_OPS_TABLES = [
     "complaints",
     "profiles",
-    "aadhaar_verifications"
+    "aadhaar_verifications",
+    "traffic_worker_profiles",
+    "worker_profiles"
 ]
 
 def include_object(object, name, type_, reflected, compare_to):

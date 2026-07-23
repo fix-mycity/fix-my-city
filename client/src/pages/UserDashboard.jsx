@@ -18,90 +18,7 @@ const isVideoUrl = (url) => {
   return cleanUrl.endsWith('.mp4') || cleanUrl.endsWith('.webm') || cleanUrl.endsWith('.ogg') || cleanUrl.endsWith('.mov') || cleanUrl.endsWith('.quicktime') || url.includes('/video');
 };
 
-const ComplaintLocation = ({ lat, lng }) => {
-  const cacheKey = `geo_cache_${lat.toFixed(4)}_${lng.toFixed(4)}`;
-  const [address, setAddress] = useState(() => {
-    const cached = localStorage.getItem(cacheKey);
-    if (cached === `${lat.toFixed(4)}, ${lng.toFixed(4)}`) {
-      localStorage.removeItem(cacheKey);
-      return '';
-    }
-    return cached || '';
-  });
-  const [loading, setLoading] = useState(!address);
-
-  useEffect(() => {
-    if (address) return;
-
-    let isMounted = true;
-    const fetchAddress = async () => {
-      await new Promise(resolve => setTimeout(resolve, Math.random() * 500));
-      try {
-        const response = await fetch(
-          `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`,
-          {
-            headers: {
-              'Accept-Language': 'en',
-              'User-Agent': 'FixMyCity-App/1.0'
-            }
-          }
-        );
-        if (response.ok) {
-          const data = await response.json();
-          if (data.error) {
-            // Fallback for mock coordinates in the ocean
-            if (Math.abs(lat - 3) < 0.01 && Math.abs(lng - 2) < 0.01) {
-              const mockAddr = "City Center, Metro Area";
-              if (isMounted) {
-                localStorage.setItem(cacheKey, mockAddr);
-                setAddress(mockAddr);
-              }
-            } else {
-              if (isMounted) {
-                setAddress(`${lat.toFixed(4)}, ${lng.toFixed(4)}`);
-              }
-            }
-          } else {
-            const addrText = data.display_name || `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
-            if (isMounted) {
-              localStorage.setItem(cacheKey, addrText);
-              setAddress(addrText);
-            }
-          }
-        } else {
-          if (isMounted) {
-            setAddress(`${lat.toFixed(4)}, ${lng.toFixed(4)}`);
-          }
-        }
-      } catch (err) {
-        console.error(err);
-        if (isMounted) {
-          setAddress(`${lat.toFixed(4)}, ${lng.toFixed(4)}`);
-        }
-      } finally {
-        if (isMounted) {
-          setLoading(false);
-        }
-      }
-    };
-
-    fetchAddress();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [lat, lng, address, cacheKey]);
-
-  if (loading) {
-    return <span className="text-slate-400 animate-pulse">Loading location...</span>;
-  }
-
-  return (
-    <span className="truncate max-w-[200px] sm:max-w-[320px] inline-block align-bottom" title={address}>
-      {address}
-    </span>
-  );
-};
+import ComplaintLocation from '../components/shared/ComplaintLocation';
 
 const Dashboard = () => {
   const dispatch = useDispatch();
@@ -577,7 +494,7 @@ const Dashboard = () => {
     { label: 'Pending', value: pending.toString(), icon: 'error', color: 'text-red-500' }
   ];
 
-  const defaultAvatar = "https://lh3.googleusercontent.com/aida-public/AB6AXuAjXV44J7hHagG25vu-i0QNfHuE6FUQYoz9M1qZy8QPGMTNifXENQJw-o5BCCpb1iU8jbphl-_vCcEpwdZoNqtmYsynhYuKhEn45buuwq0qUJVLsK5WsnvpKGFa28EiLLLGiH8QWrull36_OiRSwJHgY0v-lQxpJ2YA5KHMjKrwH9NGHLruawNgFjzBClUyp1BQfaAWhjtb8St-cd8O4RbMgeUlJqf0nQOkQ0rDMiScYOzUBLWc3FkV90i4E-aksBuTi63NTrGkKA";
+  const defaultAvatar = "https://ui-avatars.com/api/?name=Citizen&background=cbd5e1&color=334155&rounded=true";
   const defaultIssuePlaceholder = "https://images.unsplash.com/photo-1599740831664-927e1f1484f2?q=80&w=300&auto=format&fit=crop";
 
   const getStatusStyle = (status) => {

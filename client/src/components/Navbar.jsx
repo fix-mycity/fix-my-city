@@ -13,7 +13,7 @@ export default function Navbar() {
   const [profileAvatar, setProfileAvatar] = useState('');
   const [isVerified, setIsVerified] = useState(false);
 
-  const defaultAvatar = "https://www.flaticon.com/free-icon/user-avatar_6681428?term=no+profile&page=1&position=1&origin=tag&related_id=6681428";
+  const defaultAvatar = "https://ui-avatars.com/api/?name=Citizen&background=cbd5e1&color=334155&rounded=true";
 
   useEffect(() => {
     async function loadAvatar() {

@@ -7,93 +7,9 @@ import Navbar from '../components/Navbar';
 const isVideoUrl = (url) => {
   if (!url) return false;
   const cleanUrl = url.toLowerCase().split('?')[0];
-  return cleanUrl.endsWith('.mp4') || cleanUrl.endsWith('.webm') || cleanUrl.endsWith('.ogg') || cleanUrl.endsWith('.mov') || cleanUrl.endsWith('.quicktime') || url.includes('/video');
 };
 
-// Reusable cached location name component
-const ComplaintLocation = ({ lat, lng }) => {
-  const cacheKey = `geo_cache_${lat.toFixed(4)}_${lng.toFixed(4)}`;
-  const [address, setAddress] = useState(() => {
-    const cached = localStorage.getItem(cacheKey);
-    if (cached === `${lat.toFixed(4)}, ${lng.toFixed(4)}`) {
-      localStorage.removeItem(cacheKey);
-      return '';
-    }
-    return cached || '';
-  });
-  const [loading, setLoading] = useState(!address);
-
-  useEffect(() => {
-    if (address) return;
-
-    let isMounted = true;
-    const fetchAddress = async () => {
-      await new Promise(resolve => setTimeout(resolve, Math.random() * 500));
-      try {
-        const response = await fetch(
-          `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`,
-          {
-            headers: {
-              'Accept-Language': 'en',
-              'User-Agent': 'FixMyCity-App/1.0'
-            }
-          }
-        );
-        if (response.ok) {
-          const data = await response.json();
-          if (data.error) {
-            if (Math.abs(lat - 3) < 0.01 && Math.abs(lng - 2) < 0.01) {
-              const mockAddr = "City Center, Metro Area";
-              if (isMounted) {
-                localStorage.setItem(cacheKey, mockAddr);
-                setAddress(mockAddr);
-              }
-            } else {
-              if (isMounted) {
-                setAddress(`${lat.toFixed(4)}, ${lng.toFixed(4)}`);
-              }
-            }
-          } else {
-            const addrText = data.display_name || `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
-            if (isMounted) {
-              localStorage.setItem(cacheKey, addrText);
-              setAddress(addrText);
-            }
-          }
-        } else {
-          if (isMounted) {
-            setAddress(`${lat.toFixed(4)}, ${lng.toFixed(4)}`);
-          }
-        }
-      } catch (err) {
-        console.error(err);
-        if (isMounted) {
-          setAddress(`${lat.toFixed(4)}, ${lng.toFixed(4)}`);
-        }
-      } finally {
-        if (isMounted) {
-          setLoading(false);
-        }
-      }
-    };
-
-    fetchAddress();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [lat, lng, address, cacheKey]);
-
-  if (loading) {
-    return <span className="text-slate-400 animate-pulse">Loading location...</span>;
-  }
-
-  return (
-    <span className="truncate" title={address}>
-      {address}
-    </span>
-  );
-};
+import ComplaintLocation from '../components/shared/ComplaintLocation';
 
 const ReportsPage = () => {
   const [complaints, setComplaints] = useState([]);

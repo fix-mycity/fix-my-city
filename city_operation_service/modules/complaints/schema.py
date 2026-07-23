@@ -29,6 +29,7 @@ class ComplaintResponse(BaseModel):
     status: ComplaintStatus
     assigned_worker_id: Optional[int]
     resolution_report: Optional[str]
+    image_url: Optional[str]
     reported_by: int
     created_at: datetime
     updated_at: datetime
