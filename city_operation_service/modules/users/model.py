@@ -3,11 +3,14 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
-    DateTime
+    DateTime,
+    Float,
+    Boolean
 )
 from sqlalchemy.sql import func
 
 from database import Base
+
 
 
 class Profile(Base):
@@ -35,6 +38,9 @@ class Profile(Base):
 
     bio = Column(Text, nullable=True)
 
+    is_aadhaar_verified = Column(Boolean, default=False, nullable=False)
+    aadhaar_name = Column(String(150), nullable=True)
+
     created_at = Column(
         DateTime(timezone=True),
         server_default=func.now()
@@ -45,3 +51,47 @@ class Profile(Base):
         server_default=func.now(),
         onupdate=func.now()
     )
+
+
+
+class SavedLocation(Base):
+    __tablename__ = "saved_locations"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, nullable=False, index=True)
+    label = Column(String(100), nullable=False)  # e.g., "Home", "Office"
+    address = Column(String(500), nullable=False)
+    latitude = Column(Float, nullable=True)
+    longitude = Column(Float, nullable=True)
+
+    created_at = Column(
+        DateTime(timezone=True),
+        server_default=func.now()
+    )
+
+    updated_at = Column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now()
+    )
+
+
+class AadhaarVerification(Base):
+    __tablename__ = "aadhaar_verifications"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, nullable=False, index=True)
+    ref_id = Column(String(100), unique=True, nullable=False, index=True)
+    aadhaar_number_hash = Column(String(64), nullable=True, index=True)
+    status = Column(String(50), default="PENDING", nullable=False)
+    error_message = Column(Text, nullable=True)
+
+    created_at = Column(
+        DateTime(timezone=True),
+        server_default=func.now()
+    )
+    updated_at = Column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now()
+    )

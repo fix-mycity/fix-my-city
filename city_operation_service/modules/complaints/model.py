@@ -16,6 +16,11 @@ class ComplaintDepartment(str, enum.Enum):
     WATER = "water"
     GENERAL = "general"
 
+class ComplaintMediaStatus(str, enum.Enum):
+    PENDING = "MEDIA_PENDING"
+    READY = "MEDIA_READY"
+    FAILED = "MEDIA_FAILED"
+
 class Complaint(Base):
     __tablename__ = "complaints"
 
@@ -29,6 +34,11 @@ class Complaint(Base):
     location_lat = Column(Float, nullable=False)
     location_lng = Column(Float, nullable=False)
     
+    # Before Fix Image (Uploaded by Citizen)
+    image_url = Column(String(500), nullable=True)
+    media_status = Column(String(50), default=ComplaintMediaStatus.PENDING.value, nullable=True, index=True)
+
+    
     # AI Routing & Tracking
     department = Column(String(50), default=ComplaintDepartment.GENERAL.value, nullable=False, index=True)
     status = Column(String(50), default=ComplaintStatus.PENDING.value, nullable=False, index=True)
@@ -36,6 +46,10 @@ class Complaint(Base):
     # Worker Assignment & Resolution
     assigned_worker_id = Column(Integer, nullable=True, index=True)
     resolution_report = Column(Text, nullable=True)
+    
+    # After Fix Image (Uploaded by Worker upon completion)
+    resolution_image = Column(String(500), nullable=True)
+    resolved_at = Column(DateTime(timezone=True), nullable=True)
 
     # User Relationships
     reported_by = Column(Integer, nullable=False, index=True)

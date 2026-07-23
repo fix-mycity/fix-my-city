@@ -1,0 +1,21 @@
+DATABASE_URL=sddsd
+
+# Security & JWT configuration
+# You can generate a random 32-byte secret key with `openssl rand -hex 32` or similar.
+SECRET_KEY=67677
+
+#after deployment change it into production
+ENV=development
+
+#s3 deatils
+AWS_ACCESS_KEY_ID=<your real new access key>
+AWS_SECRET_ACCESS_KEY=<your real new secret key>
+AWS_REGION=<whatever region your bucket is in — you picked ap-south-1 earlier>
+S3_BUCKET_NAME=<your real bucket name>
+
+# Cashfree Secure ID
+CASHFREE_ENV=test
+CASHFREE_BASE_URL=https://sandbox.cashfree.com/verification
+
+CASHFREE_CLIENT_ID=YOUR_CLIENT_ID
+CASHFREE_CLIENT_SECRET=YOUR_CLIENT_SECRET

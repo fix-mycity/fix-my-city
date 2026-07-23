@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
+import { toastConfirm } from '../../utils/toastConfirm';
 
 import ComplaintTimeline from '../../components/waterAuthority/ComplaintTimeline';
 import ComplaintDetailsCard from '../../components/waterAuthority/ComplaintDetailsCard';
@@ -97,9 +98,9 @@ export default function ComplaintDetails() {
     handleUpdateStatus("REJECTED", reason || "Rejected by authority");
   };
   const handleClose = () => {
-    if (window.confirm("Are you sure you want to close this complaint?")) {
+    toastConfirm("Are you sure you want to close this complaint?", () => {
       handleUpdateStatus("CLOSED", "Resolved and closed by authority");
-    }
+    });
   };
 
   if (isLoading) {

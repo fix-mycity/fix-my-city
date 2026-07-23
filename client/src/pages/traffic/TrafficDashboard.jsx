@@ -1,9 +1,19 @@
 import React, { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { logoutUser } from '../../features/auth/authThunks';
-import { fetchTrafficComplaints } from '../../features/traffic/trafficThunks';
+import { fetchTrafficComplaints, assignTrafficIncident, closeTrafficIncident } from '../../features/traffic/trafficThunks';
+import TrafficPageHeader from '../../components/traffic/TrafficPageHeader';
+import TrafficStatsCard from '../../components/traffic/TrafficStatsCard';
+import ComplaintLocation from '../../components/shared/ComplaintLocation';
 import { toast } from 'react-hot-toast';
+import { toastConfirm } from '../../utils/toastConfirm';
 import { Link, useNavigate } from 'react-router-dom';
+
+const isVideoUrl = (url) => {
+  if (!url) return false;
+  const cleanUrl = url.toLowerCase().split('?')[0];
+  return cleanUrl.endsWith('.mp4') || cleanUrl.endsWith('.webm') || cleanUrl.endsWith('.ogg') || cleanUrl.endsWith('.mov') || cleanUrl.endsWith('.quicktime') || url.includes('/video');
+};
 
 const TrafficDashboard = () => {
   const dispatch = useDispatch();
@@ -14,6 +24,29 @@ const TrafficDashboard = () => {
   useEffect(() => {
     dispatch(fetchTrafficComplaints());
   }, [dispatch]);
+
+  const handleAssign = async (incidentId) => {
+    const workerId = window.prompt("Enter the Worker ID to assign to this incident (e.g., 5):");
+    if (workerId) {
+      try {
+        await dispatch(assignTrafficIncident({ incidentId, workerData: { worker_id: parseInt(workerId) } })).unwrap();
+        toast.success("Worker assigned successfully!");
+      } catch (err) {
+        toast.error(err || "Failed to assign worker.");
+      }
+    }
+  };
+
+  const handleClose = (incidentId) => {
+    toastConfirm("Are you sure you want to officially close this incident?", async () => {
+      try {
+        await dispatch(closeTrafficIncident(incidentId)).unwrap();
+        toast.success("Incident closed successfully!");
+      } catch (err) {
+        toast.error(err || "Failed to close incident.");
+      }
+    });
+  };
 
   const handleLogout = async () => {
     try {
@@ -56,10 +89,10 @@ const TrafficDashboard = () => {
             <span className="material-symbols-outlined mr-3">engineering</span>
             Workers
           </Link>
-          <a href="#" className="text-slate-400 hover:bg-slate-800 hover:text-white rounded-lg px-4 py-3 flex items-center transition-colors">
-            <span className="material-symbols-outlined mr-3">analytics</span>
-            Analytics
-          </a>
+          <Link to="/traffic/live-map" className="text-slate-400 hover:bg-slate-800 hover:text-white rounded-lg px-4 py-3 flex items-center transition-colors">
+            <span className="material-symbols-outlined mr-3">map</span>
+            Live Map
+          </Link>
         </nav>
  
         <div className="p-4 border-t border-slate-800 flex flex-col gap-4">
@@ -125,10 +158,28 @@ const TrafficDashboard = () => {
             
             {dashboardStatus === 'succeeded' && complaints.map((report) => (
               <div key={report.id} className="p-5 hover:bg-slate-50 transition-colors flex flex-col sm:flex-row gap-5">
-                <div 
-                  className="w-full sm:w-28 h-28 rounded-lg bg-cover bg-center shrink-0 border border-slate-200" 
-                  style={{ backgroundImage: `url('${report.image_url || 'https://via.placeholder.com/150'}')` }}
-                />
+                <div className="w-full sm:w-28 h-28 rounded-lg shrink-0 border border-slate-200 bg-slate-100 flex items-center justify-center overflow-hidden relative">
+                  {report.image_url ? (
+                    isVideoUrl(report.image_url) ? (
+                      <video 
+                        src={report.image_url} 
+                        muted 
+                        playsInline 
+                        autoPlay 
+                        loop 
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <img 
+                        src={report.image_url} 
+                        alt={report.title} 
+                        className="w-full h-full object-cover"
+                      />
+                    )
+                  ) : (
+                    <span className="material-symbols-outlined text-slate-355 text-3xl text-slate-300">image</span>
+                  )}
+                </div>
                 <div className="flex-grow flex flex-col justify-between">
                   <div className="flex justify-between items-start">
                     <div>
@@ -141,20 +192,49 @@ const TrafficDashboard = () => {
                     </div>
                     <span className={`text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-sm whitespace-nowrap ${
                       report.status === 'PENDING' ? 'bg-red-500 shadow-red-500/40' :
-                      report.status === 'ASSIGNED' ? 'bg-amber-500 shadow-amber-500/40' :
+                      report.status === 'ASSIGNED' ? 'bg-blue-500 shadow-blue-500/40' :
+                      report.status === 'RESOLVED' ? 'bg-purple-500 shadow-purple-500/40' :
                       'bg-emerald-500 shadow-emerald-500/40'
                     }`}>
                       {report.status}
                     </span>
                   </div>
-                  <div className="flex items-center gap-4 text-xs font-medium text-slate-500 mt-4 sm:mt-0">
-                    <span className="flex items-center gap-1">
-                      <span className="material-symbols-outlined text-[16px]">location_on</span> {report.location || 'Unknown'}
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <span className="material-symbols-outlined text-[16px]">calendar_today</span> 
-                      {new Date(report.created_at).toLocaleDateString()}
-                    </span>
+                  <div className="flex justify-between items-center mt-4 sm:mt-0">
+                    <div className="flex items-center gap-4 text-xs font-medium text-slate-500">
+                      <span className="flex items-center gap-1">
+                        <span className="material-symbols-outlined text-[16px]">location_on</span> 
+                        <ComplaintLocation lat={Number(report.location_lat || 0)} lng={Number(report.location_lng || 0)} />
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <span className="material-symbols-outlined text-[16px]">calendar_today</span> 
+                        {new Date(report.created_at).toLocaleDateString()}
+                      </span>
+                      {report.assigned_worker_id && (
+                        <span className="flex items-center gap-1 text-blue-600 bg-blue-50 px-2 py-1 rounded-md">
+                          <span className="material-symbols-outlined text-[16px]">engineering</span> 
+                          Worker #{report.assigned_worker_id}
+                        </span>
+                      )}
+                    </div>
+                    
+                    <div className="flex gap-2">
+                      {report.status === 'PENDING' && (
+                        <button 
+                          onClick={() => handleAssign(report.id)}
+                          className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold py-2 px-4 rounded-lg shadow-sm transition-colors"
+                        >
+                          Assign Worker
+                        </button>
+                      )}
+                      {report.status === 'RESOLVED' && (
+                        <button 
+                          onClick={() => handleClose(report.id)}
+                          className="bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold py-2 px-4 rounded-lg shadow-sm transition-colors"
+                        >
+                          Close Incident
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>

@@ -13,6 +13,8 @@ sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 from database import Base
 import modules.complaints.model
 import modules.users.model
+import modules.traffic_management.model
+import modules.workers.model
 
 # Load environment variables
 load_dotenv()
@@ -20,7 +22,10 @@ load_dotenv()
 # Define the tables that belong to city_operation_service
 CITY_OPS_TABLES = [
     "complaints",
-    "profiles"
+    "profiles",
+    "aadhaar_verifications",
+    "traffic_worker_profiles",
+    "worker_profiles"
 ]
 
 def include_object(object, name, type_, reflected, compare_to):
@@ -42,7 +47,9 @@ if not database_url:
 if database_url.startswith("postgres://"):
     database_url = database_url.replace("postgres://", "postgresql://", 1)
 
-config.set_main_option("sqlalchemy.url", database_url)
+# Escape '%' for configparser interpolation compatibility
+database_url_escaped = database_url.replace("%", "%%")
+config.set_main_option("sqlalchemy.url", database_url_escaped)
 
 # Interpret the config file for Python logging.
 if config.config_file_name is not None:

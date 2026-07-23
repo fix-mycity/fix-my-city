@@ -4,7 +4,6 @@ import { useSelector } from "react-redux";
 
 export default function LandingPage() {
   const navigate = useNavigate();
-  // Ensure your Redux state matches this structure, or provide a fallback
   const isAuthenticated = useSelector((state) => state.auth?.isAuthenticated || false);
 
   const [isScrolled, setIsScrolled] = useState(false);
@@ -30,7 +29,7 @@ export default function LandingPage() {
   return (
     <div className="antialiased min-h-screen flex flex-col font-sans text-slate-900 bg-slate-50">
       
-      {/* Navigation - Uses Footer Color Theme */}
+      {/* Navigation */}
       <header
         className={`fixed top-0 left-0 right-0 z-50 w-full transition-all duration-300 ${
           isScrolled ? "bg-[#1A365D] shadow-lg py-2" : "bg-[#1A365D] py-4"
@@ -85,7 +84,7 @@ export default function LandingPage() {
 
       <main className="flex-grow flex flex-col mt-20 md:mt-24">
         
-        {/* Hero Section - Uses Footer Color Theme */}
+        {/* Hero Section */}
         <section className="bg-[#1A365D] text-white py-16 md:py-20 px-6 md:px-12 w-full">
           <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             <div className="flex flex-col gap-6">
@@ -93,17 +92,13 @@ export default function LandingPage() {
                 Report It. <span className="text-blue-400">Track It.</span> Fix It.
               </h1>
               <p className="text-slate-300 text-lg md:text-xl max-w-xl leading-relaxed">
-                A smarter way for citizens and city authorities to work together. Report local issues in seconds and watch your community improve.
+                A smarter way for citizens, field officers, and city authorities to work together. Report local issues in seconds and watch your community improve.
               </p>
               <div className="flex flex-col sm:flex-row gap-4 mt-4">
                 <button onClick={handleReportClick} className="bg-blue-500 text-white font-bold px-8 py-4 rounded-lg hover:bg-blue-400 transition-colors shadow-lg flex items-center justify-center gap-2">
                   <span className="material-symbols-outlined">report</span>
                   Report an Issue
                 </button>
-                <a href="#how-it-works" className="border-2 border-slate-400 text-white font-bold px-8 py-4 rounded-lg hover:bg-slate-800 transition-colors flex items-center justify-center gap-2">
-                  <span className="material-symbols-outlined">info</span>
-                  Learn More
-                </a>
               </div>
             </div>
 
@@ -157,7 +152,7 @@ export default function LandingPage() {
             {[
               { title: "1. Report Issue", desc: "Submit details, location, and photos.", icon: "add_a_photo" },
               { title: "2. Auto Route", desc: "System directs it to the right department.", icon: "smart_toy" },
-              { title: "3. Fast Fix", desc: "Local teams address the problem.", icon: "engineering" },
+              { title: "3. Fast Fix", desc: "Local field officers address the problem.", icon: "engineering" },
               { title: "4. Get Updates", desc: "Receive real-time status notifications.", icon: "notifications_active" },
             ].map((step, idx) => (
               <div key={idx} className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100 flex flex-col items-center text-center">
@@ -171,7 +166,7 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* Simplified Features Section */}
+        {/* Features Section */}
         <section id="features" className="py-20 bg-slate-100 px-6 md:px-12 w-full scroll-mt-24">
           <div className="max-w-7xl mx-auto">
             <div className="text-center mb-16">
@@ -261,7 +256,6 @@ export default function LandingPage() {
             <div className="flex flex-col gap-3">
               <h4 className="text-blue-400 font-bold uppercase tracking-wider text-xs mb-2">Product</h4>
               <a className="text-sm text-slate-300 hover:text-white transition-colors" href="#features">Features</a>
-              <button onClick={() => navigate("/docs")} className="text-left text-sm text-slate-300 hover:text-white transition-colors">Documentation</button>
             </div>
             <div className="flex flex-col gap-3">
               <h4 className="text-blue-400 font-bold uppercase tracking-wider text-xs mb-2">Company</h4>
