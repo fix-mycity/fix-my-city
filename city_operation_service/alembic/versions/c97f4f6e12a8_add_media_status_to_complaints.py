@@ -19,8 +19,15 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    op.add_column('complaints', sa.Column('media_status', sa.String(length=50), nullable=True))
-    op.create_index(op.f('ix_complaints_media_status'), 'complaints', ['media_status'], unique=False)
+    bind = op.get_bind()
+    inspector = sa.inspect(bind)
+    columns = [c['name'] for c in inspector.get_columns('complaints')]
+    if 'media_status' not in columns:
+        op.add_column('complaints', sa.Column('media_status', sa.String(length=50), nullable=True))
+    
+    indexes = [idx['name'] for idx in inspector.get_indexes('complaints')]
+    if 'ix_complaints_media_status' not in indexes:
+        op.create_index(op.f('ix_complaints_media_status'), 'complaints', ['media_status'], unique=False)
 
 
 def downgrade() -> None:
