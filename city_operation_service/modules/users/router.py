@@ -10,7 +10,15 @@ from .schema import (
     ProfileResponseSchema,
     SavedLocationCreateSchema,
     SavedLocationUpdateSchema,
-    SavedLocationResponseSchema
+    SavedLocationResponseSchema,
+    AadhaarOtpRequestSchema,
+    AadhaarOtpResponseSchema,
+    AadhaarVerifyRequestSchema,
+    AadhaarVerifyResponseSchema,
+    DigiLockerInitRequestSchema,
+    DigiLockerInitResponseSchema,
+    DigiLockerStatusRequestSchema,
+    DigiLockerStatusResponseSchema
 )
 from .service import (
     get_or_create_profile,
@@ -19,7 +27,11 @@ from .service import (
     get_saved_locations,
     update_saved_location,
     delete_saved_location,
-    update_avatar_url
+    update_avatar_url,
+    generate_aadhaar_otp_service,
+    verify_aadhaar_otp_service,
+    init_digilocker_service,
+    check_digilocker_status_service
 )
 
 router = APIRouter(prefix="/users", tags=["Users"])
@@ -141,3 +153,41 @@ def remove_location(
             detail="Saved location not found"
         )
     return
+
+
+@router.post("/me/aadhaar/digilocker/init", response_model=DigiLockerInitResponseSchema)
+async def initiate_digilocker(
+    data: DigiLockerInitRequestSchema,
+    current_user: UserData = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Initiate a DigiLocker session for Aadhaar verification.
+    """
+    try:
+        res = await init_digilocker_service(db, current_user.id, data.redirect_url)
+        return res
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+
+
+@router.post("/me/aadhaar/digilocker/status", response_model=DigiLockerStatusResponseSchema)
+async def get_digilocker_status(
+    data: DigiLockerStatusRequestSchema,
+    current_user: UserData = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Check the status of a DigiLocker session and retrieve Aadhaar details if verified.
+    """
+    try:
+        res = await check_digilocker_status_service(db, current_user.id, data.verification_id)
+        return res
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )

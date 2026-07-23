@@ -23,6 +23,7 @@ load_dotenv()
 CITY_OPS_TABLES = [
     "complaints",
     "profiles",
+    "aadhaar_verifications",
     "traffic_worker_profiles",
     "worker_profiles"
 ]
@@ -46,7 +47,9 @@ if not database_url:
 if database_url.startswith("postgres://"):
     database_url = database_url.replace("postgres://", "postgresql://", 1)
 
-config.set_main_option("sqlalchemy.url", database_url)
+# Escape '%' for configparser interpolation compatibility
+database_url_escaped = database_url.replace("%", "%%")
+config.set_main_option("sqlalchemy.url", database_url_escaped)
 
 # Interpret the config file for Python logging.
 if config.config_file_name is not None:

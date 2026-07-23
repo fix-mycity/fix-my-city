@@ -38,6 +38,8 @@ class ProfileResponseSchema(BaseModel):
     phone_number: Optional[str]
     avatar_url: Optional[str]
     bio: Optional[str]
+    is_aadhaar_verified: bool
+    aadhaar_name: Optional[str]
     created_at: datetime
     updated_at: datetime
 
@@ -101,3 +103,64 @@ class SavedLocationResponseSchema(BaseModel):
     longitude: Optional[float]
     created_at: datetime
     updated_at: datetime
+
+
+class AadhaarOtpRequestSchema(BaseModel):
+    aadhaar_number: str = Field(..., pattern=r"^\d{12}$", description="12-digit Aadhaar number")
+
+
+class AadhaarOtpResponseSchema(BaseModel):
+    ref_id: str
+    status: str
+    message: str
+
+
+class AadhaarVerifyRequestSchema(BaseModel):
+    ref_id: str = Field(..., min_length=1, description="Cashfree reference ID")
+    otp: str = Field(..., pattern=r"^\d{6}$", description="6-digit Aadhaar OTP")
+
+
+class AadhaarVerifyDataSchema(BaseModel):
+    name: Optional[str] = None
+    gender: Optional[str] = None
+    dob: Optional[str] = None
+    address: Optional[str] = None
+    care_of: Optional[str] = None
+    district: Optional[str] = None
+    state: Optional[str] = None
+    pincode: Optional[str] = None
+    user_image: Optional[str] = None
+    mobile_number_exists: Optional[bool] = None
+    email_exists: Optional[bool] = None
+
+
+class AadhaarVerifyResponseSchema(BaseModel):
+    status: str
+    message: str
+    ref_id: str
+    data: Optional[AadhaarVerifyDataSchema] = None
+
+
+class DigiLockerInitRequestSchema(BaseModel):
+    redirect_url: str = Field(..., description="Redirect URL for user consent callback")
+
+
+class DigiLockerInitResponseSchema(BaseModel):
+    verification_id: str
+    reference_id: int
+    url: str
+    status: str
+    redirect_url: str
+
+
+class DigiLockerStatusRequestSchema(BaseModel):
+    verification_id: str = Field(..., description="Unique verification ID")
+
+
+class DigiLockerStatusResponseSchema(BaseModel):
+    status: str
+    verification_id: str
+    reference_id: int
+    name: Optional[str] = None
+    message: Optional[str] = None
+
