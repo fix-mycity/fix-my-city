@@ -1,11 +1,77 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import ComplaintLocation from './ComplaintLocation';
 import { downloadTaskPdfReport } from '../../services/workerService';
 import { toast } from 'react-hot-toast';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
+
+const isVideoUrl = (url) => {
+  if (!url) return false;
+  const cleanUrl = url.toLowerCase().split('?')[0];
+  return cleanUrl.endsWith('.mp4') || cleanUrl.endsWith('.webm') || cleanUrl.endsWith('.ogg') || cleanUrl.endsWith('.mov') || cleanUrl.endsWith('.quicktime') || url.includes('/video');
+};
 
 export default function ComplaintDetailsModal({ complaint, onClose, workerName = null, showImages = true }) {
   const [downloadingPdf, setDownloadingPdf] = useState(false);
-  const [lightboxImage, setLightboxImage] = useState(null);
+  const [lightboxMedia, setLightboxMedia] = useState(null); // { url, isVideo }
+  const mapRef = useRef(null);
+
+  useEffect(() => {
+    if (!complaint) return;
+    const lat = Number(complaint.location_lat || complaint.latitude || 0);
+    const lng = Number(complaint.location_lng || complaint.longitude || 0);
+
+    if (lat && lng && !mapRef.current) {
+      setTimeout(() => {
+        const container = document.getElementById(`modal-map-${complaint.id}`);
+        if (container) {
+          const mapInstance = L.map(container, {
+            zoomControl: false,
+            attributionControl: false
+          }).setView([lat, lng], 14);
+          
+          L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(mapInstance);
+          
+          const pinColor = {
+            traffic: '#f59e0b',
+            waste: '#ef4444',
+            water: '#3b82f6',
+            general: '#64748b'
+          }[complaint.category || complaint.department] || '#ef4444';
+
+          const customIcon = L.divIcon({
+            className: 'custom-map-pin',
+            html: `<div style="
+               background-color: ${pinColor};
+               width: 24px;
+               height: 24px;
+               border-radius: 50%;
+               border: 2px solid white;
+               box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+               display: flex;
+               align-items: center;
+               justify-content: center;
+               color: white;
+             ">
+               <span class="material-symbols-outlined" style="font-size: 14px; font-weight: bold;">location_on</span>
+             </div>`,
+             iconSize: [24, 24],
+             iconAnchor: [12, 24]
+          });
+
+          L.marker([lat, lng], { icon: customIcon }).addTo(mapInstance);
+          mapRef.current = mapInstance;
+        }
+      }, 100);
+    }
+
+    return () => {
+      if (mapRef.current) {
+        mapRef.current.remove();
+        mapRef.current = null;
+      }
+    };
+  }, [complaint]);
 
   if (!complaint) return null;
 
@@ -32,185 +98,272 @@ export default function ComplaintDetailsModal({ complaint, onClose, workerName =
     }
   };
 
-  const safeFormatDate = (dateStr) => {
-    if (!dateStr) return 'N/A';
-    try {
-      return new Date(dateStr).toLocaleString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-      });
-    } catch (e) {
-      return 'N/A';
+  const getStatusBadgeStyle = (status) => {
+    switch (status) {
+      case 'RESOLVED':
+      case 'CLOSED':
+        return 'bg-emerald-500 text-white shadow-emerald-500/20';
+      case 'IN_PROGRESS':
+      case 'ASSIGNED':
+        return 'bg-amber-500 text-white shadow-amber-500/20';
+      default:
+        return 'bg-red-500 text-white shadow-red-500/20';
+    }
+  };
+
+  const getDeptColor = (dept) => {
+    switch (dept) {
+      case 'traffic': return 'bg-amber-50 text-amber-700 border-amber-200';
+      case 'waste': return 'bg-red-50 text-red-700 border-red-200';
+      case 'water': return 'bg-blue-50 text-blue-700 border-blue-200';
+      default: return 'bg-slate-50 text-slate-700 border-slate-200';
+    }
+  };
+
+  const getDeptIcon = (dept) => {
+    switch (dept) {
+      case 'traffic': return 'warning';
+      case 'waste': return 'delete_sweep';
+      case 'water': return 'water_drop';
+      default: return 'help';
     }
   };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fadeIn" onClick={onClose}>
       <div 
-        className="bg-white rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-slate-200 flex flex-col"
+        className="bg-white rounded-3xl max-w-3xl w-full max-h-[92vh] overflow-hidden shadow-2xl border border-slate-100 flex flex-col transition-all scale-100 transform duration-300"
         onClick={(e) => e.stopPropagation()}
       >
         
-        {/* Header */}
-        <div className="p-6 border-b border-slate-200 bg-slate-50/80 flex justify-between items-start sticky top-0 bg-white z-10">
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <span className="px-2.5 py-0.5 text-xs font-bold rounded-md bg-blue-50 text-blue-700 border border-blue-200 uppercase tracking-wider">
-                {complaint.category || complaint.department || 'Field Incident'}
+        {/* Header Section */}
+        <div className="p-6 border-b border-slate-100 bg-slate-50/50 flex justify-between items-start sticky top-0 z-10 backdrop-blur-md">
+          <div className="space-y-1.5">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className={`px-3 py-1 text-xs font-black rounded-lg border flex items-center gap-1.5 uppercase tracking-wide ${getDeptColor(complaint.department)}`}>
+                <span className="material-symbols-outlined text-sm font-bold">{getDeptIcon(complaint.department)}</span>
+                {complaint.department || 'General'}
               </span>
-              <span className="text-xs font-mono text-slate-400">#FMC-COMP-{complaint.id}</span>
-              <span className={`px-2.5 py-0.5 text-xs font-bold rounded-full ${
-                complaint.status === 'RESOLVED' ? 'bg-purple-100 text-purple-800' :
-                complaint.status === 'CLOSED' ? 'bg-emerald-100 text-emerald-800' :
-                'bg-amber-100 text-amber-800'
-              }`}>
+              <span className="text-[11px] font-mono text-slate-400 font-bold bg-slate-100 px-2 py-0.5 rounded">#FMC-COMP-{complaint.id}</span>
+              <span className={`px-3 py-1 text-xs font-black rounded-full shadow-sm uppercase tracking-wide ${getStatusBadgeStyle(complaint.status)}`}>
                 {complaint.status}
               </span>
             </div>
-            <h2 className="text-xl font-bold text-slate-900">{complaint.title}</h2>
+            <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight leading-tight">{complaint.title}</h2>
           </div>
 
           <button 
             onClick={onClose}
-            className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-full transition-colors"
+            className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-200 rounded-full transition-all shrink-0"
           >
-            <span className="material-symbols-outlined">close</span>
+            <span className="material-symbols-outlined text-xl">close</span>
           </button>
         </div>
 
-        {/* Modal Body */}
-        <div className="p-6 space-y-6 flex-grow">
+        {/* Modal Scrollable Body */}
+        <div className="p-6 space-y-6 flex-grow overflow-y-auto">
           
           {/* Incident Description */}
-          <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-1">
-            <span className="text-xs font-bold text-slate-700 uppercase tracking-wider block">Description</span>
-            <p className="text-sm text-slate-800 leading-relaxed">{complaint.description}</p>
+          <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200/60 shadow-inner">
+            <span className="text-xs font-bold text-slate-450 uppercase tracking-wider block mb-1">Issue Description</span>
+            <p className="text-sm font-medium text-slate-750 leading-relaxed whitespace-pre-wrap">{complaint.description}</p>
           </div>
 
-          {/* Location & Map Link */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-1">
-              <span className="text-xs font-bold text-slate-700 uppercase tracking-wider block flex items-center gap-1">
-                <span className="material-symbols-outlined text-rose-500 text-base">location_on</span>
-                Location & Address
-              </span>
-              <div className="text-sm text-slate-800 font-medium">
-                <ComplaintLocation lat={lat} lng={lng} />
+          {/* Media Evidence Showcase */}
+          {showImages && (
+            <div className="space-y-3">
+              <h3 className="text-xs font-bold text-slate-450 uppercase tracking-wider flex items-center gap-1">
+                <span className="material-symbols-outlined text-blue-600 text-base">photo_library</span>
+                Visual Evidence
+              </h3>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                
+                {/* Before Fix Frame */}
+                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-250/60 flex flex-col justify-between h-56">
+                  <span className="text-[11px] font-extrabold text-amber-800 uppercase tracking-wider block mb-2">Original Upload (Citizen)</span>
+                  {beforeImg ? (
+                    <div 
+                      onClick={() => setLightboxMedia({ url: beforeImg, isVideo: isVideoUrl(beforeImg) })}
+                      className="w-full flex-1 rounded-xl overflow-hidden border border-slate-200 cursor-pointer relative group bg-black"
+                    >
+                      {isVideoUrl(beforeImg) ? (
+                        <video src={beforeImg} muted className="w-full h-full object-cover" />
+                      ) : (
+                        <img src={beforeImg} alt="Before Fix" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                      )}
+                      <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-xs font-bold gap-1">
+                        <span className="material-symbols-outlined text-base">
+                          {isVideoUrl(beforeImg) ? 'play_circle' : 'zoom_in'}
+                        </span>
+                        {isVideoUrl(beforeImg) ? 'Play Video' : 'Enlarge'}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="w-full flex-1 rounded-xl border border-dashed border-slate-300 bg-white flex flex-col items-center justify-center text-slate-400 text-xs">
+                      <span className="material-symbols-outlined text-3xl mb-1 text-slate-350">image_not_supported</span>
+                      No media uploaded
+                    </div>
+                  )}
+                </div>
+
+                {/* After Fix Frame */}
+                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-250/60 flex flex-col justify-between h-56">
+                  <span className="text-[11px] font-extrabold text-emerald-800 uppercase tracking-wider block mb-2">Resolution Proof (Worker)</span>
+                  {afterImg ? (
+                    <div 
+                      onClick={() => setLightboxMedia({ url: afterImg, isVideo: isVideoUrl(afterImg) })}
+                      className="w-full flex-1 rounded-xl overflow-hidden border border-slate-200 cursor-pointer relative group bg-black"
+                    >
+                      {isVideoUrl(afterImg) ? (
+                        <video src={afterImg} muted className="w-full h-full object-cover" />
+                      ) : (
+                        <img src={afterImg} alt="After Fix" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                      )}
+                      <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-xs font-bold gap-1">
+                        <span className="material-symbols-outlined text-base">
+                          {isVideoUrl(afterImg) ? 'play_circle' : 'zoom_in'}
+                        </span>
+                        {isVideoUrl(afterImg) ? 'Play Video' : 'Enlarge'}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="w-full flex-1 rounded-xl border border-dashed border-slate-300 bg-white flex flex-col items-center justify-center text-slate-400 text-xs">
+                      <span className="material-symbols-outlined text-3xl mb-1 text-slate-350">add_a_photo</span>
+                      {isResolved ? 'No resolution media uploaded' : 'Awaiting worker completion upload'}
+                    </div>
+                  )}
+                </div>
               </div>
-              <p className="text-xs text-slate-400">GPS: {lat.toFixed(4)}, {lng.toFixed(4)}</p>
+            </div>
+          )}
+
+          {/* Location and Map Section */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+            
+            {/* Coordinates & Details */}
+            <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200/60 flex flex-col justify-between h-48">
+              <div>
+                <span className="text-xs font-bold text-slate-450 uppercase tracking-wider block mb-2 flex items-center gap-1">
+                  <span className="material-symbols-outlined text-rose-500 text-base">location_on</span>
+                  Reported Location
+                </span>
+                <div className="text-sm font-bold text-slate-800 leading-snug">
+                  <ComplaintLocation lat={lat} lng={lng} />
+                </div>
+                <p className="text-[10px] text-slate-400 font-semibold mt-1">GPS Coordinates: {lat.toFixed(6)}, {lng.toFixed(6)}</p>
+              </div>
+
               {lat !== 0 && (
                 <a 
-                  href={`https://maps.google.com/?q=${lat},${lng}`} 
+                  href={`https://www.google.com/maps/search/?api=1&query=${lat},${lng}`} 
                   target="_blank" 
-                  rel="noreferrer"
-                  className="inline-flex items-center gap-1 text-xs font-bold text-blue-600 hover:underline mt-1"
+                  rel="noopener noreferrer"
+                  className="w-full flex items-center justify-center gap-1.5 py-2.5 bg-white border border-slate-200 text-xs font-bold text-slate-700 rounded-xl hover:bg-slate-100 hover:text-slate-900 transition-all shadow-sm shrink-0"
                 >
-                  <span className="material-symbols-outlined text-sm">open_in_new</span>
+                  <span className="material-symbols-outlined text-base">map</span>
                   Open in Google Maps
                 </a>
               )}
             </div>
 
-            {/* Officer & Dates */}
-            <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2 text-xs">
-              <div>
-                <span className="text-slate-400 font-medium block">Reported On:</span>
-                <span className="font-semibold text-slate-800">{safeFormatDate(complaint.created_at)}</span>
+            {/* Interactive Leaflet Mini-Map */}
+            <div 
+              id={`modal-map-${complaint.id}`} 
+              className="w-full h-48 rounded-2xl border border-slate-200 overflow-hidden shadow-sm relative z-0 bg-slate-100"
+            />
+          </div>
+
+          {/* Official Resolution report text */}
+          {complaint.resolution_report && (
+            <div className="bg-emerald-50/70 p-5 rounded-2xl border border-emerald-100 shadow-sm space-y-1">
+              <span className="text-xs font-bold text-emerald-800 uppercase tracking-wider block flex items-center gap-1">
+                <span className="material-symbols-outlined text-sm font-bold">check_circle</span>
+                Official Resolution Notes
+              </span>
+              <p className="text-sm font-semibold text-emerald-900 whitespace-pre-wrap leading-relaxed">
+                {complaint.resolution_report}
+              </p>
+            </div>
+          )}
+
+          {/* Department Tracking Timeline */}
+          <div className="border-t border-slate-100 pt-5 space-y-4">
+            <h4 className="text-xs font-bold text-slate-450 uppercase tracking-wider">Tracking Timeline</h4>
+            
+            <div className="space-y-4 text-xs">
+              
+              {/* Step 1: Filed */}
+              <div className="flex gap-3">
+                <div className="flex flex-col items-center">
+                  <span className="material-symbols-outlined p-1 rounded-full text-xs shrink-0 bg-blue-50 text-blue-600 border border-blue-100 font-bold">
+                    done
+                  </span>
+                  <div className="w-[1px] bg-slate-200 flex-grow my-1"></div>
+                </div>
+                <div className="pt-0.5">
+                  <p className="font-extrabold text-slate-800">Issue Reported</p>
+                  <p className="text-[10px] text-slate-500 mt-0.5">
+                    Filed successfully by citizen on {new Date(complaint.created_at).toLocaleString()}
+                  </p>
+                </div>
               </div>
-              {complaint.resolved_at && (
-                <div>
-                  <span className="text-slate-400 font-medium block">Resolved On:</span>
-                  <span className="font-semibold text-slate-800">{safeFormatDate(complaint.resolved_at)}</span>
+
+              {/* Step 2: Assigned */}
+              <div className="flex gap-3">
+                <div className="flex flex-col items-center">
+                  <span className={`material-symbols-outlined p-1 rounded-full text-xs shrink-0 font-bold ${
+                    complaint.assigned_worker_id 
+                      ? 'bg-blue-50 text-blue-600 border border-blue-100' 
+                      : 'bg-slate-50 text-slate-400 border border-slate-200'
+                  }`}>
+                    {complaint.assigned_worker_id ? 'done' : 'person'}
+                  </span>
+                  <div className="w-[1px] bg-slate-200 flex-grow my-1"></div>
                 </div>
-              )}
-              {workerName && (
-                <div>
-                  <span className="text-slate-400 font-medium block">Assigned Officer:</span>
-                  <span className="font-bold text-blue-700">{workerName}</span>
+                <div className="pt-0.5">
+                  <p className="font-extrabold text-slate-800">Worker Assignment</p>
+                  <p className="text-[10px] text-slate-500 mt-0.5">
+                    {complaint.assigned_worker_id 
+                      ? `Assigned to worker ID #${complaint.assigned_worker_id} ${workerName ? `(${workerName})` : ''}` 
+                      : 'Awaiting review and worker allocation from department admin'}
+                  </p>
                 </div>
-              )}
+              </div>
+
+              {/* Step 3: Resolved */}
+              <div className="flex gap-3">
+                <div className="flex flex-col items-center">
+                  <span className={`material-symbols-outlined p-1 rounded-full text-xs shrink-0 font-bold ${
+                    isResolved
+                      ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/20' 
+                      : 'bg-slate-50 text-slate-400 border border-slate-200'
+                  }`}>
+                    {isResolved ? 'check' : 'task_alt'}
+                  </span>
+                </div>
+                <div className="pt-0.5">
+                  <p className="font-extrabold text-slate-800">Resolution Status</p>
+                  <p className="text-[10px] text-slate-500 mt-0.5">
+                    {isResolved 
+                      ? `Resolved successfully ${complaint.resolved_at ? `on ${new Date(complaint.resolved_at).toLocaleString()}` : ''}` 
+                      : 'Pending final review and field verification'}
+                  </p>
+                </div>
+              </div>
+
             </div>
           </div>
 
-          {/* Before & After Visual Evidence Section */}
-          {showImages && (
-            <div className="space-y-3">
-              <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1">
-                <span className="material-symbols-outlined text-blue-600 text-base">photo_library</span>
-                Complaint Visual Evidence
-              </h3>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {/* Before Fix */}
-                <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-2">
-                  <span className="text-xs font-bold text-amber-700 block">Before Fix (Citizen Photo)</span>
-                  {beforeImg ? (
-                    <div 
-                      onClick={() => setLightboxImage(beforeImg)}
-                      className="w-full h-44 rounded-lg overflow-hidden border border-slate-200 cursor-pointer relative group bg-slate-900/10"
-                    >
-                      <img src={beforeImg} alt="Before Fix" className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
-                      <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-xs font-bold gap-1">
-                        <span className="material-symbols-outlined text-base">zoom_in</span>
-                        Enlarge
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="w-full h-44 rounded-lg border border-dashed border-slate-300 bg-white flex flex-col items-center justify-center text-slate-400 text-xs">
-                      <span className="material-symbols-outlined text-3xl mb-1">image_not_supported</span>
-                      No before image uploaded
-                    </div>
-                  )}
-                </div>
-
-                {/* After Fix */}
-                <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-2">
-                  <span className="text-xs font-bold text-emerald-700 block">After Fix (Officer Proof)</span>
-                  {afterImg ? (
-                    <div 
-                      onClick={() => setLightboxImage(afterImg)}
-                      className="w-full h-44 rounded-lg overflow-hidden border border-slate-200 cursor-pointer relative group bg-slate-900/10"
-                    >
-                      <img src={afterImg} alt="After Fix" className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
-                      <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-xs font-bold gap-1">
-                        <span className="material-symbols-outlined text-base">zoom_in</span>
-                        Enlarge
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="w-full h-44 rounded-lg border border-dashed border-slate-300 bg-white flex flex-col items-center justify-center text-slate-400 text-xs">
-                      <span className="material-symbols-outlined text-3xl mb-1">add_a_photo</span>
-                      {isResolved ? 'No after photo provided' : 'Awaiting completion upload'}
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Worker Resolution Notes */}
-          {complaint.resolution_report && (
-            <div className="bg-emerald-50 p-4 rounded-xl border border-emerald-200 space-y-1">
-              <span className="text-xs font-bold text-emerald-900 uppercase tracking-wider block flex items-center gap-1">
-                <span className="material-symbols-outlined text-sm">task_alt</span>
-                Worker Resolution Summary Notes
-              </span>
-              <p className="text-sm text-emerald-950 font-medium">{complaint.resolution_report}</p>
-            </div>
-          )}
-
         </div>
 
-        {/* Modal Footer */}
-        <div className="p-4 border-t border-slate-200 bg-slate-50 flex justify-between items-center sticky bottom-0 bg-white z-10">
+        {/* Modal Footer Section */}
+        <div className="p-4 border-t border-slate-100 bg-slate-50/50 flex justify-between items-center sticky bottom-0 z-10 backdrop-blur-md">
           {isResolved ? (
             <button
               onClick={handleDownloadPdf}
               disabled={downloadingPdf}
-              className="px-4 py-2 text-xs font-bold text-slate-800 bg-white hover:bg-slate-100 border border-slate-300 rounded-xl transition-all shadow-sm flex items-center gap-1.5 disabled:opacity-50"
+              className="px-4 py-2.5 text-xs font-bold text-slate-800 bg-white hover:bg-slate-100 border border-slate-250 rounded-xl transition-all shadow-sm flex items-center gap-1.5 disabled:opacity-50"
             >
               {downloadingPdf ? (
                 <span className="material-symbols-outlined animate-spin text-sm text-blue-600">sync</span>
@@ -219,11 +372,11 @@ export default function ComplaintDetailsModal({ complaint, onClose, workerName =
               )}
               Download PDF Report
             </button>
-          ) : <div></div>}
+          ) : <div />}
 
           <button
             onClick={onClose}
-            className="px-4 py-2 text-xs font-bold text-white bg-slate-800 hover:bg-slate-700 rounded-xl transition-colors shadow-sm"
+            className="px-5 py-2.5 text-xs font-black text-white bg-slate-900 hover:bg-slate-850 rounded-xl transition-colors shadow-md"
           >
             Close Window
           </button>
@@ -231,17 +384,21 @@ export default function ComplaintDetailsModal({ complaint, onClose, workerName =
 
       </div>
 
-      {/* Lightbox Image Preview */}
-      {lightboxImage && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/90 backdrop-blur-md" onClick={() => setLightboxImage(null)}>
-          <div className="relative max-w-4xl max-h-[90vh] overflow-hidden rounded-2xl bg-black p-2 border border-slate-700 shadow-2xl" onClick={e => e.stopPropagation()}>
+      {/* Lightbox Media Player Overlay */}
+      {lightboxMedia && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-955/90 backdrop-blur-md" onClick={() => setLightboxMedia(null)}>
+          <div className="relative max-w-4xl max-h-[90vh] overflow-hidden rounded-3xl bg-black p-2 border border-slate-800 shadow-2xl" onClick={e => e.stopPropagation()}>
             <button 
-              onClick={() => setLightboxImage(null)}
-              className="absolute top-4 right-4 bg-slate-900/80 hover:bg-slate-800 text-white p-2 rounded-full z-10"
+              onClick={() => setLightboxMedia(null)}
+              className="absolute top-4 right-4 bg-slate-900/80 hover:bg-slate-850 text-white p-2 rounded-full z-20 flex items-center justify-center transition-colors"
             >
-              <span className="material-symbols-outlined text-xl">close</span>
+              <span className="material-symbols-outlined text-lg font-bold">close</span>
             </button>
-            <img src={lightboxImage} alt="Enlarged Visual" className="max-w-full max-h-[85vh] object-contain rounded-xl" />
+            {lightboxMedia.isVideo ? (
+              <video src={lightboxMedia.url} controls autoPlay className="max-w-full max-h-[85vh] object-contain rounded-2xl" />
+            ) : (
+              <img src={lightboxMedia.url} alt="Enlarged visual" className="max-w-full max-h-[85vh] object-contain rounded-2xl" />
+            )}
           </div>
         </div>
       )}

@@ -1,12 +1,16 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import { getMyComplaintsApi } from '../api/complaintsApi';
 import Navbar from '../components/Navbar';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
+import ComplaintDetailsModal from '../components/shared/ComplaintDetailsModal';
 
 const isVideoUrl = (url) => {
   if (!url) return false;
   const cleanUrl = url.toLowerCase().split('?')[0];
+  return cleanUrl.endsWith('.mp4') || cleanUrl.endsWith('.webm') || cleanUrl.endsWith('.ogg') || cleanUrl.endsWith('.mov') || cleanUrl.endsWith('.quicktime') || url.includes('/video');
 };
 
 import ComplaintLocation from '../components/shared/ComplaintLocation';
@@ -18,6 +22,63 @@ const ReportsPage = () => {
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [searchQuery, setSearchQuery] = useState('');
+  const [showDetailsModalMobile, setShowDetailsModalMobile] = useState(false);
+  const rightMapRef = useRef(null);
+
+  useEffect(() => {
+    if (!selectedReport) return;
+    const lat = Number(selectedReport.location_lat || selectedReport.latitude || 0);
+    const lng = Number(selectedReport.location_lng || selectedReport.longitude || 0);
+
+    if (lat && lng) {
+      setTimeout(() => {
+        const container = document.getElementById(`right-pane-map-${selectedReport.id}`);
+        if (container) {
+          if (rightMapRef.current) {
+            rightMapRef.current.remove();
+            rightMapRef.current = null;
+          }
+          
+          const mapInstance = L.map(container, {
+            zoomControl: false,
+            attributionControl: false
+          }).setView([lat, lng], 14);
+          
+          L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(mapInstance);
+          
+          const pinColor = {
+            traffic: '#f59e0b',
+            waste: '#ef4444',
+            water: '#3b82f6',
+            general: '#64748b'
+          }[selectedReport.department] || '#ef4444';
+
+          const customIcon = L.divIcon({
+            className: 'custom-map-pin',
+            html: `<div style="
+               background-color: ${pinColor};
+               width: 24px;
+               height: 24px;
+               border-radius: 50%;
+               border: 2px solid white;
+               box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+               display: flex;
+               align-items: center;
+               justify-content: center;
+               color: white;
+             ">
+               <span class="material-symbols-outlined" style="font-size: 14px; font-weight: bold;">location_on</span>
+             </div>`,
+             iconSize: [24, 24],
+             iconAnchor: [12, 24]
+          });
+
+          L.marker([lat, lng], { icon: customIcon }).addTo(mapInstance);
+          rightMapRef.current = mapInstance;
+        }
+      }, 100);
+    }
+  }, [selectedReport]);
 
   const loadReports = async () => {
     try {
@@ -191,7 +252,12 @@ const ReportsPage = () => {
               filteredComplaints.map((report) => (
                 <button
                   key={report.id}
-                  onClick={() => setSelectedReport(report)}
+                  onClick={() => {
+                    setSelectedReport(report);
+                    if (window.innerWidth < 1024) {
+                      setShowDetailsModalMobile(true);
+                    }
+                  }}
                   className={`w-full text-left p-4 flex gap-4 transition-all border-l-4 ${
                     selectedReport?.id === report.id 
                       ? 'bg-blue-50/40 border-blue-600 hover:bg-blue-50/50' 
@@ -293,7 +359,7 @@ const ReportsPage = () => {
                 <div className="flex justify-between items-start gap-4 border-b border-slate-100 pb-5">
                   <div>
                     <h2 className="text-2xl font-black text-slate-900 tracking-tight leading-tight">{selectedReport.title}</h2>
-                    <p className="text-xs text-slate-400 font-semibold mt-1">
+                    <p className="text-xs text-slate-450 font-semibold mt-1">
                       Report ID: #{selectedReport.id} • Filed on {new Date(selectedReport.created_at).toLocaleString()}
                     </p>
                   </div>
@@ -313,82 +379,160 @@ const ReportsPage = () => {
                   </p>
                 </div>
 
-                {/* Location Card */}
-                <div>
-                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Location details</h4>
-                  <div className="p-4 bg-slate-50 rounded-xl border border-slate-100 flex items-center justify-between gap-4">
-                    <div className="flex items-start gap-3 flex-grow">
-                      <span className="material-symbols-outlined text-blue-600 bg-blue-50 border border-blue-100 p-2 rounded-lg text-xl mt-0.5 shrink-0">location_on</span>
-                      <div>
-                        <p className="text-xs font-bold text-slate-800 leading-tight">
-                          <ComplaintLocation lat={selectedReport.location_lat} lng={selectedReport.location_lng} />
-                        </p>
-                        <p className="text-[10px] text-slate-400 font-semibold mt-1">
-                          Coordinates: {selectedReport.location_lat.toFixed(6)}, {selectedReport.location_lng.toFixed(6)}
-                        </p>
+                {/* Visual Evidence Comparison */}
+                <div className="space-y-3">
+                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                    <span className="material-symbols-outlined text-blue-600 text-base">photo_library</span>
+                    Visual Evidence
+                  </h4>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {/* Before */}
+                    <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 flex flex-col justify-between h-48">
+                      <span className="text-[10px] font-extrabold text-amber-700 uppercase tracking-wider block mb-1">Before Fix (Citizen Upload)</span>
+                      {selectedReport.image_url ? (
+                        <div className="w-full flex-1 rounded-lg overflow-hidden border border-slate-200 relative bg-black">
+                          {isVideoUrl(selectedReport.image_url) ? (
+                            <video src={selectedReport.image_url} controls className="w-full h-full object-cover" />
+                          ) : (
+                            <img src={selectedReport.image_url} alt="Before Fix" className="w-full h-full object-cover" />
+                          )}
+                        </div>
+                      ) : (
+                        <div className="w-full flex-1 rounded-lg border border-dashed border-slate-350 bg-white flex flex-col items-center justify-center text-slate-400 text-xs">
+                          <span className="material-symbols-outlined text-2xl mb-1 text-slate-350">image_not_supported</span>
+                          No before media
+                        </div>
+                      )}
+                    </div>
+
+                    {/* After */}
+                    <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 flex flex-col justify-between h-48">
+                      <span className="text-[10px] font-extrabold text-emerald-700 uppercase tracking-wider block mb-1">After Fix (Worker Proof)</span>
+                      {selectedReport.resolution_image ? (
+                        <div className="w-full flex-1 rounded-lg overflow-hidden border border-slate-200 relative bg-black">
+                          {isVideoUrl(selectedReport.resolution_image) ? (
+                            <video src={selectedReport.resolution_image} controls className="w-full h-full object-cover" />
+                          ) : (
+                            <img src={selectedReport.resolution_image} alt="After Fix" className="w-full h-full object-cover" />
+                          )}
+                        </div>
+                      ) : (
+                        <div className="w-full flex-1 rounded-lg border border-dashed border-slate-300 bg-white flex flex-col items-center justify-center text-slate-400 text-xs">
+                          <span className="material-symbols-outlined text-2xl mb-1 text-slate-350">add_a_photo</span>
+                          {selectedReport.status === 'RESOLVED' || selectedReport.status === 'CLOSED' ? 'No resolution media' : 'Awaiting completion upload'}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Location and Interactive Map Card */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="p-4 bg-slate-50 rounded-xl border border-slate-100 flex flex-col justify-between h-40">
+                    <div>
+                      <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1">Location details</span>
+                      <div className="text-xs font-bold text-slate-850 leading-tight">
+                        <ComplaintLocation lat={selectedReport.location_lat} lng={selectedReport.location_lng} />
                       </div>
+                      <p className="text-[9px] text-slate-400 font-semibold mt-1">
+                        Coordinates: {selectedReport.location_lat.toFixed(6)}, {selectedReport.location_lng.toFixed(6)}
+                      </p>
                     </div>
                     
                     <a 
                       href={`https://www.google.com/maps/search/?api=1&query=${selectedReport.location_lat},${selectedReport.location_lng}`}
                       target="_blank" 
                       rel="noopener noreferrer"
-                      className="shrink-0 flex items-center gap-1 px-4 py-2 bg-white border border-slate-200 text-xs font-bold text-slate-700 rounded-lg hover:bg-slate-100 hover:text-slate-900 transition-all shadow-sm"
+                      className="shrink-0 flex items-center justify-center gap-1.5 py-2 bg-white border border-slate-200 text-xs font-bold text-slate-705 rounded-lg hover:bg-slate-100 hover:text-slate-900 transition-all shadow-sm"
                     >
                       <span className="material-symbols-outlined text-sm">map</span>
                       Google Maps
                     </a>
                   </div>
+
+                  {/* Interactive Leaflet Map Div */}
+                  <div 
+                    id={`right-pane-map-${selectedReport.id}`} 
+                    className="w-full h-40 rounded-xl border border-slate-205 overflow-hidden shadow-sm relative z-0 bg-slate-100"
+                  />
                 </div>
 
-                {/* Department worker & Resolution section */}
+                {/* Official Resolution Summary */}
+                {selectedReport.resolution_report && (
+                  <div className="bg-emerald-50/70 p-4 rounded-xl border border-emerald-100 shadow-sm space-y-1">
+                    <span className="text-xs font-bold text-emerald-800 uppercase tracking-wider block flex items-center gap-1">
+                      <span className="material-symbols-outlined text-sm font-bold">check_circle</span>
+                      Official Resolution Notes
+                    </span>
+                    <p className="text-sm font-semibold text-emerald-900 whitespace-pre-wrap leading-relaxed">
+                      {selectedReport.resolution_report}
+                    </p>
+                  </div>
+                )}
+
+                {/* Department worker & Timeline section */}
                 <div className="border-t border-slate-100 pt-5 space-y-4">
-                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Department Tracking Timeline</h4>
+                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Tracking Timeline</h4>
                   
                   <div className="space-y-4 text-xs">
                     
-                    {/* Step 1: Assigned */}
+                    {/* Step 1: Filed */}
                     <div className="flex gap-3">
                       <div className="flex flex-col items-center">
-                        <span className={`material-symbols-outlined p-1 rounded-full text-xs shrink-0 ${
-                          selectedReport.assigned_worker_id 
-                            ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' 
-                            : 'bg-slate-50 text-slate-400 border border-slate-200'
-                        }`}>
-                          {selectedReport.assigned_worker_id ? 'check' : 'person'}
+                        <span className="material-symbols-outlined p-0.5 rounded-full text-[10px] shrink-0 bg-blue-50 text-blue-600 border border-blue-100 font-bold">
+                          done
                         </span>
                         <div className="w-[1px] bg-slate-200 flex-grow my-1"></div>
                       </div>
                       <div className="pt-0.5">
-                        <p className="font-bold text-slate-800">Assignment Status</p>
+                        <p className="font-extrabold text-slate-800">Issue Reported</p>
                         <p className="text-[10px] text-slate-500 mt-0.5">
-                          {selectedReport.assigned_worker_id 
-                            ? `Assigned to department worker #${selectedReport.assigned_worker_id}` 
-                            : 'Awaiting worker allocation from department administrator'}
+                          Filed successfully by citizen on {new Date(selectedReport.created_at).toLocaleString()}
                         </p>
                       </div>
                     </div>
 
-                    {/* Step 2: Resolution Notes */}
+                    {/* Step 2: Assigned */}
                     <div className="flex gap-3">
-                      <span className={`material-symbols-outlined p-1 rounded-full text-xs shrink-0 h-fit ${
-                        selectedReport.status === 'RESOLVED' || selectedReport.status === 'CLOSED'
-                          ? 'bg-emerald-500 text-white shadow-emerald-500/20 shadow-md' 
-                          : 'bg-slate-50 text-slate-400 border border-slate-200'
-                      }`}>
-                        {selectedReport.status === 'RESOLVED' || selectedReport.status === 'CLOSED' ? 'check' : 'task_alt'}
-                      </span>
+                      <div className="flex flex-col items-center">
+                        <span className={`material-symbols-outlined p-0.5 rounded-full text-[10px] shrink-0 font-bold ${
+                          selectedReport.assigned_worker_id 
+                            ? 'bg-blue-50 text-blue-600 border border-blue-100' 
+                            : 'bg-slate-50 text-slate-400 border border-slate-200'
+                        }`}>
+                          {selectedReport.assigned_worker_id ? 'done' : 'person'}
+                        </span>
+                        <div className="w-[1px] bg-slate-200 flex-grow my-1"></div>
+                      </div>
                       <div className="pt-0.5">
-                        <p className="font-bold text-slate-800">Official Resolution notes</p>
-                        {selectedReport.resolution_report ? (
-                          <div className="mt-2 p-3.5 bg-emerald-50/50 rounded-xl border border-emerald-100 text-emerald-800 font-medium whitespace-pre-wrap leading-relaxed">
-                            {selectedReport.resolution_report}
-                          </div>
-                        ) : (
-                          <p className="text-[10px] text-slate-500 mt-0.5">
-                            Work is currently in progress. Updates will be posted here as soon as they are submitted by the department worker.
-                          </p>
-                        )}
+                        <p className="font-extrabold text-slate-800">Worker Assignment</p>
+                        <p className="text-[10px] text-slate-500 mt-0.5">
+                          {selectedReport.assigned_worker_id 
+                            ? `Assigned to worker ID #${selectedReport.assigned_worker_id}` 
+                            : 'Awaiting review and worker allocation'}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Step 3: Resolved */}
+                    <div className="flex gap-3">
+                      <div className="flex flex-col items-center">
+                        <span className={`material-symbols-outlined p-0.5 rounded-full text-[10px] shrink-0 font-bold ${
+                          selectedReport.status === 'RESOLVED' || selectedReport.status === 'CLOSED'
+                            ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/20' 
+                            : 'bg-slate-50 text-slate-400 border border-slate-200'
+                        }`}>
+                          {selectedReport.status === 'RESOLVED' || selectedReport.status === 'CLOSED' ? 'check' : 'task_alt'}
+                        </span>
+                      </div>
+                      <div className="pt-0.5">
+                        <p className="font-extrabold text-slate-800">Resolution Status</p>
+                        <p className="text-[10px] text-slate-500 mt-0.5">
+                          {selectedReport.status === 'RESOLVED' || selectedReport.status === 'CLOSED'
+                            ? `Resolved successfully ${selectedReport.resolved_at ? `on ${new Date(selectedReport.resolved_at).toLocaleString()}` : ''}`
+                            : 'Pending final review and verification'}
+                        </p>
                       </div>
                     </div>
 
@@ -403,13 +547,20 @@ const ReportsPage = () => {
               <span className="material-symbols-outlined text-slate-200 text-7xl mb-4 select-none">receipt_long</span>
               <h3 className="text-xl font-bold text-slate-700">Select a Report</h3>
               <p className="text-slate-400 max-w-sm font-semibold text-xs mt-1">
-                Click on any report in the left sidebar to view its category, uploaded photo, map coordinates, and tracking timeline.
+                Click on any report in the left sidebar to view its category, uploaded photo/video, map coordinates, and tracking timeline.
               </p>
             </div>
           )}
         </div>
 
       </div>
+
+      {showDetailsModalMobile && selectedReport && (
+        <ComplaintDetailsModal 
+          complaint={selectedReport} 
+          onClose={() => setShowDetailsModalMobile(false)} 
+        />
+      )}
 
     </div>
   );
