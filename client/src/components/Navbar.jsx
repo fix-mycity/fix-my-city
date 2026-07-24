@@ -40,8 +40,7 @@ export default function Navbar() {
 
   const navItems = [
     { label: 'Dashboard', path: '/dashboard', icon: 'dashboard' },
-    { label: 'Analytics', path: '#', icon: 'analytics' },
-    { label: 'Community', path: '#', icon: 'groups' },
+    { label: 'Feed', path: '/feed', icon: 'forum' },
     { label: 'Reports', path: '/reports', icon: 'description' }
   ];
 

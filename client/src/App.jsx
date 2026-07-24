@@ -16,6 +16,7 @@ import PrivacyPolicy from './pages/PrivacyPolicy';
 import UserDashboard from './pages/UserDashboard';
 import ProfilePage from './pages/ProfilePage';
 import ReportsPage from './pages/ReportsPage';
+import FeedPage from './pages/FeedPage';
 
 import ProtectedRoute from './routes/ProtectedRoute';
 import PublicRoute from './routes/PublicRoute';
@@ -139,6 +140,15 @@ export default function App() {
           element={
             <ProtectedRoute>
               <ProfilePage />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/feed"
+          element={
+            <ProtectedRoute>
+              <FeedPage />
             </ProtectedRoute>
           }
         />
