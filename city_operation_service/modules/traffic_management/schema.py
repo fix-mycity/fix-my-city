@@ -36,6 +36,23 @@ class WorkerCreateSchema(BaseModel):
     joining_date: Optional[datetime] = None
     emergency_contact_phone: Optional[str] = None
 
+    @field_validator("pincode")
+    @classmethod
+    def validate_pincode(cls, v: str) -> str:
+        if v:
+            v = v.strip()
+            import re
+            if not re.fullmatch(r"\d{6}", v):
+                raise ValueError("Please enter a valid 6-digit pincode.")
+        return v
+
+    @field_validator("password")
+    @classmethod
+    def validate_password(cls, v: str) -> str:
+        if v and len(v) < 8:
+            raise ValueError("Password must be at least 8 characters.")
+        return v
+
 class WorkerUpdateSchema(BaseModel):
     first_name: Optional[str] = None
     last_name: Optional[str] = None
@@ -62,8 +79,10 @@ class ComplaintResponse(BaseModel):
     location_lng: float
     department: str
     status: str
-    assigned_worker_id: Optional[int]
-    resolution_report: Optional[str]
+    assigned_worker_id: Optional[int] = None
+    resolution_report: Optional[str] = None
+    resolution_image: Optional[str] = None
+    resolved_at: Optional[datetime] = None
     reported_by: int
     created_at: datetime
     updated_at: datetime
@@ -73,7 +92,7 @@ class ComplaintResponse(BaseModel):
     class Config:
         from_attributes = True
 
-    @field_validator("image_url", mode="before")
+    @field_validator("image_url", "resolution_image", mode="before")
     @classmethod
     def sign_image_url(cls, v: Optional[str]) -> Optional[str]:
         if v:

@@ -9,79 +9,57 @@ def list_workers(db: Session, manager_id: int, department: str, page: int, page_
     return WorkerRepository.list_workers(db, manager_id, department, page, page_size, search)
 
 def create_worker(db: Session, manager_id: int, department: str, schema: WorkerCreateSchema):
-    # Call auth_service to create user credentials
-    from core.auth_client import register_worker_user
-    
-    # 1. Create base user in auth_service
-    user_res = register_worker_user({
-        "username": schema.username,
-        "email": schema.email,
-        "password": schema.password,
-        "manager_id": manager_id,
-        "role": "Worker",
-        "department": department
-    })
-    
-    if not user_res.get("success"):
-        return {"success": False, "message": user_res.get("message", "Failed to create user credentials")}
-        
-    worker_user_id = user_res.get("user_id")
-    
-    # 2. Create profile in city_operation_service
-    update_schema = WorkerUpdateSchema(
-        first_name=schema.first_name,
-        last_name=schema.last_name,
-        phone=schema.phone,
-        photo=schema.photo,
-        gender=schema.gender,
-        date_of_birth=schema.date_of_birth,
-        address=schema.address,
-        place=schema.place,
-        designation=schema.designation,
-        skill=schema.skill,
-        experience=schema.experience,
-        joining_date=schema.joining_date,
-        emergency_contact_phone=schema.emergency_contact_phone,
-        availability="AVAILABLE",
-        employment_status="ACTIVE"
+    import os, json, urllib.request, urllib.error
+    from fastapi.encoders import jsonable_encoder
+
+    # Auto-fill joining_date if missing
+    if not schema.joining_date:
+        schema.joining_date = datetime.now(timezone.utc)
+
+    # Prepare data for Auth Service
+    auth_url = os.getenv("AUTH_SERVICE_URL", "http://auth_service:8001")
+    req_url = f"{auth_url}/auth/register-worker"
+
+    payload = jsonable_encoder(schema)
+    payload["manager_id"] = manager_id
+    payload["department"] = department
+
+    data = json.dumps(payload).encode("utf-8")
+    req = urllib.request.Request(
+        req_url,
+        data=data,
+        headers={'Content-Type': 'application/json'},
+        method='POST'
     )
-    
-    profile = WorkerRepository.create_or_update_profile(db, worker_user_id, manager_id, department, update_schema)
-    
-    # 3. Department-specific sync if applicable
-    if department == "water":
+
+    try:
+        with urllib.request.urlopen(req) as response:
+            res_data = json.loads(response.read().decode())
+            data_obj = res_data.get("data") or {}
+            user_id = data_obj.get("id") or (isinstance(data_obj.get("user"), dict) and data_obj.get("user", {}).get("id"))
+
+            if user_id:
+                profile_schema = WorkerUpdateSchema(**schema.model_dump(exclude_unset=True))
+                WorkerRepository.create_or_update_profile(db, user_id, manager_id, department, profile_schema)
+
+                if department == "traffic":
+                    try:
+                        from modules.traffic_management.repository import TrafficWorkerRepository
+                        TrafficWorkerRepository.create_or_update_profile(db, user_id, profile_schema)
+                    except Exception as e:
+                        print(f"Error syncing worker to traffic module: {e}")
+
+            return {"success": True, "message": "Worker created successfully.", "data": res_data}
+    except urllib.error.HTTPError as e:
+        error_body = e.read().decode()
         try:
-            from modules.water_management.repository import WaterWorkerRepository
-            from modules.water_management.schema import WaterWorkerCreate
-            water_schema = WaterWorkerCreate(
-                user_id=worker_user_id,
-                name=f"{schema.first_name or ''} {schema.last_name or ''}".strip() or schema.username,
-                designation=schema.designation or "Water Worker",
-                phone=schema.phone or "",
-                email=schema.email,
-                skill=schema.skill,
-                experience=schema.experience or 0
-            )
-            WaterWorkerRepository.create(db, water_schema)
-        except Exception as e:
-            print(f"Error syncing worker to water module: {e}")
-    elif department == "traffic":
-        try:
-            from modules.traffic_management.repository import TrafficWorkerRepository
-            TrafficWorkerRepository.create_worker_profile(
-                db, 
-                worker_user_id=worker_user_id, 
-                manager_id=manager_id, 
-                first_name=schema.first_name or schema.username,
-                last_name=schema.last_name or "",
-                phone=schema.phone,
-                designation=schema.designation or "Traffic Officer",
-                zone=schema.place
-            )
-        except Exception as e:
-            print(f"Error syncing worker to traffic module: {e}")
-            
-    return {"success": True, "worker_id": worker_user_id, "message": "Worker registered successfully"}
+            err_json = json.loads(error_body)
+            detail = err_json.get("detail", "Error from Auth Service")
+        except Exception:
+            detail = error_body
+        raise HTTPException(status_code=e.code if e.code in [400, 422, 403, 404] else status.HTTP_400_BAD_REQUEST, detail=detail)
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to connect to Auth Service: {str(e)}")
 
 def get_worker(db: Session, worker_id: int, manager_id: int, department: str):
     worker = WorkerRepository.get_worker_full(db, worker_id, manager_id, department)
