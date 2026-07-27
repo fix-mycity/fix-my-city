@@ -35,6 +35,27 @@ class SuperAdminRepository:
         dept_counts = db.execute(text("SELECT department, COUNT(*) FROM complaints GROUP BY department")).fetchall()
         departments_summary = {r[0]: r[1] for r in dept_counts if r[0]}
 
+        # 7-Day Historical Weekly Telemetry Trend
+        weekly_trend_rows = db.execute(text("""
+            SELECT 
+                TO_CHAR(d.day, 'Mon DD') as date_label,
+                COALESCE(COUNT(c.id), 0) as total_filed,
+                COALESCE(SUM(CASE WHEN c.status ILIKE '%RESOLVED%' OR c.status ILIKE '%CLOSED%' THEN 1 ELSE 0 END), 0) as total_resolved
+            FROM generate_series(CURRENT_DATE - INTERVAL '6 days', CURRENT_DATE, INTERVAL '1 day') d(day)
+            LEFT JOIN complaints c ON DATE(c.created_at) = DATE(d.day)
+            GROUP BY d.day
+            ORDER BY d.day ASC
+        """)).fetchall()
+
+        weekly_trend = [
+            {
+                "date": r[0],
+                "filed": int(r[1]),
+                "resolved": int(r[2])
+            }
+            for r in weekly_trend_rows
+        ]
+
         return {
             "total_complaints": total_complaints,
             "resolved_complaints": resolved_complaints,
@@ -44,7 +65,8 @@ class SuperAdminRepository:
             "total_users": total_users,
             "total_workers": total_workers,
             "total_admins": total_admins,
-            "departments_summary": departments_summary
+            "departments_summary": departments_summary,
+            "weekly_trend": weekly_trend
         }
 
     @staticmethod

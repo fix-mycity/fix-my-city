@@ -17,8 +17,8 @@ import {
   Check, 
   X, 
   Shield,
-  SlidersHorizontal,
-  ChevronDown
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 
 // Professional Human-Readable Permission Formatter
@@ -150,13 +150,6 @@ export default function UserRolePermissionManagement() {
     }
   };
 
-  const getRoleBadgeStyle = (roleName) => {
-    if (roleName === 'Super_Admin' || roleName === 'Admin') return 'bg-purple-100 text-purple-900 border-purple-300 font-extrabold';
-    if (roleName === 'Department_Admin') return 'bg-blue-100 text-blue-900 border-blue-300 font-bold';
-    if (roleName === 'Worker') return 'bg-indigo-100 text-indigo-900 border-indigo-300 font-bold';
-    return 'bg-slate-100 text-slate-800 border-slate-300 font-semibold';
-  };
-
   return (
     <div className="space-y-6 font-sans">
       
@@ -203,16 +196,16 @@ export default function UserRolePermissionManagement() {
         </div>
       </div>
 
-      {/* Main Directory Table */}
+      {/* Classic Enterprise Table Container */}
       <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse text-sm">
             <thead>
-              <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 text-xs uppercase tracking-wider font-bold">
+              <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 text-xs uppercase tracking-wider font-extrabold">
                 <th className="px-6 py-4">User Details</th>
                 <th className="px-6 py-4">Assigned Role</th>
                 <th className="px-6 py-4">Granted Access Rights</th>
-                <th className="px-6 py-4 text-right">Manage Permissions</th>
+                <th className="px-6 py-4 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-slate-700">
@@ -247,30 +240,25 @@ export default function UserRolePermissionManagement() {
                       </div>
                     </td>
 
-                    {/* Role Dropdown */}
+                    {/* Single Main Role Selector (Displaying Active Assigned Role) */}
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="space-y-1.5">
-                        <div className="relative inline-block w-full max-w-[170px]">
-                          <select
-                            value={u.role_id ? String(u.role_id) : ''}
-                            onChange={(e) => handleRoleChange(u.id, e.target.value)}
-                            className="w-full bg-slate-100 border border-slate-300 text-slate-900 text-xs font-bold rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500 cursor-pointer shadow-2xs"
-                          >
-                            <option value="" disabled>Select Role...</option>
-                            {roles.map(r => (
-                              <option key={r.id} value={String(r.id)}>
-                                {r.role_name}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                        <span className={`block px-2 py-0.5 text-[10px] rounded-md border w-max ${getRoleBadgeStyle(u.role_name)}`}>
-                          Active: {u.role_name}
-                        </span>
+                      <div className="relative inline-block w-56 min-w-[210px]">
+                        <select
+                          value={u.role_id ? String(u.role_id) : ''}
+                          onChange={(e) => handleRoleChange(u.id, e.target.value)}
+                          className="w-full bg-white border border-slate-300 hover:border-purple-400 text-slate-900 text-xs font-extrabold rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-purple-500 cursor-pointer shadow-2xs transition-all"
+                        >
+                          <option value="" disabled>Select Role...</option>
+                          {roles.map(r => (
+                            <option key={r.id} value={String(r.id)} className="font-semibold text-slate-900 bg-white">
+                              {r.role_name.replace('_', ' ')}
+                            </option>
+                          ))}
+                        </select>
                       </div>
                     </td>
 
-                    {/* Granted Badges */}
+                    {/* Granted Access Badges */}
                     <td className="px-6 py-4">
                       <div className="flex flex-wrap gap-1.5 items-center">
                         {u.permissions && u.permissions.length > 0 ? (
@@ -289,7 +277,7 @@ export default function UserRolePermissionManagement() {
                       </div>
                     </td>
 
-                    {/* Single Clean Action Button: Manage Permissions */}
+                    {/* Single Action Control Button: Manage Permissions */}
                     <td className="px-6 py-4 whitespace-nowrap text-right font-medium">
                       <button
                         onClick={() => handleOpenPermissionsModal(u)}
@@ -306,6 +294,31 @@ export default function UserRolePermissionManagement() {
             </tbody>
           </table>
         </div>
+
+        {/* Enterprise Table Pagination Bar */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between px-6 py-4 border-t border-slate-200 bg-slate-50 text-xs font-medium text-slate-600">
+            <div>
+              Showing Page <span className="font-bold text-slate-900">{page}</span> of <span className="font-bold text-slate-900">{totalPages}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                disabled={page === 1}
+                onClick={() => setPage(p => Math.max(p - 1, 1))}
+                className="px-3 py-1.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 font-bold text-slate-700"
+              >
+                <ChevronLeft className="w-4 h-4" /> Previous
+              </button>
+              <button
+                disabled={page === totalPages}
+                onClick={() => setPage(p => Math.min(p + 1, totalPages))}
+                className="px-3 py-1.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 font-bold text-slate-700"
+              >
+                Next <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* PRODUCTION-READY PERMISSION MODAL DRAWER */}
