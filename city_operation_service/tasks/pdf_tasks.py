@@ -24,7 +24,7 @@ def generate_complaint_pdf_report(task_id: int):
             return {"success": False, "message": "Complaint task not found"}
 
         # Fetch worker info if assigned
-        worker_name = "Assigned Field Officer"
+        worker_name = "Assigned Field Worker"
         if task.assigned_worker_id:
             row = db.execute(
                 text("SELECT u.username, p.first_name, p.last_name FROM users u LEFT JOIN worker_profiles p ON u.id = p.user_id WHERE u.id = :wid"),

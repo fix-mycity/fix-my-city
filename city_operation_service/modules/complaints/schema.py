@@ -1,5 +1,5 @@
 from pydantic import BaseModel, ConfigDict, field_validator
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime
 from modules.complaints.model import ComplaintStatus, ComplaintDepartment, ComplaintMediaStatus
 from core.s3 import generate_presigned_url
@@ -44,6 +44,13 @@ class ComplaintResponse(BaseModel):
             return generate_presigned_url(v)
         return v
 
+class PaginatedComplaintResponse(BaseModel):
+    items: List[ComplaintResponse]
+    total_items: int
+    page: int
+    page_size: int
+    total_pages: int
+
 class ComplaintMediaStatusResponse(BaseModel):
     id: int
     media_status: str
@@ -57,4 +64,3 @@ class ComplaintMediaStatusResponse(BaseModel):
         if v:
             return generate_presigned_url(v)
         return v
-

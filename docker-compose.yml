@@ -23,6 +23,8 @@ services:
     image: rabbitmq:3-management
     container_name: fixmycity_rabbitmq
     restart: always
+    environment:
+      RABBITMQ_ERLANG_COOKIE: "FIXMYCITY_RABBITMQ_SECRET_COOKIE_12345"
     ports:
       - "5672:5672"
       - "15672:15672"

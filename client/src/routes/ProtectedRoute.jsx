@@ -9,6 +9,11 @@ export default function ProtectedRoute({ children, allowedRoles, requiredPermiss
     return <Navigate to="/login" replace />;
   }
 
+  // Super_Admin and Admin roles have master access to all protected routes automatically
+  if (user && (user.role === 'Super_Admin' || user.role === 'Admin')) {
+    return children;
+  }
+
   // Structured role-based authorization check
   if (allowedRoles && (!user || !allowedRoles.includes(user.role))) {
     return <Navigate to="/dashboard" replace />;
@@ -17,7 +22,7 @@ export default function ProtectedRoute({ children, allowedRoles, requiredPermiss
   // Permission-based authorization check
   if (requiredPermissions && user) {
     const userPermissions = user.permissions || [];
-    const hasRequired = requiredPermissions.every((p) => userPermissions.includes(p));
+    const hasRequired = requiredPermissions.every((p) => userPermissions.includes(p) || userPermissions.includes('admin:all'));
     if (!hasRequired) {
       return <Navigate to="/dashboard" replace />;
     }

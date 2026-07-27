@@ -1,17 +1,12 @@
-from fastapi import Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer
+from fastapi import Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 from dependencies.database import get_db
 from models.user_model import User
 from services.jwt_service import decode_access_token
 
-# Token url is set to our auth router's login path
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
-
-
 def get_current_user(
-    db: Session = Depends(get_db),
-    token: str = Depends(oauth2_scheme)
+    request: Request,
+    db: Session = Depends(get_db)
 ) -> User:
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -19,7 +14,16 @@ def get_current_user(
         headers={"WWW-Authenticate": "Bearer"},
     )
     
-    payload = decode_access_token(token)
+    access_token = request.cookies.get("access_token")
+    if not access_token:
+        auth_header = request.headers.get("Authorization")
+        if auth_header and auth_header.startswith("Bearer "):
+            access_token = auth_header.split(" ")[1]
+
+    if not access_token:
+        raise credentials_exception
+
+    payload = decode_access_token(access_token)
     if payload is None:
         raise credentials_exception
         
@@ -64,12 +68,13 @@ class RoleChecker:
         current_user: User = Depends(get_current_active_user)
     ) -> User:
         user_role = current_user.role.role_name if current_user.role else None
-        if user_role not in self.allowed_roles:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="You do not have permissions to access this resource"
-            )
-        return current_user
+        if user_role in ["Admin", "Super_Admin"] or user_role in self.allowed_roles:
+            return current_user
+
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You do not have permissions to access this resource"
+        )
 
 
 class PermissionChecker:
@@ -80,9 +85,12 @@ class PermissionChecker:
         self,
         current_user: User = Depends(get_current_active_user)
     ) -> User:
+        user_role = current_user.role.role_name if current_user.role else None
+        if user_role in ["Admin", "Super_Admin"]:
+            return current_user
+
         user_permissions = {p.permission_name for p in current_user.permissions} if current_user.permissions else set()
         
-        # Check if user has all required permissions (or 'admin:all')
         if "admin:all" not in user_permissions and not self.required_permissions.issubset(user_permissions):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
