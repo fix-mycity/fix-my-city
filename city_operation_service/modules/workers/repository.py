@@ -31,7 +31,8 @@ class WorkerRepository:
                    p.first_name, p.last_name, p.phone, p.photo, p.gender, 
                    p.date_of_birth, p.address, p.place, p.designation, 
                    p.skill, p.experience, p.joining_date, p.emergency_contact_phone,
-                   p.availability, p.employment_status, p.department
+                   p.availability, p.employment_status, p.department,
+                   COALESCE(p.status_updated_at, p.updated_at, u.created_at) as status_updated_at
             FROM users u
             LEFT JOIN worker_profiles p ON u.id = p.user_id
             WHERE u.manager_id = :manager_id AND p.department = :department
@@ -70,7 +71,8 @@ class WorkerRepository:
                 "emergency_contact_phone": row[17] or None,
                 "availability": row[18] or ("AVAILABLE" if row[3] else "UNAVAILABLE"),
                 "employment_status": row[19] or ("ACTIVE" if row[3] else "INACTIVE"),
-                "department": row[20]
+                "department": row[20],
+                "status_updated_at": row[21]
             })
             
         return workers, total_items
@@ -86,7 +88,8 @@ class WorkerRepository:
                    p.first_name, p.last_name, p.phone, p.photo, p.gender, 
                    p.date_of_birth, p.address, p.place, p.designation, 
                    p.skill, p.experience, p.joining_date, p.emergency_contact_phone,
-                   p.availability, p.employment_status, p.department
+                   p.availability, p.employment_status, p.department,
+                   COALESCE(p.status_updated_at, p.updated_at, u.created_at) as status_updated_at
             FROM users u
             LEFT JOIN worker_profiles p ON u.id = p.user_id
             WHERE u.id = :worker_id
@@ -127,7 +130,8 @@ class WorkerRepository:
             "emergency_contact_phone": row[17] or None,
             "availability": row[18] or ("AVAILABLE" if row[3] else "UNAVAILABLE"),
             "employment_status": row[19] or ("ACTIVE" if row[3] else "INACTIVE"),
-            "department": row[20]
+            "department": row[20],
+            "status_updated_at": row[21]
         }
 
     @staticmethod
@@ -138,6 +142,8 @@ class WorkerRepository:
         department: str, 
         schema: WorkerUpdateSchema
     ) -> WorkerProfile:
+        from fastapi import HTTPException, status
+        from sqlalchemy.sql import func
         profile = db.query(WorkerProfile).filter(WorkerProfile.user_id == worker_id).first()
         
         if not profile:
@@ -145,7 +151,17 @@ class WorkerRepository:
             db.add(profile)
             
         from core.s3 import clean_s3_url
-        for key, value in schema.model_dump(exclude_unset=True).items():
+        data_dict = schema.model_dump(exclude_unset=True)
+        if "availability" in data_dict:
+            if data_dict["availability"] == "ON_LEAVE":
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Cannot change status to ON_LEAVE directly. Please submit a Leave Request for approval."
+                )
+            if profile.availability != data_dict["availability"]:
+                profile.status_updated_at = func.now()
+
+        for key, value in data_dict.items():
             if key == "photo" and value:
                 value = clean_s3_url(value)
             setattr(profile, key, value)
@@ -265,7 +281,8 @@ class LeaveRequestRepository:
 
     @staticmethod
     def update_status(db: Session, request_id: int, status: str, admin_notes: Optional[str] = None):
-        from modules.workers.model import LeaveRequest
+        from modules.workers.model import LeaveRequest, WorkerProfile
+        from sqlalchemy.sql import func
         db_request = db.query(LeaveRequest).filter(LeaveRequest.id == request_id).first()
         if not db_request:
             return None
@@ -273,6 +290,12 @@ class LeaveRequestRepository:
         db_request.status = status
         if admin_notes:
             db_request.admin_notes = admin_notes
+
+        if status == "APPROVED":
+            profile = db.query(WorkerProfile).filter(WorkerProfile.user_id == db_request.worker_id).first()
+            if profile:
+                profile.availability = "ON_LEAVE"
+                profile.status_updated_at = func.now()
             
         db.commit()
         db.refresh(db_request)

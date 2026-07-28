@@ -27,6 +27,7 @@ export default function WorkerProfileCard({ worker, onEditClick, onBackClick }) 
     experience,
     joining_date,
     availability,
+    status_updated_at,
     employment_status,
     emergency_contact_phone,
     is_active
@@ -101,7 +102,7 @@ export default function WorkerProfileCard({ worker, onEditClick, onBackClick }) 
               </p>
 
               <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3">
-                <WorkerAvailabilityBadge availability={availability} />
+                <WorkerAvailabilityBadge availability={availability} statusUpdatedAt={status_updated_at} />
                 <WorkerStatusBadge status={is_active === false ? 'BLOCKED' : employment_status} />
               </div>
             </div>
