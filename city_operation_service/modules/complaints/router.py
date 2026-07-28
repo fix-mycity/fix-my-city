@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
 from sqlalchemy.orm import Session
+from typing import Optional
 import shutil
 import uuid
 import os
@@ -9,14 +10,21 @@ from dependencies.db import get_db
 from core.s3 import upload_file_to_s3
 
 from modules.complaints.tasks import upload_complaint_media_task
-from .schema import ComplaintCreate, ComplaintResponse, ComplaintMediaStatusResponse
+from .schema import (
+    ComplaintCreate, ComplaintResponse, ComplaintMediaStatusResponse,
+    FeedbackCreate, FeedbackResponse
+)
 
 from .service import (
     create_complaint,
     get_complaint_by_id,
     get_my_complaints,
     get_all_complaints,
-    update_complaint_image
+    update_complaint_image,
+    create_feedback,
+    get_feedback_by_citizen,
+    get_feedback_by_complaint,
+    get_all_feedback
 )
 
 router = APIRouter(prefix="/complaints", tags=["Complaints"])
@@ -197,4 +205,60 @@ def read_complaint_media_status(
             detail="Complaint not found"
         )
     return complaint
+# =====================================================================
+# Feedback Endpoints
+# =====================================================================
+
+@router.post("/feedback/", response_model=FeedbackResponse, status_code=status.HTTP_201_CREATED)
+def submit_new_feedback(
+    data: FeedbackCreate,
+    current_user: UserData = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    complaint = get_complaint_by_id(db, data.complaint_id)
+    if not complaint:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Complaint not found."
+        )
+    if complaint.reported_by != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You are not authorized to give feedback on this complaint."
+        )
+    if complaint.status not in ["RESOLVED", "CLOSED"]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Feedback can only be submitted for resolved or closed complaints."
+        )
+
+    citizen_name = current_user.username or "Citizen"
+    return create_feedback(db=db, citizen_id=current_user.id, citizen_name=citizen_name, data=data)
+
+@router.get("/feedback/me", response_model=list[FeedbackResponse])
+def read_my_feedback(
+    current_user: UserData = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    return get_feedback_by_citizen(db=db, citizen_id=current_user.id)
+
+@router.get("/feedback/complaint/{complaint_id}", response_model=Optional[FeedbackResponse])
+def read_feedback_by_complaint(
+    complaint_id: int,
+    current_user: UserData = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    return get_feedback_by_complaint(db=db, complaint_id=complaint_id)
+
+@router.get("/feedback/", response_model=list[FeedbackResponse])
+def read_all_feedback(
+    current_user: UserData = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    if current_user.role not in ["Department_Admin", "Super_Admin", "Admin"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only administrators/authorities can retrieve all feedback."
+        )
+    return get_all_feedback(db=db)
 

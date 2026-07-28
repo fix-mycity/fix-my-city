@@ -1,20 +1,20 @@
 import React, { useEffect, useState } from 'react';
 import { useSelector } from 'react-redux';
 import { toast } from 'react-hot-toast';
-import { 
-  Megaphone, 
-  MessageSquare, 
-  ThumbsUp, 
-  MapPin, 
-  CheckCircle2, 
-  Clock, 
-  XCircle, 
-  Trash2, 
-  ShieldAlert, 
-  Plus, 
-  X, 
-  Upload, 
-  Loader2, 
+import {
+  Megaphone,
+  MessageSquare,
+  ThumbsUp,
+  MapPin,
+  CheckCircle2,
+  Clock,
+  XCircle,
+  Trash2,
+  ShieldAlert,
+  Plus,
+  X,
+  Upload,
+  Loader2,
   Filter,
   Check,
   AlertTriangle,
@@ -23,15 +23,20 @@ import {
   FileText
 } from 'lucide-react';
 import Navbar from '../components/Navbar';
-import { 
-  getFeedPostsApi, 
-  getMyPostsApi, 
-  getPendingPostsApi, 
-  createPostApi, 
-  approvePostApi, 
-  rejectPostApi, 
-  deletePostApi 
+import {
+  getFeedPostsApi,
+  getMyPostsApi,
+  getPendingPostsApi,
+  createPostApi,
+  approvePostApi,
+  rejectPostApi,
+  deletePostApi,
+  reactToPostApi,
+  getPostCommentsApi,
+  createPostCommentApi,
+  deletePostCommentApi
 } from '../api/feedApi';
+import { createSuggestionApi, getMySuggestionsApi, getAllSuggestionsApi } from '../api/suggestionsApi';
 
 const categories = [
   { id: 'Announcement', label: 'Announcement', icon: Megaphone, color: 'bg-indigo-100 text-indigo-800 border-indigo-200' },
@@ -46,6 +51,14 @@ const categories = [
 export default function FeedPage() {
   const { user } = useSelector((state) => state.auth);
   const isModerator = user?.role === 'Department_Admin' || user?.role === 'Super_Admin';
+  const isAuthority = user?.role === 'Department_Admin' || user?.role === 'Super_Admin' || user?.role === 'Admin';
+
+  // Comments and Reactions State
+  const [expandedPostId, setExpandedPostId] = useState(null);
+  const [comments, setComments] = useState({});
+  const [newCommentText, setNewCommentText] = useState('');
+  const [loadingComments, setLoadingComments] = useState(false);
+  const [submittingComment, setSubmittingComment] = useState(false);
 
   // Navigation state: "active" | "my-posts" | "moderation"
   const [activeView, setActiveView] = useState('active');
@@ -68,6 +81,16 @@ export default function FeedPage() {
   const [selectedFile, setSelectedFile] = useState(null);
   const [imagePreview, setImagePreview] = useState('');
 
+  // Suggestions states
+  const [suggestions, setSuggestions] = useState([]);
+  const [isSuggestionOpen, setIsSuggestionOpen] = useState(false);
+  const [isSubmittingSuggestion, setIsSubmittingSuggestion] = useState(false);
+  const [suggestionFormData, setSuggestionFormData] = useState({
+    title: '',
+    description: '',
+    category: 'General'
+  });
+
   // Rejection modal
   const [isRejectOpen, setIsRejectOpen] = useState(false);
   const [postToReject, setPostToReject] = useState(null);
@@ -81,15 +104,24 @@ export default function FeedPage() {
       let res;
       if (activeView === 'active') {
         res = await getFeedPostsApi(selectedCategory, feedTypeFilter);
+        setPosts(res?.data || []);
       } else if (activeView === 'my-posts') {
         res = await getMyPostsApi();
+        setPosts(res?.data || []);
       } else if (activeView === 'moderation') {
         res = await getPendingPostsApi();
+        setPosts(res?.data || []);
+      } else if (activeView === 'suggestions') {
+        if (isAuthority) {
+          res = await getAllSuggestionsApi();
+        } else {
+          res = await getMySuggestionsApi();
+        }
+        setSuggestions(res?.data || []);
       }
-      setPosts(res?.data || []);
     } catch (err) {
       console.error(err);
-      toast.error('Failed to load feed posts.');
+      toast.error('Failed to load feed data.');
     } finally {
       setLoading(false);
     }
@@ -143,6 +175,30 @@ export default function FeedPage() {
     setImagePreview('');
   };
 
+  const handleSuggestionSubmit = async (e) => {
+    e.preventDefault();
+    if (!suggestionFormData.title.trim() || !suggestionFormData.description.trim()) {
+      toast.error("Please fill in all fields.");
+      return;
+    }
+    setIsSubmittingSuggestion(true);
+    const creationToast = toast.loading("Submitting suggestion...");
+    try {
+      await createSuggestionApi(suggestionFormData);
+      toast.success("Suggestion submitted successfully!", { id: creationToast });
+      setIsSuggestionOpen(false);
+      setSuggestionFormData({ title: '', description: '', category: 'General' });
+      if (activeView === 'suggestions') {
+        loadPosts();
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to submit suggestion.", { id: creationToast });
+    } finally {
+      setIsSubmittingSuggestion(false);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.title.trim() || !formData.content.trim()) {
@@ -164,13 +220,13 @@ export default function FeedPage() {
 
     try {
       await createPostApi(submissionData);
-      
+
       if (isModerator) {
         toast.success('Official bulletin published successfully!');
       } else {
         toast.success('Post submitted successfully! Pending moderator approval.');
       }
-      
+
       // Reset form
       setFormData({
         title: '',
@@ -181,7 +237,7 @@ export default function FeedPage() {
       setSelectedFile(null);
       setImagePreview('');
       setIsCreateOpen(false);
-      
+
       // Reload posts
       loadPosts();
     } catch (err) {
@@ -242,6 +298,77 @@ export default function FeedPage() {
     }
   };
 
+  // Reactions Handler
+  const handleReact = async (postId) => {
+    try {
+      const res = await reactToPostApi(postId, 'LIKE');
+      setPosts(prevPosts =>
+        prevPosts.map(post =>
+          post.id === postId
+            ? { ...post, reactions_count: res.data.reactions_count, has_reacted: res.data.has_reacted }
+            : post
+        )
+      );
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to update reaction.');
+    }
+  };
+
+  // Comments Handlers
+  const handleToggleComments = async (postId) => {
+    if (expandedPostId === postId) {
+      setExpandedPostId(null);
+      return;
+    }
+    setExpandedPostId(postId);
+    setLoadingComments(true);
+    try {
+      const res = await getPostCommentsApi(postId);
+      setComments(prev => ({ ...prev, [postId]: res.data || [] }));
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to load comments.');
+    } finally {
+      setLoadingComments(false);
+    }
+  };
+
+  const handleSubmitComment = async (e, postId) => {
+    e.preventDefault();
+    if (!newCommentText.trim()) return;
+    setSubmittingComment(true);
+    try {
+      const res = await createPostCommentApi(postId, newCommentText.trim());
+      setComments(prev => ({
+        ...prev,
+        [postId]: [...(prev[postId] || []), res.data]
+      }));
+      setNewCommentText('');
+      toast.success('Comment added!');
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to post comment.');
+    } finally {
+      setSubmittingComment(false);
+    }
+  };
+
+  const handleDeleteComment = async (commentId, postId) => {
+    if (!window.confirm('Are you sure you want to delete this comment?')) return;
+    try {
+      await deletePostCommentApi(commentId);
+      setComments(prev => ({
+        ...prev,
+        [postId]: (prev[postId] || []).filter(c => c.id !== commentId)
+      }));
+      toast.success('Comment deleted.');
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to delete comment.');
+    }
+  };
+
   return (
     <div className="bg-slate-50 min-h-screen text-slate-800 pb-20">
       <Navbar />
@@ -257,14 +384,23 @@ export default function FeedPage() {
               View verified official announcements from city departments, or share community-driven events and initiatives with your neighborhood.
             </p>
           </div>
-          <div>
+          <div className="flex items-center gap-3 shrink-0">
             <button
-              onClick={() => setIsCreateOpen(true)}
-              className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-sm px-6 py-3.5 rounded-xl shadow-lg shadow-indigo-500/25 transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0 hover:scale-[1.02]"
+              onClick={() => setIsSuggestionOpen(true)}
+              className="flex items-center gap-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold text-sm px-6 py-3.5 rounded-xl shadow-lg shadow-emerald-500/25 transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0 hover:scale-[1.02]"
             >
-              <Plus className="w-4 h-4" />
-              CREATE POST
+              <Plus className="w-4.5 h-4.5" />
+              SUBMIT SUGGESTION
             </button>
+            {isAuthority && (
+              <button
+                onClick={() => setIsCreateOpen(true)}
+                className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-sm px-6 py-3.5 rounded-xl shadow-lg shadow-indigo-500/25 transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0 hover:scale-[1.02]"
+              >
+                <Plus className="w-4 h-4" />
+                CREATE POST
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -274,32 +410,40 @@ export default function FeedPage() {
         <div className="flex border-b border-slate-200 mb-8 overflow-x-auto whitespace-nowrap scrollbar-none">
           <button
             onClick={() => setActiveView('active')}
-            className={`py-4 px-6 font-bold text-sm border-b-2 transition-all duration-200 ${
-              activeView === 'active'
-                ? 'border-indigo-600 text-indigo-600'
-                : 'border-transparent text-slate-500 hover:text-slate-900'
-            }`}
+            className={`py-4 px-6 font-bold text-sm border-b-2 transition-all duration-200 ${activeView === 'active'
+              ? 'border-indigo-600 text-indigo-600'
+              : 'border-transparent text-slate-500 hover:text-slate-900'
+              }`}
           >
             Active Feed
           </button>
           <button
-            onClick={() => setActiveView('my-posts')}
-            className={`py-4 px-6 font-bold text-sm border-b-2 transition-all duration-200 ${
-              activeView === 'my-posts'
-                ? 'border-indigo-600 text-indigo-600'
-                : 'border-transparent text-slate-500 hover:text-slate-900'
-            }`}
+            onClick={() => setActiveView('suggestions')}
+            className={`py-4 px-6 font-bold text-sm border-b-2 transition-all duration-200 ${activeView === 'suggestions'
+              ? 'border-indigo-600 text-indigo-600'
+              : 'border-transparent text-slate-500 hover:text-slate-900'
+              }`}
           >
-            My Submissions
+            City Suggestions
           </button>
+          {isAuthority && (
+            <button
+              onClick={() => setActiveView('my-posts')}
+              className={`py-4 px-6 font-bold text-sm border-b-2 transition-all duration-200 ${activeView === 'my-posts'
+                ? 'border-indigo-650 border-indigo-600 text-indigo-600'
+                : 'border-transparent text-slate-500 hover:text-slate-900'
+                }`}
+            >
+              My Submissions
+            </button>
+          )}
           {isModerator && (
             <button
               onClick={() => setActiveView('moderation')}
-              className={`py-4 px-6 font-bold text-sm border-b-2 transition-all duration-200 flex items-center gap-2 ${
-                activeView === 'moderation'
-                  ? 'border-red-500 text-red-650 text-red-650 text-red-600 font-extrabold'
-                  : 'border-transparent text-slate-500 hover:text-red-550'
-              }`}
+              className={`py-4 px-6 font-bold text-sm border-b-2 transition-all duration-200 flex items-center gap-2 ${activeView === 'moderation'
+                ? 'border-red-500 text-red-650 text-red-650 text-red-600 font-extrabold'
+                : 'border-transparent text-slate-500 hover:text-red-550'
+                }`}
             >
               Approval Queue
               <span className="bg-red-100 text-red-600 text-[10px] font-extrabold px-2 py-0.5 rounded-full border border-red-200 animate-pulse">
@@ -316,11 +460,10 @@ export default function FeedPage() {
             <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-none whitespace-nowrap">
               <button
                 onClick={() => setSelectedCategory('All')}
-                className={`px-4 py-2 text-xs font-bold rounded-lg border transition-all duration-200 ${
-                  selectedCategory === 'All'
-                    ? 'bg-slate-900 border-slate-900 text-white'
-                    : 'bg-white border-slate-200 text-slate-650 hover:bg-slate-55'
-                }`}
+                className={`px-4 py-2 text-xs font-bold rounded-lg border transition-all duration-200 ${selectedCategory === 'All'
+                  ? 'bg-slate-900 border-slate-900 text-white'
+                  : 'bg-white border-slate-200 text-slate-650 hover:bg-slate-55'
+                  }`}
               >
                 All Categories
               </button>
@@ -331,11 +474,10 @@ export default function FeedPage() {
                   <button
                     key={cat.id}
                     onClick={() => setSelectedCategory(cat.id)}
-                    className={`flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-lg border transition-all duration-200 ${
-                      isSelected
-                        ? 'bg-indigo-600 border-indigo-600 text-white shadow-md shadow-indigo-600/10'
-                        : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
-                    }`}
+                    className={`flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-lg border transition-all duration-200 ${isSelected
+                      ? 'bg-indigo-600 border-indigo-600 text-white shadow-md shadow-indigo-600/10'
+                      : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                      }`}
                   >
                     <CatIcon className="w-3.5 h-3.5" />
                     {cat.label}
@@ -350,11 +492,10 @@ export default function FeedPage() {
                 <button
                   key={type}
                   onClick={() => setFeedTypeFilter(type)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-200 ${
-                    feedTypeFilter === type
-                      ? 'bg-white text-indigo-950 shadow-sm'
-                      : 'text-slate-600 hover:text-slate-900'
-                  }`}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-200 ${feedTypeFilter === type
+                    ? 'bg-white text-indigo-950 shadow-sm'
+                    : 'text-slate-600 hover:text-slate-900'
+                    }`}
                 >
                   {type === 'All' ? 'All Sources' : type === 'Official' ? 'Official Only' : 'Community Feed'}
                 </button>
@@ -367,8 +508,56 @@ export default function FeedPage() {
         {loading ? (
           <div className="flex flex-col items-center justify-center py-20">
             <Loader2 className="w-8 h-8 text-indigo-600 animate-spin" />
-            <p className="text-slate-500 text-sm mt-3 font-semibold">Loading feed posts...</p>
+            <p className="text-slate-500 text-sm mt-3 font-semibold">Loading feed data...</p>
           </div>
+        ) : activeView === 'suggestions' ? (
+          suggestions.length === 0 ? (
+            <div className="bg-white border border-slate-200 rounded-2xl p-16 text-center shadow-sm">
+              <div className="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-slate-200/50">
+                <span className="material-symbols-outlined text-slate-400 text-3xl font-bold">tips_and_updates</span>
+              </div>
+              <h3 className="text-base font-bold text-slate-800">No suggestions submitted</h3>
+              <p className="text-slate-500 text-sm mt-1 max-w-sm mx-auto font-semibold">
+                {isAuthority 
+                  ? "No citizen suggestions have been submitted yet." 
+                  : "You haven't submitted any city improvement suggestions yet."}
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+              {suggestions.map((suggestion) => (
+                <div 
+                  key={suggestion.id} 
+                  className="bg-white rounded-2xl border border-slate-200 p-6 transition-all duration-300 shadow-sm hover:shadow-md flex flex-col relative overflow-hidden"
+                >
+                  <div className="h-1.5 w-full bg-emerald-500 absolute top-0 left-0" />
+                  
+                  <div className="flex justify-between items-start mb-4 mt-2">
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-extrabold border bg-emerald-50 text-emerald-800 border-emerald-100">
+                      <span className="material-symbols-outlined text-xs font-extrabold">tips_and_updates</span>
+                      {suggestion.category}
+                    </span>
+                    <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wide">
+                      {formatTimeAgo(suggestion.created_at)}
+                    </span>
+                  </div>
+
+                  <h3 className="text-base font-extrabold text-slate-900 mb-2 leading-tight">
+                    {suggestion.title}
+                  </h3>
+                  <p className="text-sm text-slate-600 font-semibold whitespace-pre-wrap leading-relaxed">
+                    {suggestion.description}
+                  </p>
+                  
+                  {isAuthority && (
+                    <div className="border-t border-slate-100 pt-3 mt-4 flex items-center justify-between text-[10px] text-slate-405 text-slate-500 font-bold uppercase tracking-wide">
+                      <span>Submitted by Citizen ID #{suggestion.citizen_id}</span>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )
         ) : posts.length === 0 ? (
           <div className="bg-white border border-slate-200 rounded-2xl p-16 text-center shadow-sm">
             <div className="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-slate-200/50">
@@ -376,11 +565,11 @@ export default function FeedPage() {
             </div>
             <h3 className="text-base font-bold text-slate-800">No posts in this category</h3>
             <p className="text-slate-500 text-sm mt-1 max-w-sm mx-auto">
-              {activeView === 'moderation' 
-                ? 'Great job! The pending post review queue is empty.' 
-                : activeView === 'my-posts' 
-                ? "You haven't submitted any community posts yet." 
-                : 'No announcements or community posts have been published under this category.'}
+              {activeView === 'moderation'
+                ? 'Great job! The pending post review queue is empty.'
+                : activeView === 'my-posts'
+                  ? "You haven't submitted any community posts yet."
+                  : 'No announcements or community posts have been published under this category.'}
             </p>
           </div>
         ) : (
@@ -393,28 +582,25 @@ export default function FeedPage() {
               return (
                 <div
                   key={post.id}
-                  className={`bg-white rounded-2xl border transition-all duration-300 shadow-sm hover:shadow-md flex flex-col relative overflow-hidden h-full ${
-                    isOfficial
-                      ? 'border-indigo-200/80 bg-indigo-50/15'
-                      : 'border-slate-200'
-                  }`}
+                  className={`bg-white rounded-2xl border transition-all duration-300 shadow-sm hover:shadow-md flex flex-col relative overflow-hidden h-full ${isOfficial
+                    ? 'border-indigo-200/80 bg-indigo-50/15'
+                    : 'border-slate-200'
+                    }`}
                 >
                   {/* Category Accent top border */}
-                  <div className={`h-1.5 w-full ${
-                    isOfficial 
-                      ? 'bg-gradient-to-r from-indigo-500 to-blue-500' 
-                      : 'bg-slate-200'
-                  }`} />
+                  <div className={`h-1.5 w-full ${isOfficial
+                    ? 'bg-gradient-to-r from-indigo-500 to-blue-500'
+                    : 'bg-slate-200'
+                    }`} />
 
                   <div className="p-6 flex flex-col justify-between flex-grow">
                     {/* Header */}
                     <div className="flex items-start justify-between gap-4 mb-4">
                       <div className="flex items-center gap-3">
-                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center shadow-sm ${
-                          isOfficial
-                            ? 'bg-indigo-600 text-white'
-                            : 'bg-slate-100 text-slate-655 text-slate-600 border border-slate-200'
-                        }`}>
+                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center shadow-sm ${isOfficial
+                          ? 'bg-indigo-600 text-white'
+                          : 'bg-slate-100 text-slate-655 text-slate-600 border border-slate-200'
+                          }`}>
                           {isOfficial ? <Building2 className="w-5 h-5" /> : <User className="w-5 h-5" />}
                         </div>
                         <div>
@@ -514,32 +700,101 @@ export default function FeedPage() {
 
                     {/* Interaction Buttons (social preview) & Moderation controls */}
                     {activeView !== 'my-posts' && (
-                      <div className="border-t border-slate-150 border-slate-200/50 pt-4 mt-auto flex items-center justify-between">
-                        {activeView === 'moderation' ? (
-                          <div className="flex gap-2 w-full justify-end">
-                            <button
-                              onClick={() => openRejectModal(post)}
-                              className="flex items-center gap-1 text-red-600 hover:text-red-750 hover:bg-red-50 text-xs font-bold px-3.5 py-2 rounded-xl border border-red-200 transition-all duration-200"
-                            >
-                              <X className="w-3.5 h-3.5" /> Reject
-                            </button>
-                            <button
-                              onClick={() => handleApprove(post.id)}
-                              className="flex items-center gap-1 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3.5 py-2 rounded-xl border border-emerald-600 transition-all duration-200 shadow-sm shadow-emerald-500/10"
-                            >
-                              <Check className="w-3.5 h-3.5" /> Approve
-                            </button>
-                          </div>
-                        ) : (
-                          <div className="flex items-center gap-6 text-slate-500 font-bold text-xs">
-                            <button className="flex items-center gap-1.5 hover:text-indigo-600 transition-colors group">
-                              <ThumbsUp className="w-4 h-4 group-hover:scale-110 transition-transform" />
-                              <span>21</span>
-                            </button>
-                            <button className="flex items-center gap-1.5 hover:text-indigo-600 transition-colors group">
-                              <MessageSquare className="w-4 h-4 group-hover:scale-110 transition-transform" />
-                              <span>4</span>
-                            </button>
+                      <div className="border-t border-slate-150 border-slate-200/50 pt-4 mt-auto flex flex-col gap-4">
+                        <div className="flex items-center justify-between">
+                          {activeView === 'moderation' ? (
+                            <div className="flex gap-2 w-full justify-end">
+                              <button
+                                onClick={() => openRejectModal(post)}
+                                className="flex items-center gap-1 text-red-600 hover:text-red-750 hover:bg-red-50 text-xs font-bold px-3.5 py-2 rounded-xl border border-red-200 transition-all duration-200"
+                              >
+                                <X className="w-3.5 h-3.5" /> Reject
+                              </button>
+                              <button
+                                onClick={() => handleApprove(post.id)}
+                                className="flex items-center gap-1 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3.5 py-2 rounded-xl border border-emerald-600 transition-all duration-200 shadow-sm shadow-emerald-500/10"
+                              >
+                                <Check className="w-3.5 h-3.5" /> Approve
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-6 text-slate-500 font-bold text-xs">
+                              <button
+                                onClick={() => handleReact(post.id)}
+                                className={`flex items-center gap-1.5 transition-colors group ${post.has_reacted ? 'text-blue-600 font-extrabold' : 'hover:text-indigo-600'}`}
+                              >
+                                <ThumbsUp className={`w-4 h-4 group-hover:scale-110 transition-transform ${post.has_reacted ? 'fill-blue-600 text-blue-600' : ''}`} />
+                                <span>{post.reactions_count || 0}</span>
+                              </button>
+                              <button
+                                onClick={() => handleToggleComments(post.id)}
+                                className={`flex items-center gap-1.5 transition-colors group ${expandedPostId === post.id ? 'text-indigo-600 font-extrabold' : 'hover:text-indigo-600'}`}
+                              >
+                                <MessageSquare className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                                <span>Comments</span>
+                              </button>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Expanded Comments Section */}
+                        {expandedPostId === post.id && (
+                          <div className="mt-1 pt-4 border-t border-slate-100 space-y-4">
+                            <h5 className="text-xs font-bold text-slate-700">Comments</h5>
+
+                            {loadingComments ? (
+                              <div className="flex items-center justify-center py-4">
+                                <Loader2 className="w-5 h-5 text-indigo-600 animate-spin" />
+                              </div>
+                            ) : (
+                              <div className="space-y-3 max-h-60 overflow-y-auto pr-1">
+                                {(comments[post.id] || []).length === 0 ? (
+                                  <p className="text-xs text-slate-400 italic">No comments yet. Be the first to comment!</p>
+                                ) : (
+                                  (comments[post.id] || []).map(comment => (
+                                    <div key={comment.id} className="bg-slate-50 p-3 rounded-xl border border-slate-100 flex justify-between items-start gap-2">
+                                      <div className="flex-1">
+                                        <div className="flex items-center gap-1.5 flex-wrap">
+                                          <span className="text-xs font-extrabold text-slate-800">{comment.author_name}</span>
+                                          {['Department_Admin', 'Super_Admin', 'Admin'].includes(comment.author_role) && (
+                                            <span className="bg-emerald-100 text-emerald-800 text-[8px] font-bold px-1.5 py-0.5 rounded border border-emerald-200">Official</span>
+                                          )}
+                                          <span className="text-[9px] text-slate-400 font-bold">{formatTimeAgo(comment.created_at)}</span>
+                                        </div>
+                                        <p className="text-xs text-slate-600 mt-1 font-medium leading-relaxed">{comment.content}</p>
+                                      </div>
+                                      {(comment.author_id === user?.id || isModerator) && (
+                                        <button
+                                          onClick={() => handleDeleteComment(comment.id, post.id)}
+                                          className="text-slate-400 hover:text-red-500 hover:bg-slate-100 p-1.5 rounded-lg transition-colors"
+                                          title="Delete Comment"
+                                        >
+                                          <X className="w-3.5 h-3.5" />
+                                        </button>
+                                      )}
+                                    </div>
+                                  ))
+                                )}
+                              </div>
+                            )}
+
+                            {/* Comment Input Form */}
+                            <form onSubmit={(e) => handleSubmitComment(e, post.id)} className="flex items-center gap-2 mt-2">
+                              <input
+                                type="text"
+                                value={newCommentText}
+                                onChange={(e) => setNewCommentText(e.target.value)}
+                                placeholder="Write a comment..."
+                                className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs focus:bg-white focus:outline-none focus:border-indigo-500 transition-all font-semibold"
+                              />
+                              <button
+                                type="submit"
+                                disabled={submittingComment || !newCommentText.trim()}
+                                className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition-all disabled:opacity-50 shrink-0"
+                              >
+                                Send
+                              </button>
+                            </form>
                           </div>
                         )}
                       </div>
@@ -555,11 +810,11 @@ export default function FeedPage() {
       {/* Creation Modal */}
       {isCreateOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div 
+          <div
             className="absolute inset-0 bg-slate-900/60 backdrop-blur-md transition-opacity duration-300"
             onClick={() => !isSubmitting && setIsCreateOpen(false)}
           />
-          
+
           <div className="bg-white rounded-3xl border border-slate-200/80 shadow-2xl relative w-full max-w-xl max-h-[90vh] overflow-y-auto z-10 transition-transform duration-300 animate-scale-up">
             {/* Modal Header */}
             <div className="p-6 border-b border-slate-100 flex items-center justify-between sticky top-0 bg-white z-10">
@@ -569,8 +824,8 @@ export default function FeedPage() {
                   {isModerator ? 'New Official Bulletin' : 'Share Community Event / Alert'}
                 </h3>
                 <p className="text-xs text-slate-500 mt-1 font-semibold">
-                  {isModerator 
-                    ? 'Publish a direct advisory notice on behalf of your department.' 
+                  {isModerator
+                    ? 'Publish a direct advisory notice on behalf of your department.'
                     : 'Submit an event, neighborhood activity, or bulletin for community review.'}
                 </p>
               </div>
@@ -656,7 +911,7 @@ export default function FeedPage() {
               {/* Image Picker */}
               <div className="space-y-1.5">
                 <label className="text-xs font-bold text-slate-700 block">Attach Image (Optional)</label>
-                
+
                 {imagePreview ? (
                   <div className="relative rounded-2xl overflow-hidden border border-slate-250 border-slate-200 bg-slate-50 p-2 flex items-center justify-between">
                     <div className="flex items-center gap-3">
@@ -723,7 +978,7 @@ export default function FeedPage() {
       {/* Rejection reason modal */}
       {isRejectOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div 
+          <div
             className="absolute inset-0 bg-slate-900/60 backdrop-blur-md"
             onClick={() => !isRejecting && setIsRejectOpen(false)}
           />
@@ -775,6 +1030,93 @@ export default function FeedPage() {
           </div>
         </div>
       )}
-    </div>
-  );
-}
+      {/* Suggestion Modal Overlay */}
+      {isSuggestionOpen && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+              <div
+                className="absolute inset-0 bg-slate-900/60 backdrop-blur-md"
+                onClick={() => !isSubmittingSuggestion && setIsSuggestionOpen(false)}
+              />
+
+              <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl relative w-full max-w-lg overflow-hidden z-10 flex flex-col max-h-[90vh]">
+                <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                  <h3 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+                    <span className="material-symbols-outlined text-emerald-600">tips_and_updates</span>
+                    Submit City Suggestion
+                  </h3>
+                  <button
+                    onClick={() => setIsSuggestionOpen(false)}
+                    className="text-slate-400 hover:text-slate-650 p-1.5 rounded-lg hover:bg-slate-200 transition-colors"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <form onSubmit={handleSuggestionSubmit} className="flex-1 overflow-y-auto p-6 space-y-4">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Suggestion Title</label>
+                    <input
+                      type="text"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 text-slate-900 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all"
+                      placeholder="e.g. Expand bicycle lanes or Add waste bins in Sector 3"
+                      required
+                      value={suggestionFormData.title}
+                      onChange={(e) => setSuggestionFormData(prev => ({ ...prev, title: e.target.value }))}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Category</label>
+                    <select
+                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 text-slate-900 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all"
+                      value={suggestionFormData.category}
+                      onChange={(e) => setSuggestionFormData(prev => ({ ...prev, category: e.target.value }))}
+                    >
+                      <option value="General">General</option>
+                      <option value="Traffic">Traffic Management</option>
+                      <option value="Water">Water Management</option>
+                      <option value="Waste">Waste Management</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Description</label>
+                    <textarea
+                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 text-slate-900 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all h-36 resize-none"
+                      placeholder="Describe your idea or suggestion in detail to help city planning..."
+                      required
+                      value={suggestionFormData.description}
+                      onChange={(e) => setSuggestionFormData(prev => ({ ...prev, description: e.target.value }))}
+                    />
+                  </div>
+
+                  <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 mt-6">
+                    <button
+                      type="button"
+                      onClick={() => setIsSuggestionOpen(false)}
+                      className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-5 py-2.5 rounded-lg text-sm transition-all"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={isSubmittingSuggestion}
+                      className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-6 py-2.5 rounded-lg text-sm transition-all flex items-center gap-2 hover:shadow-lg hover:shadow-emerald-500/20"
+                    >
+                      {isSubmittingSuggestion ? (
+                        <>
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          Submitting...
+                        </>
+                      ) : (
+                        'Submit Suggestion'
+                      )}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+  }

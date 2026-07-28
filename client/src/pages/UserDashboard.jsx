@@ -8,6 +8,7 @@ import { logoutUser } from '../features/auth/authThunks';
 import { toast } from 'react-hot-toast';
 import { getMyComplaintsApi, createComplaintApi, uploadComplaintImageApi } from '../api/complaintsApi';
 import { getUserProfileApi } from '../api/userProfileApi';
+import { createFeedbackApi, getMyFeedbackApi } from '../api/feedbackApi';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import Navbar from '../components/Navbar';
@@ -55,13 +56,18 @@ const Dashboard = () => {
 
   // States
   const [complaints, setComplaints] = useState([]);
+  const [feedbacks, setFeedbacks] = useState([]);
   const [profileAvatar, setProfileAvatar] = useState('');
   const [userProfile, setUserProfile] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // Tab State
+  const [activeTab, setActiveTab] = useState('complaints'); // 'complaints' | 'feedback'
+
   // Modal State
   const [showModal, setShowModal] = useState(false);
   const [modalLoading, setModalLoading] = useState(false);
+  
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -97,13 +103,15 @@ const Dashboard = () => {
   // Load complaints and profile
   const loadDashboardData = async () => {
     try {
-      const [profileRes, complaintsRes] = await Promise.all([
+      const [profileRes, complaintsRes, feedbacksRes] = await Promise.all([
         getUserProfileApi().catch(() => ({ data: {} })),
-        getMyComplaintsApi()
+        getMyComplaintsApi(),
+        getMyFeedbackApi().catch(() => ({ data: [] }))
       ]);
       setUserProfile(profileRes.data || null);
       setProfileAvatar(profileRes.data?.avatar_url || '');
       setComplaints(complaintsRes.data || []);
+      setFeedbacks(feedbacksRes.data || []);
     } catch (err) {
       console.error(err);
       toast.error("Failed to load dashboard data.");
@@ -316,6 +324,9 @@ const Dashboard = () => {
       setModalLoading(false);
     }
   };
+
+
+
 
   const handleClearLocation = () => {
     setFormData(prev => ({ ...prev, location_lat: '', location_lng: '' }));
@@ -663,12 +674,16 @@ const Dashboard = () => {
             </h1>
             <p className="text-sm sm:text-slate-500 font-medium">You have filed {totalReports} issue reports to improve our city.</p>
           </div>
-          <button 
-            onClick={handleReportNewIssue}
-            className="w-full sm:w-auto bg-blue-600 hover:bg-blue-500 text-white px-5 py-3 rounded-lg text-sm font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition-all hover:shadow-lg hover:shadow-blue-500/20 shrink-0"
-          >
-            <span className="material-symbols-outlined text-base">add</span> Report New Issue
-          </button>
+          {activeTab === 'complaints' && (
+            <button 
+              onClick={handleReportNewIssue}
+              className="w-full sm:w-auto bg-blue-600 hover:bg-blue-500 text-white px-5 py-3 rounded-lg text-sm font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition-all hover:shadow-lg hover:shadow-blue-500/20 shrink-0"
+            >
+              <span className="material-symbols-outlined text-base">add</span> Report New Issue
+            </button>
+          )}
+
+
         </div>
 
         {/* Quick Stats Grid */}
@@ -684,100 +699,192 @@ const Dashboard = () => {
           ))}
         </div>
 
+        {/* Tab Switcher */}
+        <div className="flex gap-2 border-b border-slate-200 mb-8 overflow-x-auto whitespace-nowrap scrollbar-none bg-white p-2 rounded-xl shadow-sm border border-slate-200">
+          <button
+            onClick={() => setActiveTab('complaints')}
+            className={`flex items-center gap-2 py-3 px-6 font-bold text-sm rounded-lg transition-all duration-200 ${
+              activeTab === 'complaints'
+                ? 'bg-blue-50 text-blue-700 shadow-sm'
+                : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50'
+            }`}
+          >
+            <span className="material-symbols-outlined text-[18px]">assignment</span>
+            My Complaints
+          </button>
+          <button
+            onClick={() => setActiveTab('feedback')}
+            className={`flex items-center gap-2 py-3 px-6 font-bold text-sm rounded-lg transition-all duration-200 ${
+              activeTab === 'feedback'
+                ? 'bg-indigo-50 text-indigo-700 shadow-sm'
+                : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50'
+            }`}
+          >
+            <span className="material-symbols-outlined text-[18px]">rate_review</span>
+            Feedback
+          </button>
+        </div>
+
         {/* Two Column Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           
-          {/* Left Column: My Reports */}
-          <div className="lg:col-span-8 space-y-6">
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-              <div className="p-5 border-b border-slate-200 flex justify-between items-center bg-slate-50">
-                <h2 className="text-xl font-bold text-slate-900">My Reports</h2>
-                <Link to="/reports" className="flex items-center gap-1 text-sm font-bold text-blue-600 hover:text-blue-500 transition-colors">
-                  View All Reports
-                  <span className="material-symbols-outlined text-sm font-bold">arrow_forward</span>
-                </Link>
-              </div>
-              
-              <div className="divide-y divide-slate-100">
-                {complaints.length > 0 ? (
-                  complaints.map((report) => (
-                    <div key={report.id} onClick={() => setSelectedComplaintForDetails(report)} className="p-4 sm:p-5 hover:bg-slate-50 transition-colors flex gap-4 sm:gap-5 items-start cursor-pointer">
-                      <div className="w-20 h-20 sm:w-28 sm:h-28 rounded-lg shrink-0 border border-slate-200 bg-slate-100 flex items-center justify-center overflow-hidden relative">
-                        {report.image_url ? (
-                          isVideoUrl(report.image_url) ? (
-                            <video 
-                              src={report.image_url} 
-                              muted 
-                              playsInline 
-                              autoPlay 
-                              loop 
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            <img 
-                              src={report.image_url} 
-                              alt={report.title} 
-                              className="w-full h-full object-cover"
-                            />
-                          )
-                        ) : (
-                          <span className="material-symbols-outlined text-slate-300 text-2xl sm:text-3xl">image</span>
-                        )}
-                      </div>
-                      <div className="flex-grow flex flex-col justify-between min-h-[80px] sm:min-h-[112px]">
-                        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-1.5 sm:gap-4 mb-2">
-                          <div>
-                            <div className="flex items-center gap-1.5 mb-1">
-                              <span className="material-symbols-outlined text-blue-600 text-sm">{getDeptIcon(report.department)}</span>
-                              <span className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider">{report.department}</span>
-                            </div>
-                            <h3 className="text-base sm:text-lg font-bold text-slate-900 mb-1 leading-tight">{report.title}</h3>
-                            <p className="text-xs sm:text-sm text-slate-600 line-clamp-2 leading-snug">{report.description}</p>
-                          </div>
-                          <span className={`${getStatusStyle(report.status)} text-white text-[10px] sm:text-xs font-bold px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-full shadow-sm whitespace-nowrap self-start sm:self-auto`}>
-                            {report.status}
-                          </span>
-                        </div>
-                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[10px] sm:text-xs font-medium text-slate-500 mt-auto">
-                          <span className="flex items-center gap-1 min-w-0">
-                            <span className="material-symbols-outlined text-[14px] sm:text-[16px] shrink-0">location_on</span> 
-                            <ComplaintLocation lat={report.location_lat} lng={report.location_lng} />
-                          </span>
-                          <span className="flex items-center gap-1 shrink-0">
-                            <span className="material-symbols-outlined text-[14px] sm:text-[16px]">calendar_today</span> {new Date(report.created_at).toLocaleDateString()}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="text-center py-12 bg-white">
-                    <span className="material-symbols-outlined text-slate-200 text-5xl">assignment_late</span>
-                    <p className="text-slate-400 font-semibold mt-4">You have not reported any issues yet.</p>
-                    <button 
-                      onClick={handleReportNewIssue} 
-                      className="mt-2 text-blue-600 hover:text-blue-500 font-bold text-sm"
-                    >
-                      Report your first issue now &rarr;
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Right Column: Map */}
-          <div className="lg:col-span-4 space-y-6">
+          {/* Main List Column */}
+          <div className={`${activeTab === 'complaints' ? 'lg:col-span-8' : 'lg:col-span-12'} space-y-6`}>
             
-            {/* Map Widget */}
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col h-[350px]">
-              <div className="p-5 border-b border-slate-200 bg-slate-50">
-                <h2 className="text-lg font-bold text-slate-900">Nearby Issues</h2>
+            {/* Complaints Tab panel */}
+            {activeTab === 'complaints' && (
+              <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                <div className="p-5 border-b border-slate-200 flex justify-between items-center bg-slate-50">
+                  <h2 className="text-xl font-bold text-slate-900">My Reports</h2>
+                  <Link to="/reports" className="flex items-center gap-1 text-sm font-bold text-blue-600 hover:text-blue-500 transition-colors">
+                    View All Reports
+                    <span className="material-symbols-outlined text-sm font-bold">arrow_forward</span>
+                  </Link>
+                </div>
+                
+                <div className="divide-y divide-slate-100">
+                  {complaints.length > 0 ? (
+                    complaints.map((report) => (
+                      <div key={report.id} onClick={() => setSelectedComplaintForDetails(report)} className="p-4 sm:p-5 hover:bg-slate-50 transition-colors flex gap-4 sm:gap-5 items-start cursor-pointer">
+                        <div className="w-20 h-20 sm:w-28 sm:h-28 rounded-lg shrink-0 border border-slate-200 bg-slate-100 flex items-center justify-center overflow-hidden relative">
+                          {report.image_url ? (
+                            isVideoUrl(report.image_url) ? (
+                              <video 
+                                src={report.image_url} 
+                                muted 
+                                playsInline 
+                                autoPlay 
+                                loop 
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <img 
+                                src={report.image_url} 
+                                alt={report.title} 
+                                className="w-full h-full object-cover"
+                              />
+                            )
+                          ) : (
+                            <span className="material-symbols-outlined text-slate-300 text-2xl sm:text-3xl">image</span>
+                          )}
+                        </div>
+                        <div className="flex-grow flex flex-col justify-between min-h-[80px] sm:min-h-[112px]">
+                          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-1.5 sm:gap-4 mb-2">
+                            <div>
+                              <div className="flex items-center gap-1.5 mb-1">
+                                <span className="material-symbols-outlined text-blue-600 text-sm">{getDeptIcon(report.department)}</span>
+                                <span className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider">{report.department}</span>
+                              </div>
+                              <h3 className="text-base sm:text-lg font-bold text-slate-900 mb-1 leading-tight">{report.title}</h3>
+                              <p className="text-xs sm:text-sm text-slate-600 line-clamp-2 leading-snug">{report.description}</p>
+                            </div>
+                            <span className={`${getStatusStyle(report.status)} text-white text-[10px] sm:text-xs font-bold px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-full shadow-sm whitespace-nowrap self-start sm:self-auto`}>
+                              {report.status}
+                            </span>
+                          </div>
+                          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[10px] sm:text-xs font-medium text-slate-500 mt-auto">
+                            <span className="flex items-center gap-1 min-w-0">
+                              <span className="material-symbols-outlined text-[14px] sm:text-[16px] shrink-0">location_on</span> 
+                              <ComplaintLocation lat={report.location_lat} lng={report.location_lng} />
+                            </span>
+                            <span className="flex items-center gap-1 shrink-0">
+                              <span className="material-symbols-outlined text-[14px] sm:text-[16px]">calendar_today</span> {new Date(report.created_at).toLocaleDateString()}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center py-12 bg-white">
+                      <span className="material-symbols-outlined text-slate-200 text-5xl">assignment_late</span>
+                      <p className="text-slate-400 font-semibold mt-4">You have not reported any issues yet.</p>
+                      <button 
+                        onClick={handleReportNewIssue} 
+                        className="mt-2 text-blue-600 hover:text-blue-500 font-bold text-sm"
+                      >
+                        Report your first issue now &rarr;
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
-              <div id="map" className="flex-grow h-full w-full z-10" style={{ minHeight: '250px' }}></div>
-            </div>
+            )}
+
+
+
+            {/* Feedback Tab panel */}
+            {activeTab === 'feedback' && (
+              <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                <div className="p-5 border-b border-slate-200 bg-slate-50">
+                  <h2 className="text-xl font-bold text-slate-900">Complaints Feedback History</h2>
+                </div>
+                
+                <div className="divide-y divide-slate-100">
+                  {feedbacks.length > 0 ? (
+                    feedbacks.map((feedback) => (
+                      <div key={feedback.id} className="p-5 hover:bg-slate-50 transition-colors flex gap-4 items-start">
+                        <div className="w-12 h-12 rounded-xl shrink-0 bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-650 text-indigo-605 text-indigo-600">
+                          <span className="material-symbols-outlined text-2xl">rate_review</span>
+                        </div>
+                        <div className="flex-grow">
+                          <div className="flex justify-between items-start mb-1.5">
+                            <div className="flex items-center gap-2">
+                              <span className="text-[10px] font-bold text-slate-800 bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded">
+                                Complaint #{feedback.complaint_id}
+                              </span>
+                              <div className="flex items-center gap-1">
+                                {[1, 2, 3, 4, 5].map((star) => (
+                                  <span 
+                                    key={star} 
+                                    className={`material-symbols-outlined text-sm ${
+                                      star <= (feedback.rating || 0) ? 'text-amber-500 fill-current' : 'text-slate-200'
+                                    }`}
+                                  >
+                                    star
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                            <span className="text-xs font-semibold text-slate-400">{new Date(feedback.created_at).toLocaleDateString()}</span>
+                          </div>
+                          {feedback.comment ? (
+                            <p className="text-sm text-slate-655 text-slate-600 leading-relaxed italic">
+                              "{feedback.comment}"
+                            </p>
+                          ) : (
+                            <p className="text-sm text-slate-400 italic">No comment provided</p>
+                          )}
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center py-12 bg-white">
+                      <span className="material-symbols-outlined text-slate-200 text-5xl">rate_review</span>
+                      <p className="text-slate-400 font-semibold mt-4">You have not submitted feedback for any resolved complaints yet.</p>
+                      <p className="text-xs text-slate-500 mt-2 max-w-sm mx-auto font-medium">
+                        To submit feedback, go to "My Complaints", click on any resolved/closed complaint, and complete the rating form.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
 
           </div>
+
+          {/* Right Column: Map (only for Complaints) */}
+          {activeTab === 'complaints' && (
+            <div className="lg:col-span-4 space-y-6">
+              {/* Map Widget */}
+              <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col h-[350px]">
+                <div className="p-5 border-b border-slate-200 bg-slate-50">
+                  <h2 className="text-lg font-bold text-slate-900">Nearby Issues</h2>
+                </div>
+                <div id="map" className="flex-grow h-full w-full z-10" style={{ minHeight: '250px' }}></div>
+              </div>
+            </div>
+          )}
+
         </div>
       </main>
 

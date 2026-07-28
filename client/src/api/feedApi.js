@@ -36,3 +36,19 @@ export const rejectPostApi = (postId, reason) => {
 export const deletePostApi = (postId) => {
   return axiosInstance.delete(`/city/feed/posts/${postId}`);
 };
+
+export const reactToPostApi = (postId, reactionType = "LIKE") => {
+  return axiosInstance.post(`/city/feed/posts/${postId}/react`, { reaction_type: reactionType });
+};
+
+export const getPostCommentsApi = (postId) => {
+  return axiosInstance.get(`/city/feed/posts/${postId}/comments`);
+};
+
+export const createPostCommentApi = (postId, content) => {
+  return axiosInstance.post(`/city/feed/posts/${postId}/comments`, { content });
+};
+
+export const deletePostCommentApi = (commentId) => {
+  return axiosInstance.delete(`/city/feed/posts/comments/${commentId}`);
+};

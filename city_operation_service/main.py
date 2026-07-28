@@ -9,7 +9,6 @@ from modules.traffic_management.router import router as traffic_router
 from modules.water_management.router import router as water_router
 from modules.workers.router import router as workers_router
 from modules.feed.router import router as feed_router
-
 # Ensure worker models including leave_requests and worker_profiles exist in database
 import modules.workers.model
 import modules.complaints.model
