@@ -27,7 +27,7 @@ class Settings:
 
     # Celery & RabbitMQ Configuration
     CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", "amqp://guest:guest@localhost:5672//")
+    CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND", "rpc://")
 
 
 settings = Settings()
-

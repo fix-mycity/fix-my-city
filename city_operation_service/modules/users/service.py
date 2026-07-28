@@ -340,17 +340,21 @@ async def init_digilocker_service(db: Session, user_id: int, redirect_url: str) 
 
     verification_id = f"dl_verify_{user_id}_{int(time.time())}"
     
+    if not settings.CASHFREE_CLIENT_ID or not settings.CASHFREE_CLIENT_SECRET or settings.CASHFREE_CLIENT_ID == "YOUR_CLIENT_ID":
+        logger.error("Cashfree API credentials are not configured in environment variables.")
+        raise ValueError("Cashfree API credentials (CASHFREE_CLIENT_ID / CASHFREE_CLIENT_SECRET) are missing or not configured in environment variables.")
+
     # Cashfree integration
-    url = f"{settings.CASHFREE_BASE_URL.rstrip('/')}/digilocker"
+    url = f"{(settings.CASHFREE_BASE_URL or 'https://sandbox.cashfree.com/verification').rstrip('/')}/digilocker"
     payload = {
         "verification_id": verification_id,
         "redirect_url": redirect_url,
         "document_requested": ["AADHAAR"]
     }
     headers = {
-        "x-client-id": settings.CASHFREE_CLIENT_ID,
-        "x-client-secret": settings.CASHFREE_CLIENT_SECRET,
-        "x-api-version": settings.CASHFREE_API_VERSION,
+        "x-client-id": str(settings.CASHFREE_CLIENT_ID),
+        "x-client-secret": str(settings.CASHFREE_CLIENT_SECRET),
+        "x-api-version": str(settings.CASHFREE_API_VERSION or "2022-10-26"),
         "Content-Type": "application/json"
     }
 

@@ -43,6 +43,12 @@ import TrafficDashboard from './pages/traffic/Dashboard';
 import TrafficMap from './pages/traffic/TrafficMap';
 import TrafficIncidents from './pages/traffic/TrafficIncidents';
 
+// Super Admin Module
+import SuperAdminLayout from './layout/SuperAdminLayout';
+import SuperAdminDashboard from './pages/superAdmin/SuperAdminDashboard';
+import UserRolePermissionManagement from './pages/superAdmin/UserRolePermissionManagement';
+import MasterComplaintsReroute from './pages/superAdmin/MasterComplaintsReroute';
+
 export default function App() {
   const dispatch = useDispatch();
   const [authChecked, setAuthChecked] = useState(false);
@@ -114,12 +120,11 @@ export default function App() {
         <Route path="/terms" element={<TermsOfService />} />
         <Route path="/privacy" element={<PrivacyPolicy />} />
 
-        {/* Citizen Routes */}
-
+        {/* User Application Routes */}
         <Route
           path="/dashboard"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute allowedRoles={['Citizen']}>
               <UserDashboard />
             </ProtectedRoute>
           }
@@ -128,7 +133,7 @@ export default function App() {
         <Route
           path="/reports"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute allowedRoles={['Citizen']}>
               <ReportsPage />
             </ProtectedRoute>
           }
@@ -137,29 +142,28 @@ export default function App() {
         <Route
           path="/profile"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute allowedRoles={['Citizen', 'Department_Admin', 'Worker', 'Super_Admin', 'Admin']}>
               <ProfilePage />
             </ProtectedRoute>
           }
         />
 
-        {/* Admin Portal */}
-
+        {/* Legacy Admin Portal */}
         <Route
-          path="/admin/portal"
+          path="/admin"
           element={
-            <ProtectedRoute allowedRoles={['Department_Admin', 'Super_Admin']}>
+            <ProtectedRoute allowedRoles={['Department_Admin', 'Super_Admin', 'Admin']}>
               <AdminPortal />
             </ProtectedRoute>
           }
         />
 
-        {/* Worker Portal */}
+        {/* Worker Interface Routes */}
         <Route
           path="/worker/dashboard"
           element={
             <ProtectedRoute allowedRoles={['Worker']}>
-              <WorkerLayout>
+              <WorkerLayout activeTab="dashboard">
                 <WorkerDashboard />
               </WorkerLayout>
             </ProtectedRoute>
@@ -167,7 +171,6 @@ export default function App() {
         />
 
         {/* Water Authority */}
-
         <Route
           path="/water/dashboard"
           element={
@@ -175,7 +178,7 @@ export default function App() {
               allowedRoles={['Department_Admin']}
               requiredPermissions={['dept:water']}
             >
-              <WaterLayout>
+              <WaterLayout activeTab="dashboard">
                 <WaterDashboard />
               </WaterLayout>
             </ProtectedRoute>
@@ -310,6 +313,16 @@ export default function App() {
           } 
         />
         <Route 
+          path="/traffic/workers/:id" 
+          element={
+            <ProtectedRoute allowedRoles={['Department_Admin']} requiredPermissions={['dept:traffic']}>
+              <TrafficLayout>
+                <WorkerProfile department="traffic" />
+              </TrafficLayout>
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
           path="/traffic/workers/:id/edit" 
           element={
             <ProtectedRoute allowedRoles={['Department_Admin']} requiredPermissions={['dept:traffic']}>
@@ -324,6 +337,48 @@ export default function App() {
           element={
             <ProtectedRoute allowedRoles={['Department_Admin']} requiredPermissions={['dept:traffic']}>
               <TrafficMap/>
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Super Admin Module */}
+        <Route
+          path="/super-admin"
+          element={
+            <ProtectedRoute allowedRoles={['Super_Admin', 'Admin']}>
+              <SuperAdminLayout>
+                <SuperAdminDashboard />
+              </SuperAdminLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/super-admin/dashboard"
+          element={
+            <ProtectedRoute allowedRoles={['Super_Admin', 'Admin']}>
+              <SuperAdminLayout>
+                <SuperAdminDashboard />
+              </SuperAdminLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/super-admin/users"
+          element={
+            <ProtectedRoute allowedRoles={['Super_Admin', 'Admin']}>
+              <SuperAdminLayout>
+                <UserRolePermissionManagement />
+              </SuperAdminLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/super-admin/complaints"
+          element={
+            <ProtectedRoute allowedRoles={['Super_Admin', 'Admin']}>
+              <SuperAdminLayout>
+                <MasterComplaintsReroute />
+              </SuperAdminLayout>
             </ProtectedRoute>
           }
         />

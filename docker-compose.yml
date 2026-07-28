@@ -12,6 +12,23 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
+  redis:
+    image: redis:7-alpine
+    container_name: fixmycity_redis
+    restart: always
+    ports:
+      - "6379:6379"
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: fixmycity_rabbitmq
+    restart: always
+    environment:
+      RABBITMQ_ERLANG_COOKIE: "FIXMYCITY_RABBITMQ_SECRET_COOKIE_12345"
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+
   auth-service:
     build:
       context: .
@@ -34,6 +51,8 @@ services:
       dockerfile: city_operation_service/Dockerfile
     container_name: city_operation_service
     restart: always
+    env_file:
+      - ./city_operation_service/.env
     expose:
       - "8002"
     environment:
@@ -41,38 +60,31 @@ services:
       CELERY_BROKER_URL: amqp://guest:guest@rabbitmq:5672//
     depends_on:
       - postgres
+      - redis
       - rabbitmq
     volumes:
       - ./city_operation_service:/app/city_operation_service
     command: sh -c "alembic upgrade head && uvicorn main:app --host 0.0.0.0 --port 8002 --reload"
 
-  rabbitmq:
-    image: rabbitmq:3-management
-    container_name: fixmycity_rabbitmq
-    restart: always
-    ports:
-      - "5672:5672"
-      - "15672:15672"
-
   celery-worker:
     build:
       context: .
       dockerfile: city_operation_service/Dockerfile
-    container_name: celery_worker
+    container_name: city_operation_celery_worker
     restart: always
+    env_file:
+      - ./city_operation_service/.env
     environment:
       DATABASE_URL: postgresql://fixmycity:fixmycity_pass@postgres:5432/fixmycity_db
       CELERY_BROKER_URL: amqp://guest:guest@rabbitmq:5672//
       PYTHONPATH: /app/city_operation_service
     depends_on:
       - postgres
+      - redis
       - rabbitmq
     volumes:
       - ./city_operation_service:/app/city_operation_service
     command: python -m celery -A core.celery_app worker --loglevel=info
-
-
-
 
   nginx:
     build:

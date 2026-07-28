@@ -9,6 +9,7 @@ class ComplaintStatus(str, enum.Enum):
     IN_PROGRESS = "IN_PROGRESS"
     RESOLVED = "RESOLVED"
     CLOSED = "CLOSED"
+    REJECTED = "REJECTED"
 
 class ComplaintDepartment(str, enum.Enum):
     TRAFFIC = "traffic"

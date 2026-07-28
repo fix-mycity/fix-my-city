@@ -77,11 +77,21 @@ export default function WorkerDashboard() {
   };
 
   const handleStatusChange = async (newAvailability) => {
+    if (newAvailability === 'ON_LEAVE') {
+      toast.error("Status cannot be set to On Leave directly. Please submit a Leave Request for manager approval.");
+      setIsLeaveModalOpen(true);
+      return;
+    }
     setIsUpdating(true);
     try {
+      const nowIso = new Date().toISOString();
       await updateMyProfile({ availability: newAvailability });
-      setProfile(prev => ({ ...prev, availability: newAvailability }));
-      toast.success(`Duty status updated to ${newAvailability}`);
+      setProfile(prev => ({ 
+        ...prev, 
+        availability: newAvailability,
+        status_updated_at: nowIso
+      }));
+      toast.success(`Duty status updated to ${newAvailability.replace('_', ' ')}`);
     } catch (err) {
       toast.error(err.response?.data?.detail || "Failed to update duty status");
     } finally {
@@ -310,7 +320,7 @@ export default function WorkerDashboard() {
                 <p className="text-xs text-slate-300 font-medium">Duty Status</p>
                 <p className="text-sm font-bold text-white capitalize">{profile.availability?.replace('_', ' ') || 'Available'}</p>
               </div>
-              <WorkerAvailabilityBadge availability={profile.availability} />
+              <WorkerAvailabilityBadge availability={profile.availability} statusUpdatedAt={profile.status_updated_at || profile.updated_at} />
             </div>
           </div>
         </div>
@@ -332,6 +342,7 @@ export default function WorkerDashboard() {
               <p className="text-xs text-slate-500 mb-4">Set your active field status for task dispatchers.</p>
 
               <div className="space-y-2.5">
+                {/* Available for Tasks */}
                 <button 
                   disabled={isUpdating || profile.availability === 'AVAILABLE'}
                   onClick={() => handleStatusChange('AVAILABLE')}
@@ -348,36 +359,58 @@ export default function WorkerDashboard() {
                   {profile.availability === 'AVAILABLE' && <span className="text-xs font-bold bg-emerald-200/60 px-2 py-0.5 rounded text-emerald-800">ACTIVE</span>}
                 </button>
 
+                {/* On Break */}
+                <button 
+                  disabled={isUpdating || profile.availability === 'ON_BREAK'}
+                  onClick={() => handleStatusChange('ON_BREAK')}
+                  className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border text-sm font-medium transition-all ${
+                    profile.availability === 'ON_BREAK'
+                      ? 'bg-amber-50 border-amber-500 text-amber-900 shadow-sm font-semibold'
+                      : 'border-slate-200 hover:border-amber-300 hover:bg-amber-50/50 text-slate-700'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <span className="material-symbols-outlined text-amber-600">coffee</span>
+                    <span>On Break</span>
+                  </div>
+                  {profile.availability === 'ON_BREAK' && <span className="text-xs font-bold bg-amber-200/60 px-2 py-0.5 rounded text-amber-800">ACTIVE</span>}
+                </button>
+
+                {/* Busy on Job Site */}
                 <button 
                   disabled={isUpdating || profile.availability === 'BUSY'}
                   onClick={() => handleStatusChange('BUSY')}
                   className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border text-sm font-medium transition-all ${
                     profile.availability === 'BUSY'
-                      ? 'bg-amber-50 border-amber-500 text-amber-800 shadow-sm font-semibold'
-                      : 'border-slate-200 hover:border-amber-300 hover:bg-amber-50/50 text-slate-700'
+                      ? 'bg-blue-50 border-blue-500 text-blue-800 shadow-sm font-semibold'
+                      : 'border-slate-200 hover:border-blue-300 hover:bg-blue-50/50 text-slate-700'
                   }`}
                 >
                   <div className="flex items-center gap-2.5">
-                    <span className="material-symbols-outlined text-amber-600">construction</span>
+                    <span className="material-symbols-outlined text-blue-600">construction</span>
                     <span>Busy on Job Site</span>
                   </div>
-                  {profile.availability === 'BUSY' && <span className="text-xs font-bold bg-amber-200/60 px-2 py-0.5 rounded text-amber-800">ACTIVE</span>}
+                  {profile.availability === 'BUSY' && <span className="text-xs font-bold bg-blue-200/60 px-2 py-0.5 rounded text-blue-800">ACTIVE</span>}
                 </button>
 
+                {/* Apply for Leave (Requires Manager Approval) */}
                 <button 
-                  disabled={isUpdating || profile.availability === 'ON_LEAVE'}
                   onClick={() => handleStatusChange('ON_LEAVE')}
                   className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border text-sm font-medium transition-all ${
                     profile.availability === 'ON_LEAVE'
-                      ? 'bg-slate-100 border-slate-400 text-slate-900 shadow-sm font-semibold'
-                      : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-slate-700'
+                      ? 'bg-rose-50 border-rose-400 text-rose-900 shadow-sm font-semibold'
+                      : 'border-slate-200 hover:border-rose-200 hover:bg-rose-50/50 text-slate-700'
                   }`}
                 >
                   <div className="flex items-center gap-2.5">
-                    <span className="material-symbols-outlined text-slate-500">bedtime</span>
-                    <span>On Leave / Off Shift</span>
+                    <span className="material-symbols-outlined text-rose-500">event_busy</span>
+                    <span>On Leave (Requires Approval)</span>
                   </div>
-                  {profile.availability === 'ON_LEAVE' && <span className="text-xs font-bold bg-slate-200 px-2 py-0.5 rounded text-slate-700">ACTIVE</span>}
+                  {profile.availability === 'ON_LEAVE' ? (
+                    <span className="text-xs font-bold bg-rose-200 px-2 py-0.5 rounded text-rose-800">APPROVED</span>
+                  ) : (
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Form Req</span>
+                  )}
                 </button>
               </div>
             </div>
