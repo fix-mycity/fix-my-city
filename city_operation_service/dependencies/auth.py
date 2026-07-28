@@ -52,7 +52,7 @@ class PermissionChecker:
         self.required_permissions = required_permissions
 
     def __call__(self, current_user: UserData = Depends(get_current_user)) -> UserData:
-        if "admin:all" in current_user.permissions:
+        if "admin:all" in current_user.permissions or current_user.role in ["Admin", "Super_Admin"]:
             return current_user
 
         for permission in self.required_permissions:

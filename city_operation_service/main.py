@@ -9,6 +9,7 @@ from modules.traffic_management.router import router as traffic_router
 from modules.water_management.router import router as water_router
 from modules.workers.router import router as workers_router
 from modules.feed.router import router as feed_router
+from modules.super_admin.router import router as super_admin_router
 # Ensure worker models including leave_requests and worker_profiles exist in database
 import modules.workers.model
 import modules.complaints.model
@@ -46,7 +47,7 @@ app.include_router(traffic_router)
 app.include_router(water_router)
 app.include_router(workers_router)
 app.include_router(feed_router)
-
+app.include_router(super_admin_router)
 
 @app.get("/")
 def home():

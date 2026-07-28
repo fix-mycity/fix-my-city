@@ -88,7 +88,7 @@ export default function WorkerLayout({ children }) {
 
       {/* Footer */}
       <footer className="py-4 text-center border-t border-slate-200 mt-auto bg-white text-xs text-slate-400 font-medium">
-        © {new Date().getFullYear()} Fix My City • Field Officer Operations Portal
+        © {new Date().getFullYear()} Fix My City • Field Worker Operations Portal
       </footer>
     </div>
   );

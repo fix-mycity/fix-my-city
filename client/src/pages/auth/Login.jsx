@@ -119,9 +119,11 @@ export default function Login() {
         const permissions = user.permissions || [];
         const deptPermissions = permissions.filter(p => p.startsWith('dept:'));
 
-        if (user.role === 'Citizen') {
+        if (user.role === 'Super_Admin' || user.role === 'Admin') {
+          navigate('/super-admin/dashboard', { replace: true });
+        } else if (user.role === 'Citizen') {
           navigate('/dashboard', { replace: true });
-        } else if (user.role === 'Department_Admin' || user.role === 'Super_Admin') {
+        } else if (user.role === 'Department_Admin') {
           if (deptPermissions.length === 1) {
             const perm = deptPermissions[0];
             if (perm === 'dept:traffic') {
@@ -131,12 +133,10 @@ export default function Login() {
             } else if (perm === 'dept:waste') {
               navigate('/waste/dashboard', { replace: true });
             } else {
-              navigate('/dashboard', { replace: true });
+              navigate('/admin', { replace: true });
             }
-          } else if (deptPermissions.length >= 2) {
-            navigate('/admin/portal', { replace: true });
           } else {
-            navigate('/dashboard', { replace: true });
+            navigate('/admin', { replace: true });
           }
         } else if (user.role === 'Worker') {
           navigate('/worker/dashboard', { replace: true });

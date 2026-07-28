@@ -3,11 +3,10 @@ import { useDispatch, useSelector } from 'react-redux';
 import { assignTrafficIncident, closeTrafficIncident, updateTrafficIncidentStatus, fetchTrafficWorkers } from '../../features/traffic/trafficThunks';
 import { downloadTaskPdfReport } from '../../services/workerService';
 import { toast } from 'react-hot-toast';
-import { MapPin, Calendar, HardHat, AlertTriangle, CheckCircle, ChevronDown, Image as ImageIcon, FileText } from 'lucide-react';
+import { MapPin, Calendar, HardHat, AlertTriangle, CheckCircle, ChevronDown, Image as ImageIcon, FileText, XCircle, Eye } from 'lucide-react';
 import { toastConfirm } from '../../utils/toastConfirm';
 import ComplaintLocation from '../shared/ComplaintLocation';
 import ComplaintDetailsModal from '../shared/ComplaintDetailsModal';
-import { Eye } from 'lucide-react';
 
 const TrafficIncidentList = ({ incidents, status, readOnly = false }) => {
   const dispatch = useDispatch();
@@ -48,6 +47,17 @@ const TrafficIncidentList = ({ incidents, status, readOnly = false }) => {
     }
   };
 
+  const handleReject = async (incidentId) => {
+    toastConfirm("Are you sure you want to reject this traffic incident? This action cannot be undone.", async () => {
+      try {
+        await dispatch(updateTrafficIncidentStatus({ incidentId, status: 'REJECTED' })).unwrap();
+        toast.success("Incident rejected successfully.");
+      } catch (err) {
+        toast.error(err?.message || "Failed to reject incident.");
+      }
+    });
+  };
+
   const handleClose = async (incidentId) => {
     toastConfirm("Have you reviewed the complaint details and PDF report? Confirm to officially close this incident.", async () => {
       try {
@@ -83,10 +93,12 @@ const TrafficIncidentList = ({ incidents, status, readOnly = false }) => {
   };
 
   const getStatusColor = (currentStatus) => {
-    if (currentStatus === 'PENDING' || currentStatus === 'NEW') return 'bg-red-500 shadow-red-500/40';
+    if (currentStatus === 'PENDING' || currentStatus === 'NEW') return 'bg-amber-500 shadow-amber-500/40';
     if (currentStatus === 'ASSIGNED' || currentStatus === 'IN_PROGRESS') return 'bg-blue-500 shadow-blue-500/40';
     if (currentStatus === 'RESOLVED') return 'bg-purple-500 shadow-purple-500/40';
-    return 'bg-emerald-500 shadow-emerald-500/40';
+    if (currentStatus === 'CLOSED') return 'bg-emerald-500 shadow-emerald-500/40';
+    if (currentStatus === 'REJECTED') return 'bg-rose-600 shadow-rose-600/40';
+    return 'bg-slate-500 shadow-slate-500/40';
   };
 
   if (status === 'loading') {
@@ -123,13 +135,18 @@ const TrafficIncidentList = ({ incidents, status, readOnly = false }) => {
       <div className="space-y-6">
         {incidents.map((report) => {
           const isResolved = report.status === 'RESOLVED' || report.status === 'CLOSED';
+          const isClosedOrRejected = report.status === 'CLOSED' || report.status === 'REJECTED';
           const citizenImg = report.image_url;
 
           return (
             <div 
               key={report.id} 
               className={`bg-white rounded-2xl p-6 border transition-all shadow-sm hover:shadow-md ${
-                isResolved ? 'border-emerald-200 hover:border-emerald-300' : 'border-slate-200 hover:border-blue-300'
+                report.status === 'CLOSED' 
+                  ? 'border-emerald-200 hover:border-emerald-300' 
+                  : report.status === 'REJECTED'
+                  ? 'border-rose-200 hover:border-rose-300 bg-rose-50/10'
+                  : 'border-slate-200 hover:border-blue-300'
               }`}
             >
               
@@ -177,7 +194,7 @@ const TrafficIncidentList = ({ incidents, status, readOnly = false }) => {
                     
                     {/* Status Badge / Dropdown */}
                     <div className="relative shrink-0">
-                      {readOnly || report.status === 'PENDING' ? (
+                      {readOnly || isClosedOrRejected ? (
                         <div className={`text-white text-xs font-bold px-4 py-1.5 rounded-full shadow-sm inline-block ${getStatusColor(report.status)}`}>
                           {report.status}
                         </div>
@@ -188,10 +205,12 @@ const TrafficIncidentList = ({ incidents, status, readOnly = false }) => {
                             onChange={(e) => handleStatusChange(report.id, e.target.value)}
                             className={`appearance-none text-white text-xs font-bold px-4 py-1.5 rounded-full shadow-sm cursor-pointer pr-8 focus:outline-none focus:ring-2 focus:ring-slate-300 ${getStatusColor(report.status)}`}
                           >
+                            <option value="PENDING" className="bg-white text-slate-800">PENDING</option>
                             <option value="ASSIGNED" className="bg-white text-slate-800">ASSIGNED</option>
                             <option value="IN_PROGRESS" className="bg-white text-slate-800">IN PROGRESS</option>
                             <option value="RESOLVED" className="bg-white text-slate-800">RESOLVED (Awaiting Admin Review)</option>
                             <option value="CLOSED" className="bg-white text-slate-800">CLOSED (Approved)</option>
+                            <option value="REJECTED" className="bg-white text-slate-800">REJECTED</option>
                           </select>
                           <ChevronDown className="w-4 h-4 text-white absolute right-2 top-1.5 pointer-events-none" />
                         </>
@@ -254,52 +273,65 @@ const TrafficIncidentList = ({ incidents, status, readOnly = false }) => {
                           </button>
                         )}
 
-                        {assigningIncidentId === report.id ? (
-                          <div className="flex items-center gap-2">
-                            <select 
-                              className="border border-slate-300 rounded-lg text-sm p-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                              value={selectedWorkerId}
-                              onChange={(e) => setSelectedWorkerId(e.target.value)}
-                            >
-                              <option value="">Select Worker...</option>
-                              {workers?.items?.map(w => (
-                                <option key={w.id} value={w.id}>
-                                  {w.first_name} {w.last_name} ({w.availability || 'AVAILABLE'})
-                                </option>
-                              ))}
-                            </select>
-                            <button 
-                              onClick={() => handleConfirmAssign(report.id)}
-                              className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold py-1.5 px-3 rounded-lg shadow-sm transition-colors"
-                            >
-                              Confirm
-                            </button>
-                            <button 
-                              onClick={() => { setAssigningIncidentId(null); setSelectedWorkerId(""); }}
-                              className="bg-slate-200 hover:bg-slate-300 text-slate-700 text-sm font-semibold py-1.5 px-3 rounded-lg shadow-sm transition-colors"
-                            >
-                              Cancel
-                            </button>
-                          </div>
-                        ) : (
+                        {!isClosedOrRejected && (
                           <>
-                            {report.status === 'PENDING' && !report.assigned_worker_id && (
-                              <button 
-                                onClick={() => setAssigningIncidentId(report.id)}
-                                className="bg-slate-800 hover:bg-slate-700 text-white text-sm font-semibold py-2 px-4 rounded-lg shadow-sm transition-colors flex items-center gap-2"
-                              >
-                                <HardHat className="w-4 h-4" />
-                                Assign Worker
-                              </button>
-                            )}
-                            {report.status === 'RESOLVED' && (
-                              <button 
-                                onClick={() => handleClose(report.id)}
-                                className="bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold py-2 px-4 rounded-lg shadow-sm transition-colors flex items-center gap-2"
-                              >
-                                <CheckCircle className="w-4 h-4" />
-                                Approve & Close Incident
-                              </button>
+                            {assigningIncidentId === report.id ? (
+                              <div className="flex items-center gap-2">
+                                <select 
+                                  className="border border-slate-300 rounded-lg text-sm p-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                  value={selectedWorkerId}
+                                  onChange={(e) => setSelectedWorkerId(e.target.value)}
+                                >
+                                  <option value="">Select Worker...</option>
+                                  {workers?.items?.map(w => (
+                                    <option key={w.id} value={w.id}>
+                                      {w.first_name} {w.last_name} ({w.availability || 'AVAILABLE'})
+                                    </option>
+                                  ))}
+                                </select>
+                                <button 
+                                  onClick={() => handleConfirmAssign(report.id)}
+                                  className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold py-1.5 px-3 rounded-lg shadow-sm transition-colors"
+                                >
+                                  Confirm
+                                </button>
+                                <button 
+                                  onClick={() => { setAssigningIncidentId(null); setSelectedWorkerId(""); }}
+                                  className="bg-slate-200 hover:bg-slate-300 text-slate-700 text-sm font-semibold py-1.5 px-3 rounded-lg shadow-sm transition-colors"
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            ) : (
+                              <>
+                                {report.status === 'PENDING' && !report.assigned_worker_id && (
+                                  <button 
+                                    onClick={() => setAssigningIncidentId(report.id)}
+                                    className="bg-slate-800 hover:bg-slate-700 text-white text-sm font-semibold py-2 px-4 rounded-lg shadow-sm transition-colors flex items-center gap-2"
+                                  >
+                                    <HardHat className="w-4 h-4" />
+                                    Assign Worker
+                                  </button>
+                                )}
+                                {report.status === 'RESOLVED' && (
+                                  <button 
+                                    onClick={() => handleClose(report.id)}
+                                    className="bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold py-2 px-4 rounded-lg shadow-sm transition-colors flex items-center gap-2"
+                                  >
+                                    <CheckCircle className="w-4 h-4" />
+                                    Approve & Close Incident
+                                  </button>
+                                )}
+                                {report.status !== 'RESOLVED' && (
+                                  <button 
+                                    onClick={() => handleReject(report.id)}
+                                    className="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold py-2 px-3 rounded-lg shadow-sm transition-colors flex items-center gap-1.5"
+                                  >
+                                    <XCircle className="w-4 h-4 text-rose-600" />
+                                    Reject Incident
+                                  </button>
+                                )}
+                              </>
                             )}
                           </>
                         )}

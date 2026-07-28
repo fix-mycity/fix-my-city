@@ -43,7 +43,12 @@ def create_traffic_worker(db: Session, manager_id: int, worker: WorkerCreateSche
     
     current_workers = result[0] if result else 0
     if current_workers >= 5:
-        return {"success": False, "message": "Maximum limit of 5 workers reached for this Traffic Admin."}
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Maximum limit of 5 workers reached for this Traffic Admin.")
+
+    # Auto-fill joining_date if missing
+    if not worker.joining_date:
+        from datetime import datetime, timezone
+        worker.joining_date = datetime.now(timezone.utc)
 
     # Prepare data for Auth Service
     auth_url = os.getenv("AUTH_SERVICE_URL", "http://auth_service:8001")
@@ -65,8 +70,9 @@ def create_traffic_worker(db: Session, manager_id: int, worker: WorkerCreateSche
         with urllib.request.urlopen(req) as response:
             res_data = json.loads(response.read().decode())
             
-            # Auth service returns {"success": True, "message": "...", "data": {"user": {"id": 123, ...}}}
-            user_id = res_data.get("data", {}).get("user", {}).get("id")
+            # Auth service returns {"success": True, "message": "...", "data": {"id": 123, ...}}
+            data_obj = res_data.get("data") or {}
+            user_id = data_obj.get("id") or (isinstance(data_obj.get("user"), dict) and data_obj.get("user", {}).get("id"))
             
             if user_id:
                 # Create profile with extended fields
@@ -79,11 +85,11 @@ def create_traffic_worker(db: Session, manager_id: int, worker: WorkerCreateSche
         try:
             err_json = json.loads(error_body)
             detail = err_json.get("detail", "Error from Auth Service")
-        except:
+        except Exception:
             detail = error_body
-        return {"success": False, "message": str(detail)}
+        raise HTTPException(status_code=e.code if e.code in [400, 422, 403, 404] else status.HTTP_400_BAD_REQUEST, detail=detail)
     except Exception as e:
-        return {"success": False, "message": f"Failed to connect to Auth Service: {str(e)}"}
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to connect to Auth Service: {str(e)}")
 
 def list_traffic_workers(db: Session, manager_id: int, page: int, page_size: int, search: Optional[str] = None):
     return TrafficWorkerRepository.list_workers(db, manager_id, page, page_size, search)
@@ -131,8 +137,8 @@ def assign_worker(db: Session, incident_id: int, worker_data: WorkerAssignSchema
     if not incident:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Traffic incident not found")
         
-    if incident.status == ComplaintStatus.CLOSED.value:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot assign a closed incident")
+    if incident.status in [ComplaintStatus.CLOSED.value, ComplaintStatus.REJECTED.value]:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Cannot assign worker to an incident that is already {incident.status}")
 
     # Verify that the worker being assigned actually belongs to this admin
     query = text("SELECT id FROM users WHERE id = :worker_id AND manager_id = :admin_id")
@@ -203,6 +209,9 @@ def close_incident(db: Session, incident_id: int):
     if not incident:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Traffic incident not found")
         
+    if incident.status in [ComplaintStatus.CLOSED.value, ComplaintStatus.REJECTED.value]:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Incident is already {incident.status}")
+
     if incident.status != ComplaintStatus.RESOLVED.value:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Incident must be resolved before closing")
         
@@ -216,11 +225,22 @@ def update_incident_status(db: Session, incident_id: int, status_str: str):
     if not incident:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Traffic incident not found")
     
-    # Optional validation here
+    if incident.status in [ComplaintStatus.CLOSED.value, ComplaintStatus.REJECTED.value]:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Cannot change status of an incident that is already {incident.status}")
+
     valid_statuses = [s.value for s in ComplaintStatus]
     if status_str not in valid_statuses:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid status")
         
+    # If rejecting and a worker is currently assigned, free the worker back to AVAILABLE
+    if status_str == ComplaintStatus.REJECTED.value and incident.assigned_worker_id:
+        worker_profile = TrafficWorkerRepository.get_worker_profile(db, incident.assigned_worker_id)
+        if worker_profile:
+            worker_profile.availability = "AVAILABLE"
+        central_worker_profile = WorkerRepository.get_worker_profile(db, incident.assigned_worker_id)
+        if central_worker_profile:
+            central_worker_profile.availability = "AVAILABLE"
+
     incident.status = status_str
     db.commit()
     db.refresh(incident)

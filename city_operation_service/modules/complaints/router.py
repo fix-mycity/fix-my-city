@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
+from typing import Optional
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form, Query
 from sqlalchemy.orm import Session
 from typing import Optional
 import shutil
@@ -113,13 +114,21 @@ def read_my_complaints(
     return get_my_complaints(db, current_user.id)
 
 
-@router.get("/", response_model=list[ComplaintResponse])
+from modules.complaints.schema import PaginatedComplaintResponse
+
+@router.get("", response_model=PaginatedComplaintResponse)
+@router.get("/", response_model=PaginatedComplaintResponse)
 def read_all_complaints(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(10, ge=1, le=100),
+    search: Optional[str] = Query(None),
+    status: Optional[str] = Query(None),
+    department: Optional[str] = Query(None),
     current_user: UserData = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Retrieve all complaints (typically admin/dashboard view)."""
-    return get_all_complaints(db)
+    """Retrieve all complaints with search, department/status filters, and pagination."""
+    return get_all_complaints(db, page, page_size, search, status, department)
 
 
 @router.get("/{complaint_id}", response_model=ComplaintResponse)

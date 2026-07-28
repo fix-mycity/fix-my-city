@@ -1,36 +1,40 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import WorkerProfileCard from '../../components/workers/WorkerProfileCard';
 import { getWorkerById } from '../../services/workerService';
 
-export default function WorkerProfile() {
+export default function WorkerProfile({ department: propDepartment }) {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  const department = propDepartment || (location.pathname.includes('/traffic') ? 'traffic' : 'water');
+
   const [worker, setWorker] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const fetchWorker = async () => {
       try {
-        const response = await getWorkerById(id);
+        const response = await getWorkerById(id, department);
         setWorker(response.data);
       } catch (err) {
         toast.error("Failed to load worker profile details.");
-        navigate('/water/workers');
+        navigate(`/${department}/workers`);
       } finally {
         setIsLoading(false);
       }
     };
     fetchWorker();
-  }, [id, navigate]);
+  }, [id, department, navigate]);
 
   const handleEditClick = (workerId) => {
-    navigate(`/water/workers/${workerId}/edit`);
+    navigate(`/${department}/workers/${workerId}/edit`);
   };
 
   const handleBackClick = () => {
-    navigate('/water/workers');
+    navigate(`/${department}/workers`);
   };
 
   return (
