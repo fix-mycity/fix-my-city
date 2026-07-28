@@ -3,11 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { getWorkersReport } from "../../services/reportService";
 import KpiCard from "../../components/waterAuthority/KpiCard";
 import ReportFilter from "../../components/waterAuthority/ReportFilter";
-import WorkerPerformanceTable from "../../components/waterAuthority/WorkerPerformanceTable";
 import ExportButton from "../../components/waterAuthority/ExportButton";
-import ReportCard from "../../components/waterAuthority/ReportCard";
-import ChartContainer from "../../components/waterAuthority/ChartContainer";
-import BarChartCard from "../../components/waterAuthority/BarChartCard";
 
 export default function WorkerReports() {
   const navigate = useNavigate();
@@ -49,37 +45,36 @@ export default function WorkerReports() {
     fetchReport();
   }, [filters]);
 
-  // Compute stats helper
-  const chartData = report?.worker_efficiency
-    ? report.worker_efficiency.reduce((acc, w) => {
-        acc[w.name] = w.tasks_completed;
-        return acc;
-      }, {})
-    : {};
-
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-800 pb-4">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
-          <h1 className="text-2xl font-bold text-white tracking-wide">Field Worker Performance</h1>
-          <p className="text-slate-400 text-sm mt-1">
-            Review assignment loading, task resolution speeds, and crew performance.
+          <h2 style={{ fontSize: '1.5rem', fontWeight: '800', color: '#0f172a', margin: 0 }}>
+            Field Worker Crew Analytics
+          </h2>
+          <p style={{ fontSize: '0.85rem', color: '#64748b', margin: '0.2rem 0 0 0' }}>
+            Monitor field worker availability, task dispatch efficiency, and crew performance metrics.
           </p>
         </div>
         <ExportButton reportType="workers" filters={filters} />
       </div>
 
-      {/* Tabs */}
-      <div className="flex flex-wrap gap-1 border-b border-slate-800/60 pb-2">
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', borderBottom: '1px solid #e2e8f0', pb: '0.5rem' }}>
         {tabs.map((tab) => (
           <button
             key={tab.id}
             onClick={() => navigate(tab.path)}
-            className={`px-4 py-2 rounded-lg text-sm font-semibold transition ${
-              tab.id === "workers"
-                ? "bg-blue-600 text-white shadow-md shadow-blue-500/20"
-                : "text-slate-400 hover:text-white hover:bg-slate-800/50"
-            }`}
+            style={{
+              padding: '0.5rem 1rem',
+              borderRadius: '8px',
+              fontSize: '0.85rem',
+              fontWeight: '700',
+              border: 'none',
+              borderBottom: tab.id === "workers" ? '3px solid #2563eb' : '3px solid transparent',
+              backgroundColor: tab.id === "workers" ? '#eff6ff' : 'transparent',
+              color: tab.id === "workers" ? '#2563eb' : '#64748b',
+              cursor: 'pointer'
+            }}
           >
             {tab.label}
           </button>
@@ -94,56 +89,47 @@ export default function WorkerReports() {
       />
 
       {loading ? (
-        <div className="h-[300px] flex items-center justify-center">
-          <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-blue-500" />
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '30vh' }}>
+          <span className="material-symbols-outlined" style={{ animation: 'spin 2s linear infinite', fontSize: '2.5rem', color: '#2563eb' }}>
+            autorenew
+          </span>
         </div>
-      ) : report ? (
-        <>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+            gap: '1rem'
+          }}>
             <KpiCard
-              title="Total Crews Registered"
-              value={report.total_workers}
-              icon="groups"
-              description="Active technical workers"
+              title="Total Field Workers"
+              value={report?.summary?.total_workers || 0}
+              icon="engineering"
+              description="Registered field workers"
               color="blue"
             />
             <KpiCard
-              title="Crews Standby / Busy"
-              value={`${report.available_workers} / ${report.busy_workers}`}
-              icon="engineering"
-              description="Current crews availability status"
-              color="violet"
-            />
-            <KpiCard
-              title="Crews Utilization Rate"
-              value="87.5%"
-              icon="insights"
-              description="Schedules assignment occupancy"
+              title="Available Crews"
+              value={report?.summary?.available_workers || 0}
+              icon="check_circle"
+              description="Ready for assignment"
               color="emerald"
             />
+            <KpiCard
+              title="Busy / Assigned"
+              value={report?.summary?.busy_workers || 0}
+              icon="construction"
+              description="Active on-site tasks"
+              color="amber"
+            />
+            <KpiCard
+              title="On Leave"
+              value={report?.summary?.on_leave_workers || 0}
+              icon="person_off"
+              description="Off-duty workers"
+              color="purple"
+            />
           </div>
-
-          <ChartContainer>
-            <BarChartCard title="Completed Tasks count by Worker" data={chartData} />
-            <ReportCard title="Top Performing Workers" subtitle="Crews with highest verified counts">
-              <div className="space-y-4">
-                {report.top_performing.map((top, idx) => (
-                  <div key={idx} className="flex justify-between items-center text-sm">
-                    <span className="text-white font-medium">{idx + 1}. {top.name}</span>
-                    <span className="text-emerald-450 font-bold font-mono">{top.tasks_completed} tasks completed</span>
-                  </div>
-                ))}
-              </div>
-            </ReportCard>
-          </ChartContainer>
-
-          <ReportCard title="Crews Efficiency Statistics" subtitle="Overview of resolve speed and load ratings">
-            <WorkerPerformanceTable workers={report.worker_efficiency} />
-          </ReportCard>
-        </>
-      ) : (
-        <div className="h-[200px] flex items-center justify-center text-slate-500">
-          No Reports Available
         </div>
       )}
     </div>

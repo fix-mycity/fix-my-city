@@ -3,9 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { getEmergencyReport } from "../../services/reportService";
 import KpiCard from "../../components/waterAuthority/KpiCard";
 import ReportFilter from "../../components/waterAuthority/ReportFilter";
-import EmergencyStatisticsTable from "../../components/waterAuthority/EmergencyStatisticsTable";
 import ExportButton from "../../components/waterAuthority/ExportButton";
-import ReportCard from "../../components/waterAuthority/ReportCard";
 
 export default function EmergencyReports() {
   const navigate = useNavigate();
@@ -48,28 +46,35 @@ export default function EmergencyReports() {
   }, [filters]);
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-800 pb-4">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
-          <h1 className="text-2xl font-bold text-white tracking-wide">Emergency Shutdown Outages</h1>
-          <p className="text-slate-400 text-sm mt-1">
-            Analyze critical isolation incidents, response targets, and affected wards.
+          <h2 style={{ fontSize: '1.5rem', fontWeight: '800', color: '#0f172a', margin: 0 }}>
+            Emergency Shutdown Analytics
+          </h2>
+          <p style={{ fontSize: '0.85rem', color: '#64748b', margin: '0.2rem 0 0 0' }}>
+            Monitor catastrophic pipe bursts, contamination alerts, and mean emergency response times.
           </p>
         </div>
         <ExportButton reportType="emergency" filters={filters} />
       </div>
 
-      {/* Tabs */}
-      <div className="flex flex-wrap gap-1 border-b border-slate-800/60 pb-2">
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', borderBottom: '1px solid #e2e8f0', pb: '0.5rem' }}>
         {tabs.map((tab) => (
           <button
             key={tab.id}
             onClick={() => navigate(tab.path)}
-            className={`px-4 py-2 rounded-lg text-sm font-semibold transition ${
-              tab.id === "emergency"
-                ? "bg-blue-600 text-white shadow-md shadow-blue-500/20"
-                : "text-slate-400 hover:text-white hover:bg-slate-800/50"
-            }`}
+            style={{
+              padding: '0.5rem 1rem',
+              borderRadius: '8px',
+              fontSize: '0.85rem',
+              fontWeight: '700',
+              border: 'none',
+              borderBottom: tab.id === "emergency" ? '3px solid #2563eb' : '3px solid transparent',
+              backgroundColor: tab.id === "emergency" ? '#eff6ff' : 'transparent',
+              color: tab.id === "emergency" ? '#2563eb' : '#64748b',
+              cursor: 'pointer'
+            }}
           >
             {tab.label}
           </button>
@@ -84,48 +89,47 @@ export default function EmergencyReports() {
       />
 
       {loading ? (
-        <div className="h-[300px] flex items-center justify-center">
-          <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-blue-500" />
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '30vh' }}>
+          <span className="material-symbols-outlined" style={{ animation: 'spin 2s linear infinite', fontSize: '2.5rem', color: '#dc2626' }}>
+            autorenew
+          </span>
         </div>
-      ) : report ? (
-        <>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <KpiCard
-              title="Emergencies Declared"
-              value={report.total_emergencies}
-              icon="dangerous"
-              description="Total filtered emergencies"
-              color="blue"
-            />
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+            gap: '1rem'
+          }}>
             <KpiCard
               title="Active Shutdowns"
-              value={report.active_emergencies}
-              icon="report_problem"
-              description="Crews active in resolving state"
+              value={report?.summary?.active_emergencies || 0}
+              icon="dangerous"
+              description="Water flow currently stopped"
               color="rose"
             />
             <KpiCard
-              title="Avg Response Speed"
-              value={`${report.avg_response_time_minutes} min`}
-              icon="flash_on"
-              description="Average restoration time"
-              color="violet"
+              title="Critical Priority"
+              value={report?.summary?.critical_emergencies || 0}
+              icon="priority_high"
+              description="Requires immediate action"
+              color="amber"
+            />
+            <KpiCard
+              title="Restored & Closed"
+              value={report?.summary?.resolved_emergencies || 0}
+              icon="check_circle"
+              description="Water supply restored"
+              color="emerald"
+            />
+            <KpiCard
+              title="Avg Resolution Duration"
+              value={report?.summary?.avg_resolution_time_minutes ? `${report.summary.avg_resolution_time_minutes} mins` : "0 mins"}
+              icon="timer"
+              description="Mean time to restore supply"
+              color="purple"
             />
           </div>
-
-          <ReportCard title="Critical Incidents Progress" subtitle="Response performance and affected scopes">
-            <EmergencyStatisticsTable
-              total={report.total_emergencies}
-              active={report.active_emergencies}
-              resolved={report.resolved_emergencies}
-              avgResponse={report.avg_response_time_minutes}
-              wards={report.affected_wards}
-            />
-          </ReportCard>
-        </>
-      ) : (
-        <div className="h-[200px] flex items-center justify-center text-slate-500">
-          No Reports Available
         </div>
       )}
     </div>

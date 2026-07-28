@@ -2,21 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 
-import PageHeader from '../../components/waterAuthority/PageHeader';
 import ScheduleTable from '../../components/waterAuthority/ScheduleTable';
 import ScheduleFilter from '../../components/waterAuthority/ScheduleFilter';
 import ScheduleSearch from '../../components/waterAuthority/ScheduleSearch';
-import EmptyState from '../../components/waterAuthority/EmptyState';
 import PauseScheduleDialog from '../../components/waterAuthority/PauseScheduleDialog';
 import ResumeScheduleDialog from '../../components/waterAuthority/ResumeScheduleDialog';
 
-import TodaysSupplyCard from "../../components/waterAuthority/Today'sSupplyCard";
-import UpcomingSupplyCard from '../../components/waterAuthority/UpcomingSupplyCard';
-
 import {
   getSupplySchedules,
-  getTodaySupplySchedules,
-  getUpcomingSupplySchedules,
   pauseSupplySchedule,
   resumeSupplySchedule,
   deleteSupplySchedule
@@ -25,15 +18,20 @@ import {
 export default function WaterSupplySchedule() {
   const navigate = useNavigate();
 
-  // State
+  // Data states
   const [schedules, setSchedules] = useState([]);
-  const [todaySchedules, setTodaySchedules] = useState([]);
-  const [upcomingSchedules, setUpcomingSchedules] = useState([]);
   const [totalItems, setTotalItems] = useState(0);
   const [page, setPage] = useState(1);
-  const [pageSize] = useState(10);
   const [totalPages, setTotalPages] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Stats
+  const [stats, setStats] = useState({
+    total: 0,
+    active: 0,
+    scheduled: 0,
+    paused: 0
+  });
 
   // Search & Filter state
   const [searchQuery, setSearchQuery] = useState('');
@@ -50,25 +48,12 @@ export default function WaterSupplySchedule() {
   const [isPauseOpen, setIsPauseOpen] = useState(false);
   const [isResumeOpen, setIsResumeOpen] = useState(false);
 
-  // Fetch summaries and stats
-  const fetchSummaries = async () => {
-    try {
-      const todayRes = await getTodaySupplySchedules();
-      setTodaySchedules(todayRes.data || []);
-      const upcomingRes = await getUpcomingSupplySchedules();
-      setUpcomingSchedules(upcomingRes.data || []);
-    } catch (err) {
-      console.error("Error loading supply summaries", err);
-    }
-  };
-
-  // Fetch list data
   const fetchSchedulesData = async () => {
     setIsLoading(true);
     try {
       const params = {
         page,
-        page_size: pageSize
+        page_size: 10
       };
       if (searchQuery) params.search = searchQuery;
       if (filters.status) params.status = filters.status;
@@ -78,9 +63,9 @@ export default function WaterSupplySchedule() {
       if (filters.supply_date) params.supply_date = filters.supply_date;
 
       const response = await getSupplySchedules(params);
-      setSchedules(response.data.items || []);
-      setTotalItems(response.data.total_items || 0);
-      setTotalPages(response.data.total_pages || 1);
+      setSchedules(response.data?.items || []);
+      setTotalItems(response.data?.total_items || 0);
+      setTotalPages(response.data?.total_pages || 1);
     } catch (err) {
       toast.error(err.response?.data?.detail || "Could not retrieve supply schedules.");
     } finally {
@@ -88,21 +73,33 @@ export default function WaterSupplySchedule() {
     }
   };
 
-  useEffect(() => {
-    fetchSummaries();
-  }, []);
+  const fetchStats = async () => {
+    try {
+      const response = await getSupplySchedules({ page: 1, page_size: 100 });
+      const items = response.data?.items || [];
+      const totalCount = response.data?.total_items || items.length;
+
+      setStats({
+        total: totalCount,
+        active: items.filter(s => s.status === 'ACTIVE').length,
+        scheduled: items.filter(s => s.status === 'SCHEDULED').length,
+        paused: items.filter(s => s.status === 'PAUSED').length
+      });
+    } catch (err) {
+      console.error("Error computing supply stats:", err);
+    }
+  };
 
   useEffect(() => {
     fetchSchedulesData();
   }, [page, filters, searchQuery]);
 
+  useEffect(() => {
+    fetchStats();
+  }, [schedules]);
+
   const handleFilterChange = (key, value) => {
     setFilters(prev => ({ ...prev, [key]: value }));
-    setPage(1);
-  };
-
-  const handleSearch = (query) => {
-    setSearchQuery(query);
     setPage(1);
   };
 
@@ -118,184 +115,196 @@ export default function WaterSupplySchedule() {
     setPage(1);
   };
 
-  // Actions
-  const handleView = (id) => {
-    navigate(`/water/supply/${id}`);
-  };
-
-  const handleEdit = (id) => {
-    navigate(`/water/supply/${id}/edit`);
-  };
-
-  const handleOpenPause = (schedule) => {
+  const handlePauseClick = (schedule) => {
     setSelectedSchedule(schedule);
     setIsPauseOpen(true);
   };
 
-  const handleOpenResume = (schedule) => {
+  const handleResumeClick = (schedule) => {
     setSelectedSchedule(schedule);
     setIsResumeOpen(true);
   };
 
-  const handlePauseConfirm = async (id, remarks) => {
+  const handleConfirmPause = async (remarks) => {
+    if (!selectedSchedule) return;
     try {
-      await pauseSupplySchedule(id, remarks);
-      toast.success("Water supply paused successfully!");
-      fetchSummaries();
+      await pauseSupplySchedule(selectedSchedule.id, remarks);
+      toast.success(`Schedule ${selectedSchedule.schedule_number} paused.`);
+      setIsPauseOpen(false);
       fetchSchedulesData();
     } catch (err) {
       toast.error(err.response?.data?.detail || "Failed to pause schedule.");
     }
   };
 
-  const handleResumeConfirm = async (id, remarks) => {
+  const handleConfirmResume = async (remarks) => {
+    if (!selectedSchedule) return;
     try {
-      await resumeSupplySchedule(id, remarks);
-      toast.success("Water supply resumed successfully!");
-      fetchSummaries();
+      await resumeSupplySchedule(selectedSchedule.id, remarks);
+      toast.success(`Schedule ${selectedSchedule.schedule_number} resumed.`);
+      setIsResumeOpen(false);
       fetchSchedulesData();
     } catch (err) {
       toast.error(err.response?.data?.detail || "Failed to resume schedule.");
     }
   };
 
-  const handleDelete = async (id) => {
-    if (window.confirm("Are you sure you want to delete this schedule permanently?")) {
+  const handleDeleteClick = async (id) => {
+    if (window.confirm("Are you sure you want to delete this supply schedule?")) {
       try {
         await deleteSupplySchedule(id);
-        toast.success("Schedule deleted successfully!");
-        fetchSummaries();
+        toast.success("Supply schedule deleted.");
         fetchSchedulesData();
       } catch (err) {
-        toast.error(err.response?.data?.detail || "Failed to delete schedule.");
+        toast.error("Failed to delete supply schedule.");
       }
     }
   };
 
-  // Dashboard calculations
-  const activeSchedulesCount = schedules.filter(s => s.status === 'ACTIVE').length;
-  const pausedSchedulesCount = schedules.filter(s => s.status === 'PAUSED').length;
-  const completedTodayCount = todaySchedules.filter(s => s.status === 'COMPLETED').length;
-  const emergencySupplyCount = schedules.filter(s => s.supply_type === 'EMERGENCY').length;
-
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-      <PageHeader 
-        title="Water Supply Schedule Management"
-        subtitle="Manage water distribution timetables, emergency interruptions, and supply zones."
-        action={
-          <button 
-            onClick={() => navigate('/water/supply/new')}
-            className="water-btn water-btn-primary"
-            style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontWeight: '700' }}
-          >
-            <span className="material-symbols-outlined">add_circle</span>
-            Add Supply Schedule
-          </button>
-        }
-      />
+      {/* Header Panel */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+        <div>
+          <h2 style={{ fontSize: '1.5rem', fontWeight: '800', color: '#0f172a', margin: 0 }}>
+            Water Supply Schedule Management
+          </h2>
+          <p style={{ fontSize: '0.85rem', color: '#64748b', margin: '0.2rem 0 0 0' }}>
+            Manage municipal water distribution timetables, morning/evening supply slots, and ward interruptions.
+          </p>
+        </div>
 
-      {/* Stats Cards Section */}
+        <button 
+          onClick={() => navigate('/water/supply/new')}
+          style={{
+            backgroundColor: '#2563eb',
+            color: '#ffffff',
+            border: 'none',
+            borderRadius: '8px',
+            padding: '0.6rem 1.25rem',
+            fontWeight: '700',
+            fontSize: '0.88rem',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.4rem',
+            boxShadow: '0 2px 4px rgba(37, 99, 235, 0.2)'
+          }}
+        >
+          <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>add_circle</span>
+          Schedule Water Supply
+        </button>
+      </div>
+
+      {/* Clean Metrics Summary Row */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-        gap: '1.25rem'
+        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+        gap: '1rem'
       }}>
-        {/* Today's Supply summary card */}
-        <TodaysSupplyCard todaySchedules={todaySchedules} />
-
-        {/* Upcoming Supply summary card */}
-        <UpcomingSupplyCard upcomingSchedules={upcomingSchedules} />
-
-        {/* Mini stats cards grid */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: '1fr 1fr',
-          gap: '1rem'
-        }}>
-          {/* Active Schedules */}
-          <div className="water-card" style={{ padding: '1rem', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-            <span style={{ fontSize: '0.72rem', color: 'var(--water-text-muted)', fontWeight: '700' }}>ACTIVE SCHEDULES</span>
-            <span style={{ fontSize: '1.6rem', fontWeight: '800', color: 'var(--water-success)', margin: '0.2rem 0' }}>{activeSchedulesCount}</span>
-            <span style={{ fontSize: '0.65rem', color: 'var(--water-text-muted)' }}>Distribution in progress</span>
+        <div style={{ backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '1.25rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <div style={{ width: '44px', height: '44px', borderRadius: '10px', backgroundColor: '#eff6ff', color: '#2563eb', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <span className="material-symbols-outlined" style={{ fontSize: '24px' }}>water_drop</span>
           </div>
-
-          {/* Paused Schedules */}
-          <div className="water-card" style={{ padding: '1rem', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-            <span style={{ fontSize: '0.72rem', color: 'var(--water-text-muted)', fontWeight: '700' }}>PAUSED SCHEDULES</span>
-            <span style={{ fontSize: '1.6rem', fontWeight: '800', color: 'var(--water-warning)', margin: '0.2rem 0' }}>{pausedSchedulesCount}</span>
-            <span style={{ fontSize: '0.65rem', color: 'var(--water-text-muted)' }}>Temporarily interrupted</span>
+          <div>
+            <div style={{ fontSize: '0.75rem', fontWeight: '700', color: '#64748b', textTransform: 'uppercase' }}>Total Schedules</div>
+            <div style={{ fontSize: '1.5rem', fontWeight: '800', color: '#0f172a' }}>{stats.total}</div>
           </div>
+        </div>
 
-          {/* Completed Today */}
-          <div className="water-card" style={{ padding: '1rem', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-            <span style={{ fontSize: '0.72rem', color: 'var(--water-text-muted)', fontWeight: '700' }}>COMPLETED TODAY</span>
-            <span style={{ fontSize: '1.6rem', fontWeight: '800', color: 'var(--water-primary-light)', margin: '0.2rem 0' }}>{completedTodayCount}</span>
-            <span style={{ fontSize: '0.65rem', color: 'var(--water-text-muted)' }}>Schedules closed today</span>
+        <div style={{ backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '1.25rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <div style={{ width: '44px', height: '44px', borderRadius: '10px', backgroundColor: '#f0fdf4', color: '#16a34a', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <span className="material-symbols-outlined" style={{ fontSize: '24px' }}>waves</span>
           </div>
+          <div>
+            <div style={{ fontSize: '0.75rem', fontWeight: '700', color: '#64748b', textTransform: 'uppercase' }}>Currently Active</div>
+            <div style={{ fontSize: '1.5rem', fontWeight: '800', color: '#16a34a' }}>{stats.active}</div>
+          </div>
+        </div>
 
-          {/* Emergency Supply */}
-          <div className="water-card" style={{ padding: '1rem', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-            <span style={{ fontSize: '0.72rem', color: 'var(--water-text-muted)', fontWeight: '700' }}>EMERGENCY SUPPLY</span>
-            <span style={{ fontSize: '1.6rem', fontWeight: '800', color: 'var(--water-danger)', margin: '0.2rem 0' }}>{emergencySupplyCount}</span>
-            <span style={{ fontSize: '0.65rem', color: 'var(--water-text-muted)' }}>Emergency deployments</span>
+        <div style={{ backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '1.25rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <div style={{ width: '44px', height: '44px', borderRadius: '10px', backgroundColor: '#fff7ed', color: '#ea580c', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <span className="material-symbols-outlined" style={{ fontSize: '24px' }}>schedule</span>
+          </div>
+          <div>
+            <div style={{ fontSize: '0.75rem', fontWeight: '700', color: '#64748b', textTransform: 'uppercase' }}>Scheduled Slots</div>
+            <div style={{ fontSize: '1.5rem', fontWeight: '800', color: '#ea580c' }}>{stats.scheduled}</div>
+          </div>
+        </div>
+
+        <div style={{ backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '1.25rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <div style={{ width: '44px', height: '44px', borderRadius: '10px', backgroundColor: '#fef2f2', color: '#dc2626', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <span className="material-symbols-outlined" style={{ fontSize: '24px' }}>pause_circle</span>
+          </div>
+          <div>
+            <div style={{ fontSize: '0.75rem', fontWeight: '700', color: '#64748b', textTransform: 'uppercase' }}>Paused / Interrupted</div>
+            <div style={{ fontSize: '1.5rem', fontWeight: '800', color: '#dc2626' }}>{stats.paused}</div>
           </div>
         </div>
       </div>
 
-      {/* Filter and Search controls */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
-          <ScheduleSearch onSearch={handleSearch} />
-        </div>
-        <ScheduleFilter 
-          filters={filters}
-          onChange={handleFilterChange}
-          onReset={handleResetFilters}
-        />
+      {/* Search & Filter Controls */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+        <ScheduleSearch value={searchQuery} onSearch={(val) => { setSearchQuery(val); setPage(1); }} />
+        <ScheduleFilter filters={filters} onChange={handleFilterChange} onReset={handleResetFilters} />
       </div>
 
       {/* Table Section */}
       {isLoading ? (
-        <div style={{ display: 'flex', justifyContent: 'center', padding: '3rem' }}>
-          <span className="material-symbols-outlined" style={{ animation: 'spin 2s linear infinite', fontSize: '2.5rem', color: 'var(--water-primary)' }}>autorenew</span>
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '30vh' }}>
+          <span className="material-symbols-outlined" style={{ animation: 'spin 2s linear infinite', fontSize: '2.5rem', color: '#2563eb' }}>
+            autorenew
+          </span>
         </div>
-      ) : schedules.length === 0 ? (
-        <EmptyState 
-          title="No Supply Schedules Found"
-          description="Create a new water supply schedule to initiate municipal water distribution for a zone."
-          icon="water_drop"
-        />
       ) : (
         <>
           <ScheduleTable 
             schedules={schedules}
-            onView={handleView}
-            onEdit={handleEdit}
-            onPause={handleOpenPause}
-            onResume={handleOpenResume}
-            onDelete={handleDelete}
+            onView={(id) => navigate(`/water/supply/${id}`)}
+            onEdit={(id) => navigate(`/water/supply/${id}/edit`)}
+            onPause={handlePauseClick}
+            onResume={handleResumeClick}
+            onDelete={handleDeleteClick}
           />
+
           {/* Pagination Controls */}
           {totalPages > 1 && (
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1rem' }}>
-              <span style={{ fontSize: '0.8rem', color: 'var(--water-text-muted)' }}>
-                Showing page <strong>{page}</strong> of <strong>{totalPages}</strong> ({totalItems} schedules)
+              <span style={{ fontSize: '0.85rem', color: '#64748b' }}>
+                Page {page} of {totalPages} ({totalItems} supply schedules)
               </span>
               <div style={{ display: 'flex', gap: '0.5rem' }}>
                 <button 
-                  disabled={page <= 1}
-                  onClick={() => setPage(page - 1)}
-                  className="water-btn"
-                  style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}
+                  disabled={page === 1}
+                  onClick={() => setPage(p => Math.max(p - 1, 1))}
+                  style={{
+                    padding: '0.4rem 0.9rem',
+                    borderRadius: '6px',
+                    border: '1px solid #cbd5e1',
+                    backgroundColor: '#ffffff',
+                    color: '#475569',
+                    fontSize: '0.85rem',
+                    fontWeight: '600',
+                    cursor: page === 1 ? 'not-allowed' : 'pointer',
+                    opacity: page === 1 ? 0.5 : 1
+                  }}
                 >
                   Previous
                 </button>
                 <button 
-                  disabled={page >= totalPages}
-                  onClick={() => setPage(page + 1)}
-                  className="water-btn"
-                  style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}
+                  disabled={page === totalPages}
+                  onClick={() => setPage(p => Math.min(p + 1, totalPages))}
+                  style={{
+                    padding: '0.4rem 0.9rem',
+                    borderRadius: '6px',
+                    border: '1px solid #cbd5e1',
+                    backgroundColor: '#ffffff',
+                    color: '#475569',
+                    fontSize: '0.85rem',
+                    fontWeight: '600',
+                    cursor: page === totalPages ? 'not-allowed' : 'pointer',
+                    opacity: page === totalPages ? 0.5 : 1
+                  }}
                 >
                   Next
                 </button>
@@ -305,19 +314,22 @@ export default function WaterSupplySchedule() {
         </>
       )}
 
-      {/* Modal Dialogs */}
-      <PauseScheduleDialog 
-        isOpen={isPauseOpen}
-        onClose={() => setIsPauseOpen(false)}
-        onConfirm={handlePauseConfirm}
-        schedule={selectedSchedule}
-      />
-      <ResumeScheduleDialog 
-        isOpen={isResumeOpen}
-        onClose={() => setIsResumeOpen(false)}
-        onConfirm={handleResumeConfirm}
-        schedule={selectedSchedule}
-      />
+      {/* Modals */}
+      {isPauseOpen && (
+        <PauseScheduleDialog 
+          schedule={selectedSchedule}
+          onClose={() => setIsPauseOpen(false)}
+          onConfirm={handleConfirmPause}
+        />
+      )}
+
+      {isResumeOpen && (
+        <ResumeScheduleDialog 
+          schedule={selectedSchedule}
+          onClose={() => setIsResumeOpen(false)}
+          onConfirm={handleConfirmResume}
+        />
+      )}
     </div>
   );
 }

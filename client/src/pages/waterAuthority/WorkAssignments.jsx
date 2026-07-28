@@ -37,16 +37,16 @@ export default function WorkAssignments() {
   const fetchMetrics = async () => {
     try {
       // 1. Fetch ACCEPTED complaints needing assignment
-      const compRes = await getComplaints({ status: 'ACCEPTED', page_size: 1000 });
-      const pendingCount = (compRes.data.items || []).length;
+      const compRes = await getComplaints({ status: 'ACCEPTED', page_size: 100 });
+      const pendingCount = (compRes.data.items || compRes.data || []).length;
 
       // 2. Fetch all assignments to calculate today's records
-      const assignRes = await getAssignments({ page_size: 1000 });
-      const allAssigns = assignRes.data.items || [];
+      const assignRes = await getAssignments({ page_size: 100 });
+      const allAssigns = assignRes.data.items || assignRes.data || [];
       
       const todayStr = new Date().toDateString();
       const assignedToday = allAssigns.filter(
-        a => new Date(a.assigned_date).toDateString() === todayStr
+        a => new Date(a.assigned_date || a.created_at).toDateString() === todayStr
       ).length;
 
       const completedToday = allAssigns.filter(
@@ -58,8 +58,8 @@ export default function WorkAssignments() {
       ).length;
 
       // 3. Fetch workers to check availability
-      const workerRes = await getWorkers({ page_size: 1000 });
-      const allWorkers = workerRes.data.items || [];
+      const workerRes = await getWorkers({ page_size: 100 });
+      const allWorkers = workerRes.data.items || workerRes.data || [];
       const totalWorkers = allWorkers.length;
       const availableWorkers = allWorkers.filter(w => w.availability === 'AVAILABLE' && w.employment_status === 'ACTIVE').length;
 

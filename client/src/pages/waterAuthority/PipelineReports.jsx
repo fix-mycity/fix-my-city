@@ -3,11 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { getPipelinesReport } from "../../services/reportService";
 import KpiCard from "../../components/waterAuthority/KpiCard";
 import ReportFilter from "../../components/waterAuthority/ReportFilter";
-import ChartContainer from "../../components/waterAuthority/ChartContainer";
-import BarChartCard from "../../components/waterAuthority/BarChartCard";
-import PipelineStatisticsTable from "../../components/waterAuthority/PipelineStatisticsTable";
 import ExportButton from "../../components/waterAuthority/ExportButton";
-import ReportCard from "../../components/waterAuthority/ReportCard";
+import PipelineStatisticsTable from "../../components/waterAuthority/PipelineStatisticsTable";
 
 export default function PipelineReports() {
   const navigate = useNavigate();
@@ -39,7 +36,7 @@ export default function PipelineReports() {
       const res = await getPipelinesReport(filters);
       setReport(res.data);
     } catch (err) {
-      console.error("Failed to fetch pipelines report:", err);
+      console.error("Failed to fetch pipeline report:", err);
     } finally {
       setLoading(false);
     }
@@ -50,28 +47,35 @@ export default function PipelineReports() {
   }, [filters]);
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-800 pb-4">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
-          <h1 className="text-2xl font-bold text-white tracking-wide">Pipelines Diagnostics</h1>
-          <p className="text-slate-400 text-sm mt-1">
-            Track structural integrity levels, leakage states, and inspection schedules.
+          <h2 style={{ fontSize: '1.5rem', fontWeight: '800', color: '#0f172a', margin: 0 }}>
+            Pipeline Infrastructure Analytics
+          </h2>
+          <p style={{ fontSize: '0.85rem', color: '#64748b', margin: '0.2rem 0 0 0' }}>
+            Monitor pipeline lengths, pipe health conditions, leakage counts, and maintenance requirements.
           </p>
         </div>
         <ExportButton reportType="pipelines" filters={filters} />
       </div>
 
-      {/* Tabs */}
-      <div className="flex flex-wrap gap-1 border-b border-slate-800/60 pb-2">
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', borderBottom: '1px solid #e2e8f0', pb: '0.5rem' }}>
         {tabs.map((tab) => (
           <button
             key={tab.id}
             onClick={() => navigate(tab.path)}
-            className={`px-4 py-2 rounded-lg text-sm font-semibold transition ${
-              tab.id === "pipelines"
-                ? "bg-blue-600 text-white shadow-md shadow-blue-500/20"
-                : "text-slate-400 hover:text-white hover:bg-slate-800/50"
-            }`}
+            style={{
+              padding: '0.5rem 1rem',
+              borderRadius: '8px',
+              fontSize: '0.85rem',
+              fontWeight: '700',
+              border: 'none',
+              borderBottom: tab.id === "pipelines" ? '3px solid #2563eb' : '3px solid transparent',
+              backgroundColor: tab.id === "pipelines" ? '#eff6ff' : 'transparent',
+              color: tab.id === "pipelines" ? '#2563eb' : '#64748b',
+              cursor: 'pointer'
+            }}
           >
             {tab.label}
           </button>
@@ -86,56 +90,51 @@ export default function PipelineReports() {
       />
 
       {loading ? (
-        <div className="h-[300px] flex items-center justify-center">
-          <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-blue-500" />
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '30vh' }}>
+          <span className="material-symbols-outlined" style={{ animation: 'spin 2s linear infinite', fontSize: '2.5rem', color: '#2563eb' }}>
+            autorenew
+          </span>
         </div>
-      ) : report ? (
-        <>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+            gap: '1rem'
+          }}>
             <KpiCard
-              title="Registered Pipelines"
-              value={report.total_pipelines}
+              title="Total Pipelines"
+              value={report?.summary?.total_pipelines || 0}
               icon="schema"
-              description="Total pipeline network size"
+              description="Registered distribution lines"
               color="blue"
             />
             <KpiCard
-              title="Damaged Pipelines"
-              value={report.damaged_pipelines_count}
-              icon="broken_image"
-              description="Needs emergency repair actions"
+              title="Operational Network"
+              value={report?.summary?.operational_pipelines || 0}
+              icon="check_circle"
+              description="Active pipelines"
+              color="emerald"
+            />
+            <KpiCard
+              title="Damaged / Leaking"
+              value={report?.summary?.damaged_pipelines || 0}
+              icon="warning"
+              description="Requires repair"
               color="rose"
             />
             <KpiCard
-              title="Inspections Due"
-              value={report.inspections_due_count}
-              icon="event_busy"
-              description="Awaiting scheduling status"
-              color="amber"
+              title="Total Network Length"
+              value={report?.summary?.total_length_km ? `${report.summary.total_length_km} km` : "0 km"}
+              icon="straighten"
+              description="Total pipeline coverage"
+              color="purple"
             />
           </div>
 
-          <ChartContainer>
-            <BarChartCard title="Pipelines by Classification" data={report.by_type} />
-            <ReportCard title="Casing Material Stats" subtitle="Casing counts of active lines">
-              <div className="space-y-3">
-                {Object.keys(report.by_material).map((m, idx) => (
-                  <div key={idx} className="flex justify-between items-center text-sm">
-                    <span className="text-slate-400">{m} Casing</span>
-                    <span className="text-white font-semibold">{report.by_material[m]} lines</span>
-                  </div>
-                ))}
-              </div>
-            </ReportCard>
-          </ChartContainer>
-
-          <ReportCard title="Network Condition Metrics" subtitle="Status of active pipelines integrity">
-            <PipelineStatisticsTable conditions={report.by_condition} materials={report.by_material} />
-          </ReportCard>
-        </>
-      ) : (
-        <div className="h-[200px] flex items-center justify-center text-slate-500">
-          No Reports Available
+          {report?.by_ward && (
+            <PipelineStatisticsTable data={report.by_ward} />
+          )}
         </div>
       )}
     </div>

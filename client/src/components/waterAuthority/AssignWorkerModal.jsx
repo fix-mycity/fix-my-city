@@ -23,8 +23,8 @@ export default function AssignWorkerModal({ isOpen, onClose, onAssign, complaint
       const fetchWorkers = async () => {
         setLoading(true);
         try {
-          const response = await getWorkers({ page_size: 1000 });
-          const activeWorkers = (response.data.items || []).filter(
+          const response = await getWorkers({ page_size: 100 });
+          const activeWorkers = (response.data.items || response.data || []).filter(
             w => w.employment_status === 'ACTIVE'
           );
           setWorkers(activeWorkers);

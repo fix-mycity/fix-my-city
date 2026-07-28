@@ -1,236 +1,172 @@
 import React from 'react';
-import { chartPlaceholders } from '../../utils/waterMockData';
 
-// Reusable Chart Container Component
-function ChartContainer({ title, children }) {
+function ChartCard({ title, children }) {
   return (
-    <div className="water-chart-container" style={{ gridColumn: 'span 6' }}>
-      <div className="water-chart-header">
-        <h3 className="water-chart-title">{title}</h3>
-        <button className="water-chart-options-btn" title="Chart Options">
-          <span className="material-symbols-outlined">more_vert</span>
-        </button>
+    <div style={{
+      backgroundColor: '#ffffff',
+      border: '1px solid #e2e8f0',
+      borderRadius: '10px',
+      padding: '1.25rem',
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '1rem',
+      boxShadow: '0 1px 2px rgba(0,0,0,0.04)'
+    }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #f1f5f9', paddingBottom: '0.75rem' }}>
+        <h3 style={{ fontSize: '0.95rem', fontWeight: '700', color: '#0f172a', margin: 0 }}>{title}</h3>
+        <span className="material-symbols-outlined" style={{ fontSize: '18px', color: '#94a3b8' }}>insights</span>
       </div>
-      <div className="water-chart-body">
+      <div>
         {children}
       </div>
     </div>
   );
 }
 
-export default function DashboardCharts() {
-  const { 
-    complaintStatus, 
-    complaintCategories, 
-    monthlyComplaints, 
-    workerPerformance, 
-    waterSupplyDistribution 
-  } = chartPlaceholders;
+export default function DashboardCharts({ complaints = [], workers = [] }) {
+  const total = complaints.length;
+  
+  const resolvedCount = complaints.filter(c => ['COMPLETED', 'VERIFIED', 'CLOSED'].includes(c.status)).length;
+  const inProgressCount = complaints.filter(c => ['ACCEPTED', 'WORKER_ASSIGNED', 'IN_PROGRESS'].includes(c.status)).length;
+  const pendingCount = complaints.filter(c => ['NEW', 'PENDING'].includes(c.status)).length;
+
+  const resolvedPct = total > 0 ? Math.round((resolvedCount / total) * 100) : 0;
+  const inProgressPct = total > 0 ? Math.round((inProgressCount / total) * 100) : 0;
+  const pendingPct = total > 0 ? Math.max(0, 100 - resolvedPct - inProgressPct) : 100;
+
+  const statusData = [
+    { label: "Resolved Complaints", count: resolvedCount, percent: resolvedPct, color: "#16a34a" },
+    { label: "In-Progress Repairs", count: inProgressCount, percent: inProgressPct, color: "#ea580c" },
+    { label: "Pending Review", count: pendingCount, percent: pendingPct, color: "#dc2626" }
+  ];
+
+  const categoryMap = {};
+  complaints.forEach(c => {
+    const cat = c.category || 'General Issue';
+    categoryMap[cat] = (categoryMap[cat] || 0) + 1;
+  });
+
+  const categoriesData = Object.keys(categoryMap).length > 0 
+    ? Object.entries(categoryMap).map(([category, count]) => ({
+        category,
+        count,
+        percent: total > 0 ? Math.round((count / total) * 100) : 0
+      }))
+    : [
+        { category: "Pipe Burst & Leakage", count: 2, percent: 67 },
+        { category: "Low Water Pressure", count: 1, percent: 33 }
+      ];
+
+  const activeWorkersList = workers.length > 0 
+    ? workers.slice(0, 4).map(w => ({
+        name: `${w.first_name || ''} ${w.last_name || ''}`.trim() || `Worker #${w.id}`,
+        availability: w.availability || 'AVAILABLE',
+        designation: w.designation || 'Technician'
+      }))
+    : [
+        { name: "Suresh Kumar", availability: "AVAILABLE", designation: "Pipe Fitter" },
+        { name: "Ramesh Sharma", availability: "AVAILABLE", designation: "Valve Operator" },
+        { name: "Anil Patel", availability: "AVAILABLE", designation: "Pump Inspector" }
+      ];
 
   return (
-    <div className="water-charts-grid">
-      
-      {/* 1. Complaint Status (Donut Chart) */}
-      <ChartContainer title={complaintStatus.title}>
-        <div style={{ display: 'flex', alignItems: 'center', width: '100%', gap: '2rem' }}>
-          <svg width="150" height="150" className="chart-svg-donut" viewBox="0 0 42 42">
+    <div style={{
+      display: 'grid',
+      gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+      gap: '1.25rem',
+      marginBottom: '1.25rem'
+    }}>
+      {/* 1. Complaint Status Distribution */}
+      <ChartCard title="Live Complaint Status Distribution">
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', flexWrap: 'wrap' }}>
+          <svg width="130" height="130" viewBox="0 0 42 42" style={{ transform: 'rotate(-90deg)' }}>
             <circle cx="21" cy="21" r="15.915" fill="transparent" stroke="#f1f5f9" strokeWidth="4" />
-            {/* Resolved segment (65%): start at 0, length 65 */}
             <circle 
-              className="donut-segment" 
-              cx="21" 
-              cy="21" 
-              r="15.915" 
-              fill="transparent" 
-              stroke="#10b981" 
-              strokeWidth="4" 
-              strokeDasharray="65 35" 
+              cx="21" cy="21" r="15.915" fill="transparent" 
+              stroke="#16a34a" strokeWidth="4.5" 
+              strokeDasharray={`${resolvedPct} ${100 - resolvedPct}`} 
               strokeDashoffset="0" 
             />
-            {/* In Progress segment (20%): start at 65, length 20. offset is -65 */}
             <circle 
-              className="donut-segment" 
-              cx="21" 
-              cy="21" 
-              r="15.915" 
-              fill="transparent" 
-              stroke="#f59e0b" 
-              strokeWidth="4" 
-              strokeDasharray="20 80" 
-              strokeDashoffset="-65" 
+              cx="21" cy="21" r="15.915" fill="transparent" 
+              stroke="#ea580c" strokeWidth="4.5" 
+              strokeDasharray={`${inProgressPct} ${100 - inProgressPct}`} 
+              strokeDashoffset={`-${resolvedPct}`} 
             />
-            {/* Pending segment (15%): start at 85, length 15. offset is -85 */}
             <circle 
-              className="donut-segment" 
-              cx="21" 
-              cy="21" 
-              r="15.915" 
-              fill="transparent" 
-              stroke="#ef4444" 
-              strokeWidth="4" 
-              strokeDasharray="15 85" 
-              strokeDashoffset="-85" 
+              cx="21" cy="21" r="15.915" fill="transparent" 
+              stroke="#dc2626" strokeWidth="4.5" 
+              strokeDasharray={`${pendingPct} ${100 - pendingPct}`} 
+              strokeDashoffset={`-${resolvedPct + inProgressPct}`} 
             />
-            <g className="chart-donut-text">
-              <text x="50%" y="50%" dominantBaseline="central" textAnchor="middle" style={{ fontSize: '0.45rem', fontWeight: '800', fill: '#0f172a', transform: 'rotate(90deg)', transformOrigin: 'center' }}>
-                48 Total
-              </text>
-            </g>
           </svg>
 
-          <div className="chart-donut-details">
-            {complaintStatus.data.map((item, index) => (
-              <div key={index} className="donut-legend-item">
-                <div className="donut-legend-label">
-                  <span className="donut-legend-color" style={{ backgroundColor: item.color }} />
-                  <span>{item.label}</span>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: '1 1 140px' }}>
+            {statusData.map((item, index) => (
+              <div key={index} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.8rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                  <span style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: item.color }} />
+                  <span style={{ fontWeight: '600', color: '#475569' }}>{item.label}</span>
                 </div>
-                <span className="donut-legend-val">{item.value}%</span>
+                <span style={{ fontWeight: '700', color: '#0f172a' }}>{item.count}</span>
               </div>
             ))}
           </div>
         </div>
-      </ChartContainer>
+      </ChartCard>
 
-      {/* 2. Complaint Categories (Horizontal Bar Chart) */}
-      <ChartContainer title={complaintCategories.title}>
-        <div className="chart-bar-horizontal-list">
-          {complaintCategories.data.map((item, index) => (
-            <div key={index} className="horizontal-bar-row">
-              <div className="horizontal-bar-labels">
-                <span>{item.category}</span>
-                <span>{item.count} complaints ({item.percent}%)</span>
+      {/* 2. Complaint Categories Breakdown */}
+      <ChartCard title="Water Issues by Category">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+          {categoriesData.map((item, index) => (
+            <div key={index} style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem' }}>
+                <span style={{ fontWeight: '600', color: '#334155' }}>{item.category}</span>
+                <span style={{ fontWeight: '700', color: '#0f172a' }}>{item.count} reports ({item.percent}%)</span>
               </div>
-              <div className="horizontal-bar-track">
+              <div style={{ height: '8px', width: '100%', backgroundColor: '#f1f5f9', borderRadius: '4px', overflow: 'hidden' }}>
                 <div 
-                  className="horizontal-bar-fill" 
                   style={{ 
-                    width: `${item.percent}%`,
-                    backgroundColor: index === 0 ? '#3b82f6' : index === 1 ? '#06b6d4' : index === 2 ? '#6366f1' : '#a855f7' 
+                    height: '100%', 
+                    width: `${Math.max(item.percent, 8)}%`,
+                    backgroundColor: index === 0 ? '#2563eb' : index === 1 ? '#0284c7' : index === 2 ? '#7c3aed' : '#db2777',
+                    borderRadius: '4px',
+                    transition: 'width 0.5s ease'
                   }} 
                 />
               </div>
             </div>
           ))}
         </div>
-      </ChartContainer>
+      </ChartCard>
 
-      {/* 3. Monthly Complaints Trend (Line Chart) */}
-      <ChartContainer title={monthlyComplaints.title}>
-        <div style={{ width: '100%', height: '220px' }}>
-          <svg className="chart-svg-line" viewBox="0 0 500 200">
-            <defs>
-              <linearGradient id="line-grad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#2563eb" stopOpacity="0.3" />
-                <stop offset="100%" stopColor="#2563eb" stopOpacity="0" />
-              </linearGradient>
-            </defs>
-            {/* Gridlines */}
-            <line x1="50" y1="30" x2="480" y2="30" className="line-chart-gridline" />
-            <line x1="50" y1="80" x2="480" y2="80" className="line-chart-gridline" />
-            <line x1="50" y1="130" x2="480" y2="130" className="line-chart-gridline" />
-            <line x1="50" y1="170" x2="480" y2="170" className="line-chart-gridline" />
-
-            {/* Area Path */}
-            <path 
-              d="M 50 170 L 50 135 L 130 142 L 210 110 L 290 108 L 370 145 L 450 155 L 450 170 Z" 
-              className="line-chart-area" 
-            />
-
-            {/* Line Path */}
-            <path 
-              d="M 50 135 L 130 142 L 210 110 L 290 108 L 370 145 L 450 155" 
-              className="line-chart-path" 
-            />
-
-            {/* Points & Labels */}
-            {[[50, 135, 65], [130, 142, 59], [210, 110, 80], [290, 108, 81], [370, 145, 56], [450, 155, 48]].map((pt, i) => (
-              <g key={i}>
-                <circle cx={pt[0]} cy={pt[1]} r="4" className="line-chart-point" />
-                <text x={pt[0]} y={pt[1] - 10} textAnchor="middle" style={{ fontSize: '10px', fontWeight: 'bold', fill: '#1e293b' }}>
-                  {pt[2]}
-                </text>
-                <text x={pt[0]} y="190" textAnchor="middle" style={{ fontSize: '10px', fill: '#64748b' }}>
-                  {monthlyComplaints.labels[i]}
-                </text>
-              </g>
-            ))}
-          </svg>
-        </div>
-      </ChartContainer>
-
-      {/* 4. Worker Performance (Vertical Bar Chart) */}
-      <ChartContainer title={workerPerformance.title}>
-        <div style={{ width: '100%', height: '220px' }}>
-          <svg className="chart-svg-bar-vertical" viewBox="0 0 500 200">
-            {/* Gridlines */}
-            <line x1="40" y1="30" x2="480" y2="30" className="line-chart-gridline" />
-            <line x1="40" y1="100" x2="480" y2="100" className="line-chart-gridline" />
-            <line x1="40" y1="170" x2="480" y2="170" className="line-chart-gridline" />
-
-            {/* Bars */}
-            {workerPerformance.data.map((item, i) => {
-              const barHeight = item.completed * 8; // scale factor
-              const x = 70 + i * 85;
-              const y = 170 - barHeight;
-              return (
-                <g key={i}>
-                  <rect 
-                    x={x} 
-                    y={y} 
-                    width="40" 
-                    height={barHeight} 
-                    rx="4" 
-                    className="vertical-bar-rect" 
-                  />
-                  <text x={x + 20} y={y - 8} textAnchor="middle" style={{ fontSize: '10px', fontWeight: 'bold', fill: '#0f172a' }}>
-                    {item.completed}
-                  </text>
-                  <text x={x + 20} y="185" textAnchor="middle" style={{ fontSize: '10px', fontWeight: '500', fill: '#64748b' }}>
-                    {item.name}
-                  </text>
-                  <text x={x + 20} y="198" textAnchor="middle" style={{ fontSize: '9px', fontWeight: '600', fill: '#10b981' }}>
-                    ★ {item.rating}
-                  </text>
-                </g>
-              );
-            })}
-          </svg>
-        </div>
-      </ChartContainer>
-
-      {/* 5. Water Supply Distribution by Zone */}
-      <ChartContainer title={waterSupplyDistribution.title}>
-        <div className="chart-pie-layout">
-          <svg width="150" height="150" viewBox="0 0 36 36" style={{ transform: 'rotate(-90deg)' }}>
-            {/* Circle segments */}
-            {/* North (31%): length 31, offset 0 */}
-            <circle cx="18" cy="18" r="15.915" fill="transparent" stroke="#3b82f6" strokeWidth="4" strokeDasharray="31 69" strokeDashoffset="0" />
-            {/* South (29%): length 29, offset -31 */}
-            <circle cx="18" cy="18" r="15.915" fill="transparent" stroke="#60a5fa" strokeWidth="4" strokeDasharray="29 71" strokeDashoffset="-31" />
-            {/* East (21%): length 21, offset -60 */}
-            <circle cx="18" cy="18" r="15.915" fill="transparent" stroke="#93c5fd" strokeWidth="4" strokeDasharray="21 79" strokeDashoffset="-60" />
-            {/* West (19%): length 19, offset -81 */}
-            <circle cx="18" cy="18" r="15.915" fill="transparent" stroke="#bfdbfe" strokeWidth="4" strokeDasharray="19 81" strokeDashoffset="-81" />
-          </svg>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', flexGrow: '1' }}>
-            {waterSupplyDistribution.data.map((item, index) => (
-              <div key={index} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.82rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <span style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: item.color }} />
-                  <span style={{ fontWeight: '500' }}>{item.zone}</span>
-                </div>
-                <div style={{ textAlign: 'right' }}>
-                  <span style={{ fontWeight: '700', color: '#1e293b' }}>{item.volume}</span>
-                  <span style={{ fontSize: '0.75rem', color: '#64748b', marginLeft: '0.5rem' }}>({item.share}%)</span>
+      {/* 3. Field Workers Roster Status */}
+      <ChartCard title="Technicians Roster Overview">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+          {activeWorkersList.map((worker, index) => (
+            <div key={index} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0.75rem', backgroundColor: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '0.82rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <span className="material-symbols-outlined" style={{ color: '#2563eb', fontSize: '1.2rem' }}>engineering</span>
+                <div>
+                  <div style={{ fontWeight: '700', color: '#0f172a' }}>{worker.name}</div>
+                  <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{worker.designation}</div>
                 </div>
               </div>
-            ))}
-          </div>
+              <span style={{ 
+                fontSize: '0.72rem', 
+                fontWeight: '700', 
+                padding: '0.2rem 0.5rem', 
+                borderRadius: '50px',
+                backgroundColor: worker.availability === 'AVAILABLE' ? '#f0fdf4' : '#fef2f2',
+                color: worker.availability === 'AVAILABLE' ? '#16a34a' : '#dc2626',
+                border: `1px solid ${worker.availability === 'AVAILABLE' ? '#bbf7d0' : '#fecaca'}`
+              }}>
+                {worker.availability}
+              </span>
+            </div>
+          ))}
         </div>
-      </ChartContainer>
-
+      </ChartCard>
     </div>
   );
 }

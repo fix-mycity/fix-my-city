@@ -17,6 +17,10 @@ def create_worker(db: Session, manager_id: int, department: str, schema: WorkerC
         "username": schema.username,
         "email": schema.email,
         "password": schema.password,
+        "confirm_password": schema.confirm_password if hasattr(schema, 'confirm_password') else schema.password,
+        "state": schema.state if hasattr(schema, 'state') else "Kerala",
+        "district": schema.district if hasattr(schema, 'district') else "Malappuram",
+        "pincode": schema.pincode if hasattr(schema, 'pincode') else "676505",
         "manager_id": manager_id,
         "role": "Worker",
         "department": department
@@ -51,19 +55,21 @@ def create_worker(db: Session, manager_id: int, department: str, schema: WorkerC
     # 3. Department-specific sync if applicable
     if department == "water":
         try:
-            from modules.water_management.repository import WaterWorkerRepository
-            from modules.water_management.schema import WaterWorkerCreate
+            from modules.water_management.repository import WaterFieldWorkerRepository
+            from modules.water_management.schema import WorkerCreate as WaterWorkerCreate
             water_schema = WaterWorkerCreate(
-                user_id=worker_user_id,
-                name=f"{schema.first_name or ''} {schema.last_name or ''}".strip() or schema.username,
-                designation=schema.designation or "Water Worker",
-                phone=schema.phone or "",
+                first_name=schema.first_name or schema.username,
+                last_name=schema.last_name or "",
                 email=schema.email,
+                phone=schema.phone or "",
+                password=schema.password,
+                designation=schema.designation or "Water Worker",
                 skill=schema.skill,
                 experience=schema.experience or 0
             )
-            WaterWorkerRepository.create(db, water_schema)
+            WaterFieldWorkerRepository.create(db, water_schema, password_hash="")
         except Exception as e:
+            print(f"Notice: Water module worker sync info: {e}")
             print(f"Error syncing worker to water module: {e}")
     elif department == "traffic":
         try:

@@ -11,41 +11,106 @@ export default function ExportButton({ reportType, filters = {} }) {
   };
 
   return (
-    <div className="relative">
+    <div style={{ position: 'relative' }}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2"
+        style={{
+          backgroundColor: '#ffffff',
+          border: '1px solid #cbd5e1',
+          color: '#0f172a',
+          padding: '0.55rem 1rem',
+          borderRadius: '8px',
+          fontWeight: '600',
+          fontSize: '0.85rem',
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.4rem',
+          boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+        }}
       >
-        <span className="material-icons text-sm">download</span>
+        <span className="material-symbols-outlined" style={{ fontSize: '18px', color: '#2563eb' }}>download</span>
         Export Report
-        <span className="material-icons text-[16px] transition-transform duration-200" style={{ transform: isOpen ? "rotate(180deg)" : "none" }}>
+        <span className="material-symbols-outlined" style={{ fontSize: '18px', transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>
           expand_more
         </span>
       </button>
 
       {isOpen && (
         <>
-          <div className="fixed inset-0 z-10" onClick={() => setIsOpen(false)} />
-          <div className="absolute right-0 mt-2 w-48 bg-slate-900 border border-slate-800 rounded-lg shadow-xl py-1 z-20 animate-fade-in">
+          <div style={{ position: 'fixed', inset: 0, zIndex: 10 }} onClick={() => setIsOpen(false)} />
+          <div style={{
+            position: 'absolute',
+            right: 0,
+            marginTop: '0.4rem',
+            width: '200px',
+            backgroundColor: '#ffffff',
+            border: '1px solid #e2e8f0',
+            borderRadius: '8px',
+            boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)',
+            padding: '0.35rem 0',
+            zIndex: 20
+          }}>
             <button
               onClick={() => handleDownload("pdf")}
-              className="w-full text-left px-4 py-2 text-sm text-slate-350 hover:bg-slate-800 hover:text-white transition flex items-center gap-2"
+              style={{
+                width: '100%',
+                textAlign: 'left',
+                padding: '0.5rem 1rem',
+                fontSize: '0.82rem',
+                fontWeight: '600',
+                color: '#334155',
+                backgroundColor: 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem'
+              }}
             >
-              <span className="material-icons text-red-400 text-sm">picture_as_pdf</span>
+              <span className="material-symbols-outlined" style={{ fontSize: '16px', color: '#dc2626' }}>picture_as_pdf</span>
               Export as PDF
             </button>
+
             <button
               onClick={() => handleDownload("excel")}
-              className="w-full text-left px-4 py-2 text-sm text-slate-350 hover:bg-slate-800 hover:text-white transition flex items-center gap-2"
+              style={{
+                width: '100%',
+                textAlign: 'left',
+                padding: '0.5rem 1rem',
+                fontSize: '0.82rem',
+                fontWeight: '600',
+                color: '#334155',
+                backgroundColor: 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem'
+              }}
             >
-              <span className="material-icons text-emerald-400 text-sm">description</span>
+              <span className="material-symbols-outlined" style={{ fontSize: '16px', color: '#16a34a' }}>table_chart</span>
               Export as Excel (.xls)
             </button>
+
             <button
               onClick={() => handleDownload("csv")}
-              className="w-full text-left px-4 py-2 text-sm text-slate-350 hover:bg-slate-800 hover:text-white transition flex items-center gap-2"
+              style={{
+                width: '100%',
+                textAlign: 'left',
+                padding: '0.5rem 1rem',
+                fontSize: '0.82rem',
+                fontWeight: '600',
+                color: '#334155',
+                backgroundColor: 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem'
+              }}
             >
-              <span className="material-icons text-blue-400 text-sm">grid_on</span>
+              <span className="material-symbols-outlined" style={{ fontSize: '16px', color: '#2563eb' }}>grid_on</span>
               Export as CSV
             </button>
           </div>

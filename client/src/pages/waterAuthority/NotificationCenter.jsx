@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
+import { toast } from "react-hot-toast";
+
 import {
   getNotifications,
-  getNotificationById,
   createNotification,
   updateNotification,
   deleteNotification,
@@ -12,17 +13,46 @@ import {
   deleteNotificationTemplate,
   getNotificationHistory
 } from "../../services/notificationService";
+
 import NotificationStatusBadge from "../../components/waterAuthority/NotificationStatusBadge";
 import NotificationPriorityBadge from "../../components/waterAuthority/NotificationPriorityBadge";
 
-const NotificationCenter = () => {
-  // Tabs: broadcasts, templates, audit
+const NOTIFICATION_TYPES = [
+  { value: "GENERAL", label: "General Municipal Advisory" },
+  { value: "EMERGENCY", label: "Emergency Alert" },
+  { value: "SUPPLY", label: "Water Supply Timetable" },
+  { value: "QUALITY", label: "Water Quality Notice" },
+  { value: "COMPLAINT", label: "Complaint Update" }
+];
+
+const RECIPIENT_TYPES = [
+  { value: "ALL_CITIZENS", label: "All Registered Citizens" },
+  { value: "SPECIFIC_WARD", label: "Targeted Municipal Ward" },
+  { value: "SPECIFIC_AREA", label: "Targeted Neighborhood / Area" }
+];
+
+const DELIVERY_CHANNELS = [
+  { value: "IN_APP", label: "In-App Portal Notification" },
+  { value: "SMS", label: "SMS Broadcast Message" },
+  { value: "EMAIL", label: "Email Dispatch" }
+];
+
+const MUNICIPAL_WARDS = [
+  'Ward 1 - Central Market',
+  'Ward 2 - North Sector',
+  'Ward 3 - South Hill',
+  'Ward 4 - East Riverside',
+  'Ward 5 - Industrial Park',
+  'Ward 6 - West Suburb',
+  'Ward 12 - Green Hills'
+];
+
+export default function NotificationCenter() {
   const [activeTab, setActiveTab] = useState("broadcasts");
-  
-  // States
+
+  // Data states
   const [notifications, setNotifications] = useState([]);
   const [templates, setTemplates] = useState([]);
-  const [historyLogs, setHistoryLogs] = useState([]);
   const [stats, setStats] = useState({
     total_notifications: 0,
     scheduled: 0,
@@ -32,26 +62,26 @@ const NotificationCenter = () => {
     emergency_notifications: 0
   });
 
-  // Pagination & Filtering
+  // Filters & Pagination
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
-  const [pageSize] = useState(8);
+  const [pageSize] = useState(10);
+  const [totalItems, setTotalItems] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const [search, setSearch] = useState("");
   const [filters, setFilters] = useState({
     type: "",
     priority: "",
-    status: "",
-    recipient: ""
+    status: ""
   });
 
-  // Modal / Drawer toggles
+  // Modals & Details
   const [showFormModal, setShowFormModal] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [showTemplateModal, setShowTemplateModal] = useState(false);
   const [selectedNotification, setSelectedNotification] = useState(null);
-  const [selectedNotificationHistory, setSelectedNotificationHistory] = useState([]);
-  
+  const [historyLogs, setHistoryLogs] = useState([]);
+
   // Form states
   const [formData, setFormData] = useState({
     title: "",
@@ -60,12 +90,12 @@ const NotificationCenter = () => {
     priority: "MEDIUM",
     recipient_type: "ALL_CITIZENS",
     delivery_channel: "IN_APP",
-    status: "DRAFT",
+    status: "SENT",
     scheduled_time: "",
     ward: "",
     area: ""
   });
-  
+
   const [templateFormData, setTemplateFormData] = useState({
     id: null,
     template_name: "",
@@ -75,37 +105,43 @@ const NotificationCenter = () => {
     status: "ACTIVE"
   });
 
-  const [formError, setFormError] = useState("");
   const [isEditing, setIsEditing] = useState(false);
   const [isEditingTemplate, setIsEditingTemplate] = useState(false);
 
-  // Load dashboard, templates, notifications
   const fetchData = async () => {
     setLoading(true);
     try {
       // 1. Dashboard Stats
       const statsRes = await getNotificationDashboard();
-      setStats(statsRes.data);
+      if (statsRes.data) {
+        setStats(statsRes.data);
+      }
 
       // 2. Templates
       const tempRes = await getNotificationTemplates();
-      setTemplates(tempRes.data);
+      setTemplates(tempRes.data || []);
 
       // 3. Notifications List
       const params = {
         page,
-        page_size: pageSize,
-        search: search || undefined,
-        type_filter: filters.type || undefined,
-        priority: filters.priority || undefined,
-        status: filters.status || undefined,
-        recipient_type: filters.recipient || undefined
+        page_size: pageSize
       };
+      if (search && search.trim()) params.search = search.trim();
+      if (filters.type && filters.type.trim()) params.type_filter = filters.type.trim();
+      if (filters.priority && filters.priority.trim()) params.priority = filters.priority.trim();
+      if (filters.status && filters.status.trim()) params.status = filters.status.trim();
+
       const notifRes = await getNotifications(params);
-      setNotifications(notifRes.data.items);
-      setTotalPages(notifRes.data.total_pages);
+      const items = Array.isArray(notifRes.data?.items)
+        ? notifRes.data.items
+        : (Array.isArray(notifRes.data) ? notifRes.data : []);
+
+      setNotifications(items);
+      setTotalItems(notifRes.data?.total_items ?? items.length);
+      setTotalPages(notifRes.data?.total_pages ?? Math.ceil(items.length / pageSize));
     } catch (err) {
-      console.error("Error loading notification center data:", err);
+      console.error("Failed to load notifications:", err);
+      toast.error("Failed to load notifications.");
     } finally {
       setLoading(false);
     }
@@ -113,28 +149,10 @@ const NotificationCenter = () => {
 
   useEffect(() => {
     fetchData();
-  }, [page, filters, search]);
+  }, [page, search, filters]);
 
-  const handleSearchChange = (e) => {
-    setSearch(e.target.value);
-    setPage(1);
-  };
-
-  const handleFilterChange = (key, val) => {
-    setFilters(prev => ({ ...prev, [key]: val }));
-    setPage(1);
-  };
-
-  const resetFilters = () => {
-    setFilters({ type: "", priority: "", status: "", recipient: "" });
-    setSearch("");
-    setPage(1);
-  };
-
-  // Form handlers
   const handleOpenCreate = () => {
     setIsEditing(false);
-    setFormError("");
     setFormData({
       title: "",
       message: "",
@@ -142,7 +160,7 @@ const NotificationCenter = () => {
       priority: "MEDIUM",
       recipient_type: "ALL_CITIZENS",
       delivery_channel: "IN_APP",
-      status: "DRAFT",
+      status: "SENT",
       scheduled_time: "",
       ward: "",
       area: ""
@@ -152,106 +170,84 @@ const NotificationCenter = () => {
 
   const handleOpenEdit = (notif) => {
     setIsEditing(true);
-    setFormError("");
     setFormData({
       id: notif.id,
       title: notif.title,
       message: notif.message,
-      notification_type: notif.notification_type,
-      priority: notif.priority,
-      recipient_type: notif.recipient_type,
-      delivery_channel: notif.delivery_channel,
-      status: notif.status,
-      scheduled_time: notif.scheduled_time ? notif.scheduled_time.substring(0, 16) : "",
+      notification_type: notif.notification_type || "GENERAL",
+      priority: notif.priority || "MEDIUM",
+      recipient_type: notif.recipient_type || "ALL_CITIZENS",
+      delivery_channel: notif.delivery_channel || "IN_APP",
+      status: notif.status || "SENT",
+      scheduled_time: notif.scheduled_time ? new Date(notif.scheduled_time).toISOString().slice(0, 16) : "",
       ward: notif.ward || "",
       area: notif.area || ""
     });
     setShowFormModal(true);
   };
 
-  const handleOpenDetails = async (notif) => {
+  const handleViewDetails = async (notif) => {
+    setSelectedNotification(notif);
+    setShowDetailModal(true);
     try {
-      const detailsRes = await getNotificationById(notif.id);
-      setSelectedNotification(detailsRes.data);
-      const historyRes = await getNotificationHistory(notif.id);
-      setSelectedNotificationHistory(historyRes.data);
-      setShowDetailModal(true);
+      const histRes = await getNotificationHistory(notif.id);
+      setHistoryLogs(Array.isArray(histRes.data) ? histRes.data : []);
     } catch (err) {
-      console.error("Error fetching notification details:", err);
+      setHistoryLogs([]);
     }
   };
 
-  const handleApplyTemplate = (temp) => {
-    setFormData({
-      title: temp.subject || temp.template_name,
-      message: temp.body,
-      notification_type: temp.template_type,
-      priority: "MEDIUM",
-      recipient_type: "ALL_CITIZENS",
-      delivery_channel: "IN_APP",
-      status: "DRAFT",
-      scheduled_time: "",
-      ward: "",
-      area: ""
-    });
-    setIsEditing(false);
-    setShowFormModal(true);
-  };
-
-  // Submit Broadcast Form
   const handleSubmitBroadcast = async (e) => {
     e.preventDefault();
-    setFormError("");
-
-    if (!formData.title || !formData.message) {
-      setFormError("Title and Message body are required.");
-      return;
-    }
-
-    if (formData.status === "SCHEDULED" && !formData.scheduled_time) {
-      setFormError("Scheduled delivery date/time must be provided.");
+    if (!formData.title.trim() || !formData.message.trim()) {
+      toast.error("Title and Message body are required.");
       return;
     }
 
     const payload = {
       ...formData,
-      scheduled_time: formData.status === "SCHEDULED" ? new Date(formData.scheduled_time).toISOString() : null
+      scheduled_time: formData.status === "SCHEDULED" && formData.scheduled_time
+        ? new Date(formData.scheduled_time).toISOString()
+        : null
     };
 
     try {
       if (isEditing) {
         await updateNotification(formData.id, payload);
+        toast.success("Broadcast updated successfully.");
       } else {
         await createNotification(payload);
+        toast.success("Broadcast alert dispatched successfully.");
       }
       setShowFormModal(false);
       fetchData();
     } catch (err) {
-      setFormError(err.response?.data?.detail || "Failed to submit broadcast notification.");
+      toast.error(err.response?.data?.detail || "Failed to submit broadcast.");
     }
   };
 
-  // Quick Dispatch / Resend Actions
   const handleQuickSend = async (notif) => {
     try {
       await updateNotification(notif.id, { ...notif, status: "SENT" });
+      toast.success("Notification sent!");
       fetchData();
     } catch (err) {
-      alert("Failed to send notification: " + (err.response?.data?.detail || err.message));
+      toast.error("Failed to send notification.");
     }
   };
 
   const handleDeleteBroadcast = async (id) => {
-    if (!window.confirm("Are you sure you want to permanently delete this broadcast notification?")) return;
+    if (!window.confirm("Are you sure you want to delete this broadcast notification?")) return;
     try {
       await deleteNotification(id);
+      toast.success("Notification deleted.");
       fetchData();
     } catch (err) {
-      alert("Failed to delete: " + (err.response?.data?.detail || err.message));
+      toast.error("Failed to delete notification.");
     }
   };
 
-  // Template Form Handlers
+  // Template Handlers
   const handleOpenCreateTemplate = () => {
     setIsEditingTemplate(false);
     setTemplateFormData({
@@ -265,15 +261,15 @@ const NotificationCenter = () => {
     setShowTemplateModal(true);
   };
 
-  const handleOpenEditTemplate = (temp) => {
+  const handleOpenEditTemplate = (tmpl) => {
     setIsEditingTemplate(true);
     setTemplateFormData({
-      id: temp.id,
-      template_name: temp.template_name,
-      template_type: temp.template_type,
-      subject: temp.subject || "",
-      body: temp.body,
-      status: temp.status
+      id: tmpl.id,
+      template_name: tmpl.template_name,
+      template_type: tmpl.template_type,
+      subject: tmpl.subject || "",
+      body: tmpl.body,
+      status: tmpl.status || "ACTIVE"
     });
     setShowTemplateModal(true);
   };
@@ -281,320 +277,351 @@ const NotificationCenter = () => {
   const handleSubmitTemplate = async (e) => {
     e.preventDefault();
     if (!templateFormData.template_name || !templateFormData.body) {
-      alert("Template name and body are required.");
+      toast.error("Template Name and Body are required.");
       return;
     }
+
     try {
       if (isEditingTemplate) {
         await updateNotificationTemplate(templateFormData.id, templateFormData);
+        toast.success("Template updated.");
       } else {
         await createNotificationTemplate(templateFormData);
+        toast.success("Template created.");
       }
       setShowTemplateModal(false);
       fetchData();
     } catch (err) {
-      alert("Failed to save template: " + (err.response?.data?.detail || err.message));
+      toast.error("Failed to save template.");
     }
+  };
+
+  const handleApplyTemplate = (tmpl) => {
+    setFormData(prev => ({
+      ...prev,
+      title: tmpl.subject || tmpl.template_name,
+      message: tmpl.body,
+      notification_type: tmpl.template_type
+    }));
+    setActiveTab("broadcasts");
+    setShowFormModal(true);
+    toast.success(`Template "${tmpl.template_name}" loaded into Broadcast Form.`);
   };
 
   const handleDeleteTemplate = async (id) => {
     if (!window.confirm("Delete this notification template?")) return;
     try {
       await deleteNotificationTemplate(id);
+      toast.success("Template deleted.");
       fetchData();
     } catch (err) {
-      alert("Failed to delete template: " + (err.response?.data?.detail || err.message));
+      toast.error("Failed to delete template.");
     }
-  };
-
-  // SVG Chart Computations
-  const getTypesChartData = () => {
-    const counts = { EMERGENCY: 0, QUALITY: 0, SUPPLY: 0, COMPLAINT: 0, GENERAL: 0, OTHER: 0 };
-    notifications.forEach(n => {
-      const type = n.notification_type;
-      if (counts[type] !== undefined) counts[type]++;
-      else counts.OTHER++;
-    });
-    const total = Object.values(counts).reduce((a, b) => a + b, 0) || 1;
-    return Object.entries(counts).map(([name, count]) => ({
-      name,
-      count,
-      pct: (count / total) * 100
-    })).filter(item => item.count > 0);
-  };
-
-  const renderTypesDonutChart = () => {
-    const data = getTypesChartData();
-    if (data.length === 0) {
-      return <div className="text-slate-500 text-sm text-center py-8">No data available</div>;
-    }
-
-    const colors = {
-      EMERGENCY: "#ef4444",
-      QUALITY: "#f59e0b",
-      SUPPLY: "#3b82f6",
-      COMPLAINT: "#8b5cf6",
-      GENERAL: "#10b981",
-      OTHER: "#6b7280"
-    };
-
-    let accumulatedPercentage = 0;
-
-    return (
-      <div className="flex flex-col md:flex-row items-center justify-around gap-4">
-        <svg width="150" height="150" viewBox="0 0 36 36" className="transform -rotate-90">
-          <circle cx="18" cy="18" r="15.915" fill="none" stroke="#1e293b" strokeWidth="3" />
-          {data.map((item, idx) => {
-            const strokeDasharray = `${item.pct} ${100 - item.pct}`;
-            const strokeDashoffset = 100 - accumulatedPercentage;
-            accumulatedPercentage += item.pct;
-            return (
-              <circle
-                key={idx}
-                cx="18"
-                cy="18"
-                r="15.915"
-                fill="none"
-                stroke={colors[item.name] || colors.OTHER}
-                strokeWidth="3.5"
-                strokeDasharray={strokeDasharray}
-                strokeDashoffset={strokeDashoffset}
-                className="transition-all duration-500 hover:stroke-[4]"
-              />
-            );
-          })}
-        </svg>
-        <div className="flex flex-col gap-1.5 text-xs text-slate-300">
-          {data.map((item, idx) => (
-            <div key={idx} className="flex items-center gap-2">
-              <span className="w-3 h-3 rounded-full" style={{ backgroundColor: colors[item.name] || colors.OTHER }} />
-              <span className="font-semibold text-slate-200">{item.name}</span>
-              <span className="text-slate-400">({item.count} - {Math.round(item.pct)}%)</span>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 p-6 font-sans">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
       {/* Header Panel */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-6 mb-6">
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
-          <h1 className="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-cyan-400 to-indigo-500 bg-clip-text text-transparent">
-            Notification Center Command
-          </h1>
-          <p className="text-slate-400 text-sm mt-1">
-            Dispatch urgent municipality broadcasts, coordinate alerts, and monitor citizen notification records.
+          <h2 style={{ fontSize: '1.5rem', fontWeight: '800', color: '#0f172a', margin: 0 }}>
+            Notification & Broadcast Center
+          </h2>
+          <p style={{ fontSize: '0.85rem', color: '#64748b', margin: '0.2rem 0 0 0' }}>
+            Dispatch urgent municipal broadcasts, manage alert templates, and monitor citizen notification records.
           </p>
         </div>
-        <button
+
+        <button 
           onClick={handleOpenCreate}
-          className="bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 transition duration-150 text-white font-medium text-sm px-4 py-2.5 rounded-lg shadow-lg flex items-center gap-2"
+          style={{
+            backgroundColor: '#2563eb',
+            color: '#ffffff',
+            border: 'none',
+            borderRadius: '8px',
+            padding: '0.6rem 1.25rem',
+            fontWeight: '700',
+            fontSize: '0.88rem',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.4rem',
+            boxShadow: '0 2px 4px rgba(37, 99, 235, 0.2)'
+          }}
         >
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
+          <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>campaign</span>
           New Broadcast Alert
         </button>
       </div>
 
-      {/* Metric Tiles Grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-6 gap-4 mb-6">
-        {[
-          { label: "Total Dispatches", val: stats.total_notifications, col: "text-indigo-400", bg: "bg-indigo-950/20 border-indigo-900/40" },
-          { label: "Sent / Delivered", val: stats.sent, col: "text-emerald-400", bg: "bg-emerald-950/20 border-emerald-900/40" },
-          { label: "Scheduled Slots", val: stats.scheduled, col: "text-amber-400", bg: "bg-amber-950/20 border-amber-900/40" },
-          { label: "Delivery Failures", val: stats.failed, col: "text-rose-400", bg: "bg-rose-950/20 border-rose-900/40" },
-          { label: "Unread Messages", val: stats.unread, col: "text-cyan-400", bg: "bg-cyan-950/20 border-cyan-900/40" },
-          { label: "Emergency Alerts", val: stats.emergency_notifications, col: "text-red-400", bg: "bg-red-950/20 border-red-900/40" }
-        ].map((tile, i) => (
-          <div key={i} className={`p-4 rounded-xl border ${tile.bg} backdrop-blur-sm shadow-md transition duration-150 hover:-translate-y-0.5`}>
-            <div className="text-slate-400 text-xs font-semibold uppercase tracking-wider">{tile.label}</div>
-            <div className={`text-2xl font-black mt-1 ${tile.col}`}>{tile.val}</div>
+      {/* Clean Summary Metrics Cards Row */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+        gap: '1rem'
+      }}>
+        <div style={{ backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '1.25rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <div style={{ width: '44px', height: '44px', borderRadius: '10px', backgroundColor: '#eff6ff', color: '#2563eb', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <span className="material-symbols-outlined" style={{ fontSize: '24px' }}>send</span>
           </div>
-        ))}
+          <div>
+            <div style={{ fontSize: '0.75rem', fontWeight: '700', color: '#64748b', textTransform: 'uppercase' }}>Total Dispatches</div>
+            <div style={{ fontSize: '1.5rem', fontWeight: '800', color: '#0f172a' }}>{stats.total_notifications || totalItems}</div>
+          </div>
+        </div>
+
+        <div style={{ backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '1.25rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <div style={{ width: '44px', height: '44px', borderRadius: '10px', backgroundColor: '#f0fdf4', color: '#16a34a', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <span className="material-symbols-outlined" style={{ fontSize: '24px' }}>check_circle</span>
+          </div>
+          <div>
+            <div style={{ fontSize: '0.75rem', fontWeight: '700', color: '#64748b', textTransform: 'uppercase' }}>Delivered Alerts</div>
+            <div style={{ fontSize: '1.5rem', fontWeight: '800', color: '#16a34a' }}>{stats.sent}</div>
+          </div>
+        </div>
+
+        <div style={{ backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '1.25rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <div style={{ width: '44px', height: '44px', borderRadius: '10px', backgroundColor: '#fff7ed', color: '#ea580c', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <span className="material-symbols-outlined" style={{ fontSize: '24px' }}>schedule</span>
+          </div>
+          <div>
+            <div style={{ fontSize: '0.75rem', fontWeight: '700', color: '#64748b', textTransform: 'uppercase' }}>Scheduled Slots</div>
+            <div style={{ fontSize: '1.5rem', fontWeight: '800', color: '#ea580c' }}>{stats.scheduled}</div>
+          </div>
+        </div>
+
+        <div style={{ backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '1.25rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <div style={{ width: '44px', height: '44px', borderRadius: '10px', backgroundColor: '#fef2f2', color: '#dc2626', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <span className="material-symbols-outlined" style={{ fontSize: '24px' }}>warning</span>
+          </div>
+          <div>
+            <div style={{ fontSize: '0.75rem', fontWeight: '700', color: '#64748b', textTransform: 'uppercase' }}>Emergency Alerts</div>
+            <div style={{ fontSize: '1.5rem', fontWeight: '800', color: '#dc2626' }}>{stats.emergency_notifications}</div>
+          </div>
+        </div>
       </div>
 
       {/* Tabs Layout */}
-      <div className="flex border-b border-slate-800 mb-6">
+      <div style={{ display: 'flex', borderBottom: '1px solid #e2e8f0', gap: '0.5rem' }}>
         <button
           onClick={() => setActiveTab("broadcasts")}
-          className={`px-5 py-3 text-sm font-semibold border-b-2 transition duration-150 ${
-            activeTab === "broadcasts"
-              ? "border-indigo-500 text-indigo-400 bg-indigo-950/10"
-              : "border-transparent text-slate-400 hover:text-slate-200"
-          }`}
+          style={{
+            padding: '0.75rem 1.25rem',
+            fontSize: '0.9rem',
+            fontWeight: '700',
+            border: 'none',
+            borderBottom: activeTab === "broadcasts" ? '3px solid #2563eb' : '3px solid transparent',
+            backgroundColor: 'transparent',
+            color: activeTab === "broadcasts" ? '#2563eb' : '#64748b',
+            cursor: 'pointer'
+          }}
         >
-          Broadcasts Listing
+          Broadcast Alerts Log
         </button>
+
         <button
           onClick={() => setActiveTab("templates")}
-          className={`px-5 py-3 text-sm font-semibold border-b-2 transition duration-150 ${
-            activeTab === "templates"
-              ? "border-indigo-500 text-indigo-400 bg-indigo-950/10"
-              : "border-transparent text-slate-400 hover:text-slate-200"
-          }`}
+          style={{
+            padding: '0.75rem 1.25rem',
+            fontSize: '0.9rem',
+            fontWeight: '700',
+            border: 'none',
+            borderBottom: activeTab === "templates" ? '3px solid #2563eb' : '3px solid transparent',
+            backgroundColor: 'transparent',
+            color: activeTab === "templates" ? '#2563eb' : '#64748b',
+            cursor: 'pointer'
+          }}
         >
-          Templates Workspace
+          Notification Templates Workspace ({templates.length})
         </button>
       </div>
 
-      {/* Tab Contents */}
+      {/* Broadcasts Tab */}
       {activeTab === "broadcasts" && (
-        <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
-          {/* Main Grid Section */}
-          <div className="xl:col-span-3 bg-slate-900/60 border border-slate-800/80 rounded-2xl p-5 shadow-xl">
-            {/* Search and Filters */}
-            <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
-              <div className="relative w-full max-w-xs">
-                <input
-                  type="text"
-                  placeholder="Search by ID, title, ward..."
-                  value={search}
-                  onChange={handleSearchChange}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg py-2 px-3 pl-9 text-sm focus:outline-none focus:border-indigo-500 text-slate-200"
-                />
-                <svg className="w-4 h-4 text-slate-500 absolute left-3 top-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <select
-                  value={filters.type}
-                  onChange={(e) => handleFilterChange("type", e.target.value)}
-                  className="bg-slate-950 border border-slate-800 text-xs rounded-lg p-2 text-slate-300 focus:outline-none focus:border-indigo-500"
-                >
-                  <option value="">All Types</option>
-                  <option value="GENERAL">General</option>
-                  <option value="COMPLAINT">Complaint</option>
-                  <option value="WORK_ASSIGNMENT">Worker Task</option>
-                  <option value="SUPPLY">Water Supply</option>
-                  <option value="QUALITY">Water Quality</option>
-                  <option value="EMERGENCY">Emergency</option>
-                </select>
-                <select
-                  value={filters.priority}
-                  onChange={(e) => handleFilterChange("priority", e.target.value)}
-                  className="bg-slate-950 border border-slate-800 text-xs rounded-lg p-2 text-slate-300 focus:outline-none focus:border-indigo-500"
-                >
-                  <option value="">All Priorities</option>
-                  <option value="LOW">Low</option>
-                  <option value="MEDIUM">Medium</option>
-                  <option value="HIGH">High</option>
-                  <option value="CRITICAL">Critical</option>
-                </select>
-                <select
-                  value={filters.status}
-                  onChange={(e) => handleFilterChange("status", e.target.value)}
-                  className="bg-slate-950 border border-slate-800 text-xs rounded-lg p-2 text-slate-300 focus:outline-none focus:border-indigo-500"
-                >
-                  <option value="">All Statuses</option>
-                  <option value="DRAFT">Draft</option>
-                  <option value="SCHEDULED">Scheduled</option>
-                  <option value="SENT">Sent</option>
-                  <option value="FAILED">Failed</option>
-                </select>
-                {(search || Object.values(filters).some(x => x)) && (
-                  <button
-                    onClick={resetFilters}
-                    className="text-xs text-rose-400 hover:text-rose-300 font-medium px-2 py-1"
-                  >
-                    Clear Filters
-                  </button>
-                )}
-              </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          {/* Search & Filter Bar */}
+          <div style={{
+            backgroundColor: '#ffffff',
+            border: '1px solid #e2e8f0',
+            borderRadius: '10px',
+            padding: '1rem 1.25rem',
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: '1rem',
+            alignItems: 'flex-end',
+            boxShadow: '0 1px 2px rgba(0,0,0,0.04)'
+          }}>
+            <div style={{ flex: '2 1 200px' }}>
+              <label className="water-label" style={{ fontSize: '0.78rem', marginBottom: '0.3rem' }}>Search Notifications</label>
+              <input 
+                type="text" 
+                value={search}
+                onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+                placeholder="Search by title, message, or ward..."
+                className="water-input"
+                style={{ height: '38px', fontSize: '0.85rem' }}
+              />
             </div>
 
-            {/* Broadcast Table */}
-            <div className="overflow-x-auto rounded-lg border border-slate-800 bg-slate-950/40">
-              <table className="w-full text-left border-collapse">
+            <div style={{ flex: '1 1 140px' }}>
+              <label className="water-label" style={{ fontSize: '0.78rem', marginBottom: '0.3rem' }}>Category</label>
+              <select 
+                value={filters.type}
+                onChange={(e) => { setFilters(prev => ({ ...prev, type: e.target.value })); setPage(1); }}
+                className="water-select"
+                style={{ height: '38px', fontSize: '0.85rem' }}
+              >
+                <option value="">All Categories</option>
+                {NOTIFICATION_TYPES.map(t => (
+                  <option key={t.value} value={t.value}>{t.label}</option>
+                ))}
+              </select>
+            </div>
+
+            <div style={{ flex: '1 1 140px' }}>
+              <label className="water-label" style={{ fontSize: '0.78rem', marginBottom: '0.3rem' }}>Priority</label>
+              <select 
+                value={filters.priority}
+                onChange={(e) => { setFilters(prev => ({ ...prev, priority: e.target.value })); setPage(1); }}
+                className="water-select"
+                style={{ height: '38px', fontSize: '0.85rem' }}
+              >
+                <option value="">All Priorities</option>
+                <option value="CRITICAL">Critical</option>
+                <option value="HIGH">High</option>
+                <option value="MEDIUM">Medium</option>
+                <option value="LOW">Low</option>
+              </select>
+            </div>
+
+            <div style={{ flex: '1 1 140px' }}>
+              <label className="water-label" style={{ fontSize: '0.78rem', marginBottom: '0.3rem' }}>Status</label>
+              <select 
+                value={filters.status}
+                onChange={(e) => { setFilters(prev => ({ ...prev, status: e.target.value })); setPage(1); }}
+                className="water-select"
+                style={{ height: '38px', fontSize: '0.85rem' }}
+              >
+                <option value="">All Statuses</option>
+                <option value="SENT">Sent / Delivered</option>
+                <option value="SCHEDULED">Scheduled</option>
+                <option value="DRAFT">Draft</option>
+                <option value="FAILED">Failed</option>
+              </select>
+            </div>
+
+            {(search || filters.type || filters.priority || filters.status) && (
+              <button 
+                type="button" 
+                onClick={() => { setSearch(""); setFilters({ type: "", priority: "", status: "" }); setPage(1); }}
+                style={{
+                  height: '38px',
+                  padding: '0 1rem',
+                  border: '1px solid #fca5a5',
+                  backgroundColor: '#fff5f5',
+                  color: '#dc2626',
+                  borderRadius: '8px',
+                  fontWeight: '600',
+                  fontSize: '0.8rem',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.3rem'
+                }}
+              >
+                <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>restart_alt</span>
+                Reset Filters
+              </button>
+            )}
+          </div>
+
+          {/* Table */}
+          {loading ? (
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '30vh' }}>
+              <span className="material-symbols-outlined" style={{ animation: 'spin 2s linear infinite', fontSize: '2.5rem', color: '#2563eb' }}>
+                autorenew
+              </span>
+            </div>
+          ) : (
+            <div style={{ width: '100%', overflowX: 'auto', backgroundColor: '#ffffff', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem' }}>
                 <thead>
-                  <tr className="bg-slate-900 border-b border-slate-800 text-xs font-semibold text-slate-400 uppercase">
-                    <th className="p-3">Ref ID</th>
-                    <th className="p-3">Title & Summary</th>
-                    <th className="p-3">Recipient/Target</th>
-                    <th className="p-3">Priority</th>
-                    <th className="p-3">Channel</th>
-                    <th className="p-3">Status</th>
-                    <th className="p-3 text-right">Actions</th>
+                  <tr style={{ backgroundColor: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
+                    <th style={{ padding: '0.85rem 1rem', fontWeight: '700', color: '#1e3a8a' }}>Ref No.</th>
+                    <th style={{ padding: '0.85rem 1rem', fontWeight: '700', color: '#1e3a8a' }}>Title & Summary</th>
+                    <th style={{ padding: '0.85rem 1rem', fontWeight: '700', color: '#1e3a8a' }}>Target Audience</th>
+                    <th style={{ padding: '0.85rem 1rem', fontWeight: '700', color: '#1e3a8a' }}>Priority</th>
+                    <th style={{ padding: '0.85rem 1rem', fontWeight: '700', color: '#1e3a8a' }}>Channel</th>
+                    <th style={{ padding: '0.85rem 1rem', fontWeight: '700', color: '#1e3a8a' }}>Status</th>
+                    <th style={{ padding: '0.85rem 1rem', fontWeight: '700', color: '#1e3a8a', textAlign: 'center' }}>Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-800/80 text-sm">
-                  {loading ? (
+                <tbody>
+                  {notifications.length === 0 ? (
                     <tr>
-                      <td colSpan="7" className="p-8 text-center text-slate-400">Loading broadcasts...</td>
-                    </tr>
-                  ) : notifications.length === 0 ? (
-                    <tr>
-                      <td colSpan="7" className="p-8 text-center text-slate-500">No matching broadcasts found.</td>
+                      <td colSpan="7" style={{ padding: '3rem', textAlign: 'center', color: '#64748b', fontWeight: '500' }}>
+                        <span className="material-symbols-outlined" style={{ fontSize: '2.5rem', display: 'block', marginBottom: '0.5rem', color: '#cbd5e1' }}>
+                          notifications_off
+                        </span>
+                        No broadcast notifications found.
+                      </td>
                     </tr>
                   ) : (
                     notifications.map((n) => (
-                      <tr key={n.id} className="hover:bg-slate-900/35 transition">
-                        <td className="p-3 font-mono text-xs text-indigo-400 font-bold">{n.notification_number}</td>
-                        <td className="p-3">
-                          <div className="font-semibold text-slate-200">{n.title}</div>
-                          <div className="text-xs text-slate-400 truncate max-w-xs">{n.message}</div>
+                      <tr key={n.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
+                        <td style={{ padding: '0.85rem 1rem', fontWeight: '700', color: '#2563eb' }}>
+                          {n.notification_number || `NOT-${n.id}`}
                         </td>
-                        <td className="p-3">
-                          <div className="text-xs font-medium text-slate-300">{n.recipient_type.replace('_', ' ')}</div>
-                          {n.ward && (
-                            <div className="text-[10px] text-slate-500">
-                              Ward: {n.ward} {n.area && `| Area: ${n.area}`}
-                            </div>
-                          )}
+                        <td style={{ padding: '0.85rem 1rem' }}>
+                          <div style={{ fontWeight: '600', color: '#0f172a' }}>{n.title}</div>
+                          <div style={{ fontSize: '0.75rem', color: '#64748b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '240px' }}>
+                            {n.message}
+                          </div>
                         </td>
-                        <td className="p-3">
+                        <td style={{ padding: '0.85rem 1rem', fontWeight: '500' }}>
+                          <div style={{ fontWeight: '600', color: '#334155' }}>{(n.recipient_type || 'ALL_CITIZENS').replace(/_/g, ' ')}</div>
+                          {n.ward && <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{n.ward}</div>}
+                        </td>
+                        <td style={{ padding: '0.85rem 1rem' }}>
                           <NotificationPriorityBadge priority={n.priority} />
                         </td>
-                        <td className="p-3 font-semibold text-xs text-slate-300 font-mono">{n.delivery_channel}</td>
-                        <td className="p-3">
+                        <td style={{ padding: '0.85rem 1rem', fontWeight: '600', color: '#475569' }}>
+                          {n.delivery_channel || 'IN_APP'}
+                        </td>
+                        <td style={{ padding: '0.85rem 1rem' }}>
                           <NotificationStatusBadge status={n.status} />
                         </td>
-                        <td className="p-3 text-right whitespace-nowrap">
-                          <div className="inline-flex gap-1.5">
-                            <button
-                              onClick={() => handleOpenDetails(n)}
-                              title="View Recipients & Trail Logs"
-                              className="bg-slate-800 hover:bg-slate-700 text-slate-300 p-1.5 rounded"
+                        <td style={{ padding: '0.85rem 1rem' }}>
+                          <div style={{ display: 'flex', justifyContent: 'center', gap: '0.3rem' }}>
+                            <button 
+                              onClick={() => handleViewDetails(n)}
+                              title="View Details"
+                              style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#2563eb' }}
                             >
-                              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                              </svg>
+                              <span className="material-symbols-outlined" style={{ fontSize: '1.2rem' }}>visibility</span>
                             </button>
-                            {n.status === "DRAFT" && (
-                              <>
-                                <button
-                                  onClick={() => handleOpenEdit(n)}
-                                  title="Edit Broadcast Parameters"
-                                  className="bg-indigo-950/40 hover:bg-indigo-900/60 text-indigo-400 p-1.5 rounded border border-indigo-900/30"
-                                >
-                                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                  </svg>
-                                </button>
-                                <button
-                                  onClick={() => handleQuickSend(n)}
-                                  title="Dispatach Instantly"
-                                  className="bg-emerald-950/40 hover:bg-emerald-900/60 text-emerald-400 p-1.5 rounded border border-emerald-900/30"
-                                >
-                                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                                  </svg>
-                                </button>
-                              </>
+                            {n.status !== "SENT" && (
+                              <button 
+                                onClick={() => handleQuickSend(n)}
+                                title="Send Now"
+                                style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#16a34a' }}
+                              >
+                                <span className="material-symbols-outlined" style={{ fontSize: '1.2rem' }}>send</span>
+                              </button>
                             )}
-                            <button
-                              onClick={() => handleDeleteBroadcast(n.id)}
-                              title="Delete Record"
-                              className="bg-rose-950/40 hover:bg-rose-900/60 text-rose-400 p-1.5 rounded border border-rose-900/30"
+                            <button 
+                              onClick={() => handleOpenEdit(n)}
+                              title="Edit Broadcast"
+                              style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#64748b' }}
                             >
-                              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                              </svg>
+                              <span className="material-symbols-outlined" style={{ fontSize: '1.2rem' }}>edit</span>
+                            </button>
+                            <button 
+                              onClick={() => handleDeleteBroadcast(n.id)}
+                              title="Delete Broadcast"
+                              style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#dc2626' }}
+                            >
+                              <span className="material-symbols-outlined" style={{ fontSize: '1.2rem' }}>delete</span>
                             </button>
                           </div>
                         </td>
@@ -603,296 +630,253 @@ const NotificationCenter = () => {
                   )}
                 </tbody>
               </table>
-            </div>
 
-            {/* Pagination Controls */}
-            {totalPages > 1 && (
-              <div className="flex items-center justify-between border-t border-slate-800 mt-4 pt-4">
-                <span className="text-xs text-slate-400">Page {page} of {totalPages}</span>
-                <div className="inline-flex gap-2">
-                  <button
-                    onClick={() => setPage(p => Math.max(1, p - 1))}
-                    disabled={page === 1}
-                    className="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs px-3 py-1.5 rounded disabled:opacity-40 disabled:cursor-not-allowed"
-                  >
-                    Previous
-                  </button>
-                  <button
-                    onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                    disabled={page === totalPages}
-                    className="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs px-3 py-1.5 rounded disabled:opacity-40 disabled:cursor-not-allowed"
-                  >
-                    Next
-                  </button>
+              {/* Pagination Controls */}
+              {totalPages > 1 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem', borderTop: '1px solid #e2e8f0' }}>
+                  <span style={{ fontSize: '0.85rem', color: '#64748b' }}>
+                    Page {page} of {totalPages} ({totalItems} dispatches)
+                  </span>
+                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <button 
+                      disabled={page === 1}
+                      onClick={() => setPage(p => Math.max(p - 1, 1))}
+                      style={{
+                        padding: '0.4rem 0.9rem',
+                        borderRadius: '6px',
+                        border: '1px solid #cbd5e1',
+                        backgroundColor: '#ffffff',
+                        color: '#475569',
+                        fontSize: '0.85rem',
+                        fontWeight: '600',
+                        cursor: page === 1 ? 'not-allowed' : 'pointer',
+                        opacity: page === 1 ? 0.5 : 1
+                      }}
+                    >
+                      Previous
+                    </button>
+                    <button 
+                      disabled={page === totalPages}
+                      onClick={() => setPage(p => Math.min(p + 1, totalPages))}
+                      style={{
+                        padding: '0.4rem 0.9rem',
+                        borderRadius: '6px',
+                        border: '1px solid #cbd5e1',
+                        backgroundColor: '#ffffff',
+                        color: '#475569',
+                        fontSize: '0.85rem',
+                        fontWeight: '600',
+                        cursor: page === totalPages ? 'not-allowed' : 'pointer',
+                        opacity: page === totalPages ? 0.5 : 1
+                      }}
+                    >
+                      Next
+                    </button>
+                  </div>
                 </div>
-              </div>
-            )}
-          </div>
-
-          {/* Right Analytics Sidebar Column */}
-          <div className="xl:col-span-1 flex flex-col gap-6">
-            <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-5 shadow-xl">
-              <h3 className="text-base font-bold text-slate-200 border-b border-slate-850 pb-2 mb-4">
-                Broadcast Type Summary
-              </h3>
-              {renderTypesDonutChart()}
+              )}
             </div>
-
-            <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-5 shadow-xl">
-              <h3 className="text-base font-bold text-slate-200 border-b border-slate-850 pb-2 mb-4">
-                System Guide
-              </h3>
-              <p className="text-xs text-slate-400 leading-relaxed mb-3">
-                Events on Water Management dashboards automatically emit contextual alerts. You can also manually broadcast drafts from templates.
-              </p>
-              <div className="border border-slate-800 rounded-lg p-2.5 bg-slate-950/40 text-[11px] text-slate-300">
-                <div className="font-semibold text-indigo-400">Recipient Channels:</div>
-                <ul className="list-disc pl-4 mt-1 space-y-1">
-                  <li><strong>All Citizens</strong>: Broad system notification.</li>
-                  <li><strong>Field Workers</strong>: Dispatches tasks updates automatically.</li>
-                  <li><strong>Specific Ward</strong>: Emitted during supply schedules/shutdowns.</li>
-                </ul>
-              </div>
-            </div>
-          </div>
+          )}
         </div>
       )}
 
       {/* Templates Workspace Tab */}
       {activeTab === "templates" && (
-        <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-5 shadow-xl">
-          <div className="flex items-center justify-between border-b border-slate-800 pb-3 mb-4">
-            <h2 className="text-xl font-bold text-slate-200">Municipal Alert Templates Workspace</h2>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h4 style={{ fontSize: '1rem', fontWeight: '700', color: '#0f172a', margin: 0 }}>
+              Pre-approved Notification Templates
+            </h4>
             <button
               onClick={handleOpenCreateTemplate}
-              className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold px-3 py-2 rounded-lg"
+              style={{
+                backgroundColor: '#2563eb',
+                color: '#ffffff',
+                border: 'none',
+                borderRadius: '8px',
+                padding: '0.5rem 1rem',
+                fontWeight: '600',
+                fontSize: '0.85rem',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.3rem'
+              }}
             >
-              Add Template Layout
+              <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>add</span>
+              + Create Template
             </button>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {templates.length === 0 ? (
-              <div className="col-span-full p-8 text-center text-slate-500">No template layouts declared.</div>
-            ) : (
-              templates.map((temp) => (
-                <div key={temp.id} className="bg-slate-950/70 border border-slate-800 rounded-xl p-4.5 flex flex-col justify-between hover:border-slate-700 transition">
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="font-mono text-xs font-bold text-indigo-400 uppercase px-2 py-0.5 bg-indigo-950/20 border border-indigo-900/40 rounded">
-                        {temp.template_type}
-                      </span>
-                      <span className={`text-[10px] uppercase font-bold ${temp.status === "ACTIVE" ? "text-emerald-400" : "text-slate-500"}`}>
-                        {temp.status}
-                      </span>
-                    </div>
-                    <h3 className="font-bold text-slate-200 text-base mb-1">{temp.template_name}</h3>
-                    <p className="text-slate-400 text-xs line-clamp-3 mb-4 bg-slate-900/30 p-2.5 rounded border border-slate-850 font-mono">
-                      {temp.body}
-                    </p>
-                  </div>
-                  <div className="flex items-center justify-between border-t border-slate-850 pt-3 mt-1">
-                    <button
-                      onClick={() => handleApplyTemplate(temp)}
-                      className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold px-2.5 py-1.5 rounded transition"
-                    >
-                      Use Design
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem' }}>
+            {templates.map(tmpl => (
+              <div key={tmpl.id} style={{
+                backgroundColor: '#ffffff',
+                border: '1px solid #e2e8f0',
+                borderRadius: '10px',
+                padding: '1.25rem',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '0.75rem',
+                boxShadow: '0 1px 2px rgba(0,0,0,0.04)'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <h5 style={{ fontSize: '0.95rem', fontWeight: '700', color: '#0f172a', margin: 0 }}>
+                    {tmpl.template_name}
+                  </h5>
+                  <span style={{ fontSize: '0.7rem', fontWeight: '700', padding: '0.2rem 0.5rem', borderRadius: '50px', backgroundColor: '#eff6ff', color: '#2563eb' }}>
+                    {tmpl.template_type}
+                  </span>
+                </div>
+
+                <p style={{ fontSize: '0.82rem', color: '#475569', margin: 0, height: '42px', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {tmpl.body}
+                </p>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #f1f5f9', paddingTop: '0.75rem', marginTop: '0.25rem' }}>
+                  <button
+                    onClick={() => handleApplyTemplate(tmpl)}
+                    style={{
+                      border: 'none',
+                      backgroundColor: '#eff6ff',
+                      color: '#2563eb',
+                      fontWeight: '700',
+                      fontSize: '0.78rem',
+                      padding: '0.35rem 0.75rem',
+                      borderRadius: '6px',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Use Template
+                  </button>
+
+                  <div style={{ display: 'flex', gap: '0.3rem' }}>
+                    <button onClick={() => handleOpenEditTemplate(tmpl)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#64748b' }}>
+                      <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>edit</span>
                     </button>
-                    <div className="inline-flex gap-1">
-                      <button
-                        onClick={() => handleOpenEditTemplate(temp)}
-                        className="bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs px-2 py-1 rounded"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => handleDeleteTemplate(temp.id)}
-                        className="bg-rose-950/20 hover:bg-rose-900/30 text-rose-400 border border-rose-900/30 text-xs px-2 py-1 rounded"
-                      >
-                        Delete
-                      </button>
-                    </div>
+                    <button onClick={() => handleDeleteTemplate(tmpl.id)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#dc2626' }}>
+                      <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>delete</span>
+                    </button>
                   </div>
                 </div>
-              ))
-            )}
+              </div>
+            ))}
           </div>
         </div>
       )}
 
-      {/* Broadcast Create/Edit Modal */}
+      {/* Broadcast Form Modal */}
       {showFormModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-xl shadow-2xl p-6 relative">
-            <button
-              onClick={() => setShowFormModal(false)}
-              className="absolute top-4 right-4 text-slate-400 hover:text-slate-200"
-            >
-              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-
-            <h3 className="text-xl font-bold text-slate-100 mb-4">
-              {isEditing ? "Modify Broadcast Profile" : "Dispatch Municipality Alert"}
-            </h3>
-
-            {formError && (
-              <div className="bg-rose-950/30 border border-rose-900/50 text-rose-300 text-xs p-3 rounded-lg mb-4">
-                {formError}
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: 'rgba(15, 23, 42, 0.5)',
+          display: 'flex', justifyContent: 'center', alignItems: 'center',
+          zIndex: 1000, padding: '1rem'
+        }}>
+          <div style={{
+            backgroundColor: '#ffffff',
+            borderRadius: '12px',
+            width: '100%',
+            maxWidth: '650px',
+            maxHeight: '90vh',
+            overflowY: 'auto',
+            padding: '1.5rem',
+            boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)'
+          }}>
+            <form onSubmit={handleSubmitBroadcast} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #e2e8f0', paddingBottom: '0.75rem' }}>
+                <h3 style={{ fontSize: '1.15rem', fontWeight: '700', color: '#0f172a', margin: 0 }}>
+                  {isEditing ? 'Edit Broadcast Alert' : 'Create New Broadcast Alert'}
+                </h3>
+                <button type="button" onClick={() => setShowFormModal(false)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#64748b' }}>
+                  <span className="material-symbols-outlined">close</span>
+                </button>
               </div>
-            )}
 
-            <form onSubmit={handleSubmitBroadcast} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="water-label">Alert Title *</label>
+                <input 
+                  type="text" 
+                  value={formData.title}
+                  onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+                  placeholder="e.g. Scheduled Water Supply Interruption"
+                  required
+                  className="water-input"
+                />
+              </div>
+
+              <div>
+                <label className="water-label">Message Content *</label>
+                <textarea 
+                  value={formData.message}
+                  onChange={(e) => setFormData(prev => ({ ...prev, message: e.target.value }))}
+                  placeholder="Enter detailed broadcast message for citizens..."
+                  rows="4"
+                  required
+                  className="water-input"
+                  style={{ resize: 'vertical' }}
+                />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-400 mb-1">Alert Category</label>
-                  <select
+                  <label className="water-label">Notification Type</label>
+                  <select 
                     value={formData.notification_type}
-                    onChange={(e) => setFormData({ ...formData, notification_type: e.target.value })}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-slate-200 focus:outline-none focus:border-indigo-500"
+                    onChange={(e) => setFormData(prev => ({ ...prev, notification_type: e.target.value }))}
+                    className="water-select"
                   >
-                    <option value="GENERAL">General Bulletin</option>
-                    <option value="COMPLAINT">Water Complaint Alert</option>
-                    <option value="WORK_ASSIGNMENT">Crew Work Assignment</option>
-                    <option value="SUPPLY">Water Supply Update</option>
-                    <option value="PIPELINE">Pipeline Integrity</option>
-                    <option value="TANK">Reservoir Tank warning</option>
-                    <option value="QUALITY">Water Quality Report</option>
-                    <option value="MAINTENANCE">Maintenance Schedule</option>
-                    <option value="EMERGENCY">Emergency Shutdown</option>
+                    {NOTIFICATION_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
                   </select>
                 </div>
+
                 <div>
-                  <label className="block text-xs font-semibold text-slate-400 mb-1">Severity Priority</label>
-                  <select
+                  <label className="water-label">Priority Level</label>
+                  <select 
                     value={formData.priority}
-                    onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-slate-200 focus:outline-none focus:border-indigo-500"
+                    onChange={(e) => setFormData(prev => ({ ...prev, priority: e.target.value }))}
+                    className="water-select"
                   >
                     <option value="LOW">Low</option>
                     <option value="MEDIUM">Medium</option>
                     <option value="HIGH">High</option>
-                    <option value="CRITICAL">Critical Alert</option>
+                    <option value="CRITICAL">Critical / Emergency</option>
                   </select>
                 </div>
-              </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-slate-400 mb-1">Alert Broadcast Title</label>
-                <input
-                  type="text"
-                  placeholder="e.g. Ward 4 Supply Disruption"
-                  value={formData.title}
-                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-slate-200 focus:outline-none focus:border-indigo-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-400 mb-1">Broadcast Message Body</label>
-                <textarea
-                  rows="3"
-                  placeholder="Draft message content for residents..."
-                  value={formData.message}
-                  onChange={(e) => setFormData({ ...formData, message: e.target.value })}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-slate-200 focus:outline-none focus:border-indigo-500 font-sans"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-400 mb-1">Recipient Group</label>
-                  <select
+                  <label className="water-label">Target Recipient Group</label>
+                  <select 
                     value={formData.recipient_type}
-                    onChange={(e) => setFormData({ ...formData, recipient_type: e.target.value })}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-slate-200 focus:outline-none focus:border-indigo-500"
+                    onChange={(e) => setFormData(prev => ({ ...prev, recipient_type: e.target.value }))}
+                    className="water-select"
                   >
-                    <option value="ALL_CITIZENS">All Registered Citizens</option>
-                    <option value="SPECIFIC_WARD">Specific Municipality Ward</option>
-                    <option value="FIELD_WORKERS">Active Field Workers</option>
-                    <option value="AUTHORITY">Internal Water Authority</option>
+                    {RECIPIENT_TYPES.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
                   </select>
                 </div>
+
                 <div>
-                  <label className="block text-xs font-semibold text-slate-400 mb-1">Delivery Channel</label>
-                  <select
-                    value={formData.delivery_channel}
-                    onChange={(e) => setFormData({ ...formData, delivery_channel: e.target.value })}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-slate-200 focus:outline-none focus:border-indigo-500"
-                  >
-                    <option value="IN_APP">In-App Notification</option>
-                    <option value="SMS">SMS Gateway broadcast</option>
-                    <option value="EMAIL">Email Dispatch</option>
-                    <option value="PUSH">Mobile Push Message</option>
-                  </select>
+                  <label className="water-label">Target Ward (If Specific)</label>
+                  <input 
+                    type="text" 
+                    list="modal-ward-list"
+                    value={formData.ward}
+                    onChange={(e) => setFormData(prev => ({ ...prev, ward: e.target.value }))}
+                    placeholder="e.g. Ward 12 - Green Hills"
+                    className="water-input"
+                  />
+                  <datalist id="modal-ward-list">
+                    {MUNICIPAL_WARDS.map(w => <option key={w} value={w} />)}
+                  </datalist>
                 </div>
               </div>
 
-              {formData.recipient_type === "SPECIFIC_WARD" && (
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-400 mb-1">Target Ward</label>
-                    <input
-                      type="text"
-                      placeholder="e.g. Ward 4"
-                      value={formData.ward}
-                      onChange={(e) => setFormData({ ...formData, ward: e.target.value })}
-                      className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-slate-200 focus:outline-none focus:border-indigo-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-400 mb-1">Target Area (Optional)</label>
-                    <input
-                      type="text"
-                      placeholder="e.g. Sector-C"
-                      value={formData.area}
-                      onChange={(e) => setFormData({ ...formData, area: e.target.value })}
-                      className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-slate-200 focus:outline-none focus:border-indigo-500"
-                    />
-                  </div>
-                </div>
-              )}
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-400 mb-1">Dispatch Mode</label>
-                  <select
-                    value={formData.status}
-                    onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-slate-200 focus:outline-none focus:border-indigo-500"
-                  >
-                    <option value="DRAFT">Save as Draft</option>
-                    <option value="SENT">Dispatch Instantly</option>
-                    <option value="SCHEDULED">Schedule Timer</option>
-                  </select>
-                </div>
-                {formData.status === "SCHEDULED" && (
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-400 mb-1">Scheduled Time (Future)</label>
-                    <input
-                      type="datetime-local"
-                      value={formData.scheduled_time}
-                      onChange={(e) => setFormData({ ...formData, scheduled_time: e.target.value })}
-                      className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-slate-200 focus:outline-none focus:border-indigo-500"
-                    />
-                  </div>
-                )}
-              </div>
-
-              <div className="flex justify-end gap-2 border-t border-slate-800 pt-4 mt-6">
-                <button
-                  type="button"
-                  onClick={() => setShowFormModal(false)}
-                  className="bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm px-4 py-2 rounded-lg"
-                >
+              <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', borderTop: '1px solid #e2e8f0', paddingTop: '1rem', marginTop: '0.5rem' }}>
+                <button type="button" onClick={() => setShowFormModal(false)} style={{ padding: '0.5rem 1.25rem', borderRadius: '8px', border: '1px solid #cbd5e1', backgroundColor: '#fff', color: '#475569', fontWeight: '600', cursor: 'pointer' }}>
                   Cancel
                 </button>
-                <button
-                  type="submit"
-                  className="bg-indigo-600 hover:bg-indigo-500 text-white text-sm px-5 py-2 rounded-lg font-semibold"
-                >
-                  Save Dispatch
+                <button type="submit" style={{ padding: '0.5rem 1.5rem', borderRadius: '8px', border: 'none', backgroundColor: '#2563eb', color: '#fff', fontWeight: '600', cursor: 'pointer' }}>
+                  {isEditing ? 'Save Changes' : 'Dispatch Broadcast'}
                 </button>
               </div>
             </form>
@@ -900,236 +884,156 @@ const NotificationCenter = () => {
         </div>
       )}
 
-      {/* Details Drawer / Modal */}
-      {showDetailModal && selectedNotification && (
-        <div className="fixed inset-0 z-50 flex items-center justify-end bg-black/70 backdrop-blur-xs">
-          <div className="bg-slate-900 border-l border-slate-800 w-full max-w-xl h-screen overflow-y-auto shadow-2xl p-6 relative flex flex-col justify-between">
-            <div>
-              <button
-                onClick={() => setShowDetailModal(false)}
-                className="absolute top-4 right-4 text-slate-400 hover:text-slate-200"
-              >
-                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-
-              <div className="mb-4">
-                <span className="font-mono text-xs text-indigo-400 font-bold bg-indigo-950/20 px-2 py-0.5 border border-indigo-900/30 rounded">
-                  {selectedNotification.notification_number}
-                </span>
-                <h3 className="text-xl font-bold text-slate-100 mt-2">{selectedNotification.title}</h3>
-                <div className="flex gap-2 items-center mt-1">
-                  <NotificationStatusBadge status={selectedNotification.status} />
-                  <NotificationPriorityBadge priority={selectedNotification.priority} />
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <div className="bg-slate-950 p-4 rounded-xl border border-slate-850">
-                  <div className="text-xs text-slate-500 font-semibold mb-1">Message Content</div>
-                  <p className="text-slate-300 text-sm whitespace-pre-wrap leading-relaxed">
-                    {selectedNotification.message}
-                  </p>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <span className="block text-xs text-slate-500">Recipient Target Group</span>
-                    <span className="text-sm font-semibold text-slate-300">
-                      {selectedNotification.recipient_type.replace('_', ' ')}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="block text-xs text-slate-500">Delivery Channel</span>
-                    <span className="text-sm font-semibold text-slate-300 font-mono">
-                      {selectedNotification.delivery_channel}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="block text-xs text-slate-500">Scheduled Time</span>
-                    <span className="text-xs text-slate-300 font-mono">
-                      {selectedNotification.scheduled_time
-                        ? new Date(selectedNotification.scheduled_time).toLocaleString()
-                        : "N/A"}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="block text-xs text-slate-500">Actual Dispatch Sent</span>
-                    <span className="text-xs text-slate-300 font-mono">
-                      {selectedNotification.sent_time
-                        ? new Date(selectedNotification.sent_time).toLocaleString()
-                        : "Not Dispatched"}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Recipient Logs */}
-                <div className="border-t border-slate-800 pt-4">
-                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 flex items-center justify-between">
-                    <span>Recipients logs ({selectedNotification.recipients?.length || 0})</span>
-                    <span className="text-[10px] text-slate-500 normal-case font-normal">Mock delivered indicators</span>
-                  </h4>
-                  <div className="bg-slate-950/70 border border-slate-850 rounded-xl max-h-40 overflow-y-auto text-xs divide-y divide-slate-850">
-                    {selectedNotification.recipients?.length === 0 ? (
-                      <div className="p-3 text-center text-slate-500">No individual recipient records.</div>
-                    ) : (
-                      selectedNotification.recipients.map((rec) => (
-                        <div key={rec.id} className="p-2.5 flex items-center justify-between">
-                          <div>
-                            <div className="font-semibold text-slate-300">{rec.recipient_name}</div>
-                            {rec.recipient_id && <div className="text-[10px] text-slate-500">ID: #{rec.recipient_id}</div>}
-                          </div>
-                          <div className="flex gap-2 items-center">
-                            <span className={`text-[10px] font-bold ${rec.delivery_status === "DELIVERED" ? "text-emerald-400" : "text-amber-400"}`}>
-                              {rec.delivery_status}
-                            </span>
-                            <span className="text-[10px] text-slate-500">
-                              {rec.sent_at ? new Date(rec.sent_at).toLocaleTimeString() : ""}
-                            </span>
-                          </div>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </div>
-
-                {/* Action Audit Trails */}
-                <div className="border-t border-slate-800 pt-4">
-                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Audit Action Trail</h4>
-                  <div className="relative pl-4 border-l border-slate-800 space-y-3.5 text-xs">
-                    {selectedNotificationHistory.length === 0 ? (
-                      <div className="text-slate-500 pl-2">No audit timeline entries logged.</div>
-                    ) : (
-                      selectedNotificationHistory.map((hist) => (
-                        <div key={hist.id} className="relative">
-                          <span className="absolute -left-[21px] top-1.5 w-2 h-2 rounded-full bg-indigo-500 border border-slate-900" />
-                          <div className="flex items-center justify-between mb-0.5">
-                            <span className="font-bold text-slate-200">{hist.action}</span>
-                            <span className="text-[10px] text-slate-500">{new Date(hist.created_at).toLocaleString()}</span>
-                          </div>
-                          <div className="text-slate-400">{hist.remarks}</div>
-                          <div className="text-[10px] text-slate-500 mt-0.5">Actor: {hist.performed_by}</div>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="border-t border-slate-800 pt-4 mt-6 flex justify-end">
-              <button
-                onClick={() => setShowDetailModal(false)}
-                className="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs px-4 py-2 rounded-lg"
-              >
-                Close Drawer
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Template Create/Edit Modal */}
+      {/* Template Modal */}
       {showTemplateModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-lg shadow-2xl p-6 relative">
-            <button
-              onClick={() => setShowTemplateModal(false)}
-              className="absolute top-4 right-4 text-slate-400 hover:text-slate-200"
-            >
-              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: 'rgba(15, 23, 42, 0.5)',
+          display: 'flex', justifyContent: 'center', alignItems: 'center',
+          zIndex: 1000, padding: '1rem'
+        }}>
+          <div style={{
+            backgroundColor: '#ffffff',
+            borderRadius: '12px',
+            width: '100%',
+            maxWidth: '550px',
+            padding: '1.5rem',
+            boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)'
+          }}>
+            <form onSubmit={handleSubmitTemplate} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #e2e8f0', paddingBottom: '0.75rem' }}>
+                <h3 style={{ fontSize: '1.15rem', fontWeight: '700', color: '#0f172a', margin: 0 }}>
+                  {isEditingTemplate ? 'Edit Template' : 'Create Notification Template'}
+                </h3>
+                <button type="button" onClick={() => setShowTemplateModal(false)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#64748b' }}>
+                  <span className="material-symbols-outlined">close</span>
+                </button>
+              </div>
 
-            <h3 className="text-xl font-bold text-slate-100 mb-4">
-              {isEditingTemplate ? "Modify Template Layout" : "Add Alert Layout Template"}
-            </h3>
-
-            <form onSubmit={handleSubmitTemplate} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-400 mb-1">Template Name</label>
-                <input
-                  type="text"
-                  placeholder="e.g. Standard Water Outage Notice"
+                <label className="water-label">Template Name *</label>
+                <input 
+                  type="text" 
                   value={templateFormData.template_name}
-                  onChange={(e) => setTemplateFormData({ ...templateFormData, template_name: e.target.value })}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-slate-200 focus:outline-none focus:border-indigo-500"
+                  onChange={(e) => setTemplateFormData(prev => ({ ...prev, template_name: e.target.value }))}
+                  placeholder="e.g. Pipe Leak Maintenance Advisory"
+                  required
+                  className="water-input"
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-400 mb-1">Template Type</label>
-                  <select
-                    value={templateFormData.template_type}
-                    onChange={(e) => setTemplateFormData({ ...templateFormData, template_type: e.target.value })}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-slate-200 focus:outline-none focus:border-indigo-500"
-                  >
-                    <option value="GENERAL">General</option>
-                    <option value="COMPLAINT">Complaint</option>
-                    <option value="SUPPLY">Water Supply</option>
-                    <option value="QUALITY">Water Quality</option>
-                    <option value="EMERGENCY">Emergency</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-400 mb-1">Status</label>
-                  <select
-                    value={templateFormData.status}
-                    onChange={(e) => setTemplateFormData({ ...templateFormData, status: e.target.value })}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-slate-200 focus:outline-none focus:border-indigo-500"
-                  >
-                    <option value="ACTIVE">Active</option>
-                    <option value="INACTIVE">Inactive</option>
-                  </select>
-                </div>
-              </div>
-
               <div>
-                <label className="block text-xs font-semibold text-slate-400 mb-1">Alert Subject</label>
-                <input
-                  type="text"
-                  placeholder="e.g. Critical Water Quality Announcement"
+                <label className="water-label">Default Subject / Title</label>
+                <input 
+                  type="text" 
                   value={templateFormData.subject}
-                  onChange={(e) => setTemplateFormData({ ...templateFormData, subject: e.target.value })}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-slate-200 focus:outline-none focus:border-indigo-500"
+                  onChange={(e) => setTemplateFormData(prev => ({ ...prev, subject: e.target.value }))}
+                  placeholder="e.g. Water Pipeline Repairs in Your Area"
+                  className="water-input"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-400 mb-1">Standard Body Message</label>
-                <textarea
-                  rows="4"
-                  placeholder="This is a notice that..."
+                <label className="water-label">Template Body Content *</label>
+                <textarea 
                   value={templateFormData.body}
-                  onChange={(e) => setTemplateFormData({ ...templateFormData, body: e.target.value })}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-slate-200 focus:outline-none focus:border-indigo-500 font-mono text-xs leading-normal"
+                  onChange={(e) => setTemplateFormData(prev => ({ ...prev, body: e.target.value }))}
+                  placeholder="Enter template text..."
+                  rows="4"
+                  required
+                  className="water-input"
+                  style={{ resize: 'vertical' }}
                 />
               </div>
 
-              <div className="flex justify-end gap-2 border-t border-slate-800 pt-4 mt-6">
-                <button
-                  type="button"
-                  onClick={() => setShowTemplateModal(false)}
-                  className="bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm px-4 py-2 rounded-lg"
-                >
+              <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', borderTop: '1px solid #e2e8f0', paddingTop: '1rem' }}>
+                <button type="button" onClick={() => setShowTemplateModal(false)} style={{ padding: '0.5rem 1.25rem', borderRadius: '8px', border: '1px solid #cbd5e1', backgroundColor: '#fff', color: '#475569', fontWeight: '600', cursor: 'pointer' }}>
                   Cancel
                 </button>
-                <button
-                  type="submit"
-                  className="bg-indigo-600 hover:bg-indigo-500 text-white text-sm px-5 py-2 rounded-lg font-semibold"
-                >
-                  Save Layout
+                <button type="submit" style={{ padding: '0.5rem 1.5rem', borderRadius: '8px', border: 'none', backgroundColor: '#2563eb', color: '#fff', fontWeight: '600', cursor: 'pointer' }}>
+                  Save Template
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Details View Modal */}
+      {showDetailModal && selectedNotification && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: 'rgba(15, 23, 42, 0.5)',
+          display: 'flex', justifyContent: 'center', alignItems: 'center',
+          zIndex: 1000, padding: '1rem'
+        }}>
+          <div style={{
+            backgroundColor: '#ffffff',
+            borderRadius: '12px',
+            width: '100%',
+            maxWidth: '600px',
+            maxHeight: '90vh',
+            overflowY: 'auto',
+            padding: '1.5rem',
+            boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '1rem'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #e2e8f0', paddingBottom: '0.75rem' }}>
+              <div>
+                <span style={{ fontSize: '0.75rem', fontWeight: '700', color: '#2563eb' }}>
+                  {selectedNotification.notification_number || `NOT-${selectedNotification.id}`}
+                </span>
+                <h3 style={{ fontSize: '1.2rem', fontWeight: '700', color: '#0f172a', margin: '0.2rem 0 0 0' }}>
+                  {selectedNotification.title}
+                </h3>
+              </div>
+              <button type="button" onClick={() => setShowDetailModal(false)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#64748b' }}>
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+
+            <div style={{ backgroundColor: '#f8fafc', padding: '1rem', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+              <div style={{ fontSize: '0.78rem', fontWeight: '700', color: '#64748b', marginBottom: '0.3rem', textTransform: 'uppercase' }}>Message Body</div>
+              <p style={{ fontSize: '0.9rem', color: '#334155', margin: 0, whitespace: 'pre-line' }}>
+                {selectedNotification.message}
+              </p>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', fontSize: '0.85rem' }}>
+              <div><strong style={{ color: '#64748b' }}>Category:</strong> {selectedNotification.notification_type}</div>
+              <div><strong style={{ color: '#64748b' }}>Priority:</strong> {selectedNotification.priority}</div>
+              <div><strong style={{ color: '#64748b' }}>Target Audience:</strong> {selectedNotification.recipient_type}</div>
+              <div><strong style={{ color: '#64748b' }}>Channel:</strong> {selectedNotification.delivery_channel || 'IN_APP'}</div>
+              <div><strong style={{ color: '#64748b' }}>Ward:</strong> {selectedNotification.ward || 'All Wards'}</div>
+              <div><strong style={{ color: '#64748b' }}>Status:</strong> {selectedNotification.status}</div>
+            </div>
+
+            {historyLogs.length > 0 && (
+              <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '1rem', marginTop: '0.5rem' }}>
+                <h4 style={{ fontSize: '0.9rem', fontWeight: '700', color: '#0f172a', margin: '0 0 0.5rem 0' }}>
+                  Delivery Audit Logs ({historyLogs.length})
+                </h4>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxHeight: '150px', overflowY: 'auto' }}>
+                  {historyLogs.map(log => (
+                    <div key={log.id} style={{ fontSize: '0.78rem', backgroundColor: '#f1f5f9', padding: '0.4rem 0.6rem', borderRadius: '6px', display: 'flex', justifyContent: 'space-between' }}>
+                      <span>{log.action} by {log.performed_by}</span>
+                      <span style={{ color: '#64748b' }}>{new Date(log.created_at).toLocaleString()}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', borderTop: '1px solid #e2e8f0', paddingTop: '1rem' }}>
+              <button type="button" onClick={() => setShowDetailModal(false)} style={{ padding: '0.5rem 1.25rem', borderRadius: '8px', border: '1px solid #cbd5e1', backgroundColor: '#fff', color: '#475569', fontWeight: '600', cursor: 'pointer' }}>
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}
     </div>
   );
-};
-
-export default NotificationCenter;
+}

@@ -10,10 +10,23 @@ export default function ExportCitizenButton() {
   return (
     <button
       onClick={handleExport}
-      className="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2"
+      style={{
+        backgroundColor: '#ffffff',
+        border: '1px solid #cbd5e1',
+        color: '#0f172a',
+        padding: '0.55rem 1rem',
+        borderRadius: '8px',
+        fontWeight: '600',
+        fontSize: '0.85rem',
+        cursor: 'pointer',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '0.4rem',
+        boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+      }}
     >
-      <span className="material-icons text-sm">download</span>
-      Export Citizens
+      <span className="material-symbols-outlined" style={{ fontSize: '18px', color: '#2563eb' }}>download</span>
+      Export Citizens List
     </button>
   );
 }

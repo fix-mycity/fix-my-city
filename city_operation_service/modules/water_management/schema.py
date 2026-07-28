@@ -1,6 +1,7 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from datetime import datetime, date
 from typing import Optional, List
+from core.s3 import generate_presigned_url
 
 class ComplaintCreate(BaseModel):
     category: str
@@ -60,6 +61,13 @@ class ComplaintResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
     resolved_at: Optional[datetime] = None
+
+    @field_validator("before_image", "after_image", mode="before")
+    @classmethod
+    def sign_image_urls(cls, v: Optional[str]) -> Optional[str]:
+        if v:
+            return generate_presigned_url(v)
+        return v
 
     class Config:
         from_attributes = True
@@ -211,6 +219,13 @@ class WorkerResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
 
+    @field_validator("photo", mode="before")
+    @classmethod
+    def sign_photo_url(cls, v: Optional[str]) -> Optional[str]:
+        if v:
+            return generate_presigned_url(v)
+        return v
+
     class Config:
         from_attributes = True
         orm_mode = True
@@ -299,6 +314,13 @@ class WorkerTaskUpdateResponse(BaseModel):
     longitude: Optional[float] = None
     updated_by: Optional[int] = None
     created_at: datetime
+
+    @field_validator("before_image", "after_image", mode="before")
+    @classmethod
+    def sign_image_urls(cls, v: Optional[str]) -> Optional[str]:
+        if v:
+            return generate_presigned_url(v)
+        return v
 
     class Config:
         from_attributes = True
@@ -948,6 +970,13 @@ class PhotoResponse(BaseModel):
     uploaded_by: Optional[int] = None
     uploaded_at: datetime
 
+    @field_validator("image_url", mode="before")
+    @classmethod
+    def sign_image_url(cls, v: Optional[str]) -> Optional[str]:
+        if v:
+            return generate_presigned_url(v)
+        return v
+
     class Config:
         from_attributes = True
         orm_mode = True
@@ -1591,6 +1620,100 @@ class DepartmentProfileResponse(BaseModel):
     class Config:
         from_attributes = True
         orm_mode = True
+
+# Inspection & Alert Aliases
+class QualInspectionCreate(BaseModel):
+    sample_id: Optional[str] = None
+    parameter_tested: Optional[str] = None
+    value_measured: Optional[str] = None
+    units: Optional[str] = None
+    standard_limit: Optional[str] = None
+    status: Optional[str] = None
+    inspection_date: Optional[date] = None
+
+class QualInspectionUpdate(BaseModel):
+    sample_id: Optional[str] = None
+    parameter_tested: Optional[str] = None
+    value_measured: Optional[str] = None
+    units: Optional[str] = None
+    standard_limit: Optional[str] = None
+    status: Optional[str] = None
+    inspection_date: Optional[date] = None
+
+class InspectionCreate(BaseModel):
+    pipeline_id: Optional[int] = None
+    inspector_name: Optional[str] = None
+    inspection_date: Optional[date] = None
+    result: Optional[str] = None
+    notes: Optional[str] = None
+
+class InspectionUpdate(BaseModel):
+    pipeline_id: Optional[int] = None
+    inspector_name: Optional[str] = None
+    inspection_date: Optional[date] = None
+    result: Optional[str] = None
+    notes: Optional[str] = None
+
+class InspectionResponse(BaseModel):
+    id: int
+    pipeline_id: Optional[int] = None
+    inspector_name: Optional[str] = None
+    inspection_date: Optional[date] = None
+    result: Optional[str] = None
+    notes: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+class InspectionList(BaseModel):
+    items: List[InspectionResponse] = []
+    total_items: int = 0
+
+class AlertResponse(BaseModel):
+    id: int
+    alert_title: Optional[str] = None
+    alert_type: Optional[str] = None
+    severity: Optional[str] = None
+    message: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+class AlertList(BaseModel):
+    items: List[AlertResponse] = []
+    total_items: int = 0
+
+class WaterCitizenAccessCreate(BaseModel):
+    citizen_name: Optional[str] = None
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    address: Optional[str] = None
+    status: Optional[str] = "ACTIVE"
+
+class WaterCitizenAccessUpdate(BaseModel):
+    citizen_name: Optional[str] = None
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    address: Optional[str] = None
+    status: Optional[str] = None
+
+class DepartmentSettingsCreate(BaseModel):
+    setting_key: str
+    setting_value: str
+    description: Optional[str] = None
+
+class DepartmentSettingsUpdate(BaseModel):
+    setting_value: Optional[str] = None
+    description: Optional[str] = None
+
+class DepartmentProfileUpdate(BaseModel):
+    department_description: Optional[str] = None
+    website: Optional[str] = None
+    social_links: Optional[str] = None
+
+class CitizenServiceStatusUpdate(BaseModel):
+    status: str
+    reason: Optional[str] = None
 
 
 

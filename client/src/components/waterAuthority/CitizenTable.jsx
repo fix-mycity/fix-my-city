@@ -13,99 +13,141 @@ export default function CitizenTable({
   const totalPages = Math.max(Math.ceil(total / pageSize), 1);
 
   return (
-    <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-lg">
-      <div className="overflow-x-auto">
-        <table className="w-full text-left border-collapse">
-          <thead>
-            <tr className="border-b border-slate-800 text-xs font-semibold text-slate-400 uppercase tracking-wider bg-slate-950/40">
-              <th className="py-3.5 px-4">Citizen ID</th>
-              <th className="py-3.5 px-4">Name</th>
-              <th className="py-3.5 px-4">Contact Info</th>
-              <th className="py-3.5 px-4">Location (Ward/Area)</th>
-              <th className="py-3.5 px-4">Service Status</th>
-              <th className="py-3.5 px-4 text-center">Complaints</th>
-              <th className="py-3.5 px-4 text-right">Actions</th>
+    <div style={{ width: '100%', overflowX: 'auto', backgroundColor: '#ffffff', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+      <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem' }}>
+        <thead>
+          <tr style={{ backgroundColor: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
+            <th style={{ padding: '0.85rem 1rem', fontWeight: '700', color: '#1e3a8a' }}>Citizen ID</th>
+            <th style={{ padding: '0.85rem 1rem', fontWeight: '700', color: '#1e3a8a' }}>Name</th>
+            <th style={{ padding: '0.85rem 1rem', fontWeight: '700', color: '#1e3a8a' }}>Contact Info</th>
+            <th style={{ padding: '0.85rem 1rem', fontWeight: '700', color: '#1e3a8a' }}>Location (Ward/Area)</th>
+            <th style={{ padding: '0.85rem 1rem', fontWeight: '700', color: '#1e3a8a' }}>Service Status</th>
+            <th style={{ padding: '0.85rem 1rem', fontWeight: '700', color: '#1e3a8a', textAlign: 'center' }}>Complaints</th>
+            <th style={{ padding: '0.85rem 1rem', fontWeight: '700', color: '#1e3a8a', textAlign: 'right' }}>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {citizens.length === 0 ? (
+            <tr>
+              <td colSpan="7" style={{ padding: '3rem', textAlign: 'center', color: '#64748b', fontWeight: '500' }}>
+                <span className="material-symbols-outlined" style={{ fontSize: '2.5rem', display: 'block', marginBottom: '0.5rem', color: '#cbd5e1' }}>
+                  person_off
+                </span>
+                No registered municipal citizens found matching current search.
+              </td>
             </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-850">
-            {citizens.length === 0 ? (
-              <tr>
-                <td colSpan="7" className="text-center py-8 text-slate-500 text-sm">
-                  No registered municipal citizens found matching current search.
+          ) : (
+            citizens.map((c) => (
+              <tr key={c.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
+                <td style={{ padding: '0.85rem 1rem', fontWeight: '700', color: '#2563eb' }}>
+                  #{c.user_id}
+                </td>
+                <td style={{ padding: '0.85rem 1rem', fontWeight: '600', color: '#0f172a' }}>
+                  {c.full_name || "Anonymous Citizen"}
+                </td>
+                <td style={{ padding: '0.85rem 1rem' }}>
+                  <div style={{ fontWeight: '500', color: '#334155' }}>{c.email}</div>
+                  <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{c.phone_number || "No Phone"}</div>
+                </td>
+                <td style={{ padding: '0.85rem 1rem' }}>
+                  <div style={{ fontWeight: '600', color: '#0f172a' }}>{c.ward || "Not Configured"}</div>
+                  <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{c.area || "Not Configured"}</div>
+                </td>
+                <td style={{ padding: '0.85rem 1rem' }}>
+                  <CitizenStatusBadge status={c.service_status} />
+                </td>
+                <td style={{ padding: '0.85rem 1rem', textAlign: 'center', fontWeight: '700', color: '#2563eb' }}>
+                  {c.complaint_count}
+                </td>
+                <td style={{ padding: '0.85rem 1rem', textAlign: 'right' }}>
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.4rem' }}>
+                    <button
+                      onClick={() => onView(c.user_id)}
+                      style={{
+                        backgroundColor: '#eff6ff',
+                        color: '#2563eb',
+                        border: 'none',
+                        padding: '0.35rem 0.75rem',
+                        borderRadius: '6px',
+                        fontSize: '0.78rem',
+                        fontWeight: '700',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.25rem'
+                      }}
+                    >
+                      <span className="material-symbols-outlined" style={{ fontSize: '15px' }}>visibility</span>
+                      View
+                    </button>
+
+                    <button
+                      onClick={() => onToggleStatus(c.user_id, c.service_status, c.ward, c.area)}
+                      style={{
+                        backgroundColor: c.service_status === "ENABLED" ? '#fef2f2' : '#f0fdf4',
+                        color: c.service_status === "ENABLED" ? '#dc2626' : '#16a34a',
+                        border: `1px solid ${c.service_status === "ENABLED" ? '#fecaca' : '#bbf7d0'}`,
+                        padding: '0.35rem 0.75rem',
+                        borderRadius: '6px',
+                        fontSize: '0.78rem',
+                        fontWeight: '700',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.25rem'
+                      }}
+                    >
+                      <span className="material-symbols-outlined" style={{ fontSize: '15px' }}>
+                        {c.service_status === "ENABLED" ? "block" : "check_circle"}
+                      </span>
+                      {c.service_status === "ENABLED" ? "Disable" : "Enable"}
+                    </button>
+                  </div>
                 </td>
               </tr>
-            ) : (
-              citizens.map((c) => (
-                <tr key={c.id} className="hover:bg-slate-800/20 transition text-sm text-slate-300">
-                  <td className="py-4 px-4 font-mono text-slate-500">#{c.user_id}</td>
-                  <td className="py-4 px-4 text-white font-medium">{c.full_name || "Anonymous Citizen"}</td>
-                  <td className="py-4 px-4">
-                    <div className="flex flex-col">
-                      <span className="text-xs text-slate-450">{c.email}</span>
-                      <span className="text-[11px] text-slate-500 font-mono mt-0.5">{c.phone_number || "No Phone"}</span>
-                    </div>
-                  </td>
-                  <td className="py-4 px-4">
-                    <div className="flex flex-col">
-                      <span className="text-xs font-semibold text-white">{c.ward || "Not Configured"}</span>
-                      <span className="text-[11px] text-slate-400 mt-0.5">{c.area || "Not Configured"}</span>
-                    </div>
-                  </td>
-                  <td className="py-4 px-4">
-                    <CitizenStatusBadge status={c.service_status} />
-                  </td>
-                  <td className="py-4 px-4 text-center font-bold font-mono text-blue-400">
-                    {c.complaint_count}
-                  </td>
-                  <td className="py-4 px-4 text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      <button
-                        onClick={() => onView(c.user_id)}
-                        className="bg-slate-800 hover:bg-slate-700 text-white px-2.5 py-1 rounded text-xs transition flex items-center gap-1"
-                      >
-                        <span className="material-icons text-[14px]">visibility</span>
-                        View
-                      </button>
-                      <button
-                        onClick={() => onToggleStatus(c.user_id, c.service_status, c.ward, c.area)}
-                        className={`px-2.5 py-1 rounded text-xs transition flex items-center gap-1 font-medium ${
-                          c.service_status === "ENABLED"
-                            ? "bg-rose-500/10 hover:bg-rose-500/20 text-rose-455"
-                            : "bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-450"
-                        }`}
-                      >
-                        <span className="material-icons text-[14px]">
-                          {c.service_status === "ENABLED" ? "block" : "check_circle"}
-                        </span>
-                        {c.service_status === "ENABLED" ? "Disable" : "Enable"}
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+            ))
+          )}
+        </tbody>
+      </table>
 
       {/* Pagination Controls */}
       {totalPages > 1 && (
-        <div className="bg-slate-950/40 border-t border-slate-800 px-4 py-3.5 flex items-center justify-between">
-          <span className="text-xs text-slate-400">
-            Showing Page <strong className="text-white">{page}</strong> of <strong className="text-white">{totalPages}</strong> ({total} citizens)
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem', borderTop: '1px solid #e2e8f0' }}>
+          <span style={{ fontSize: '0.85rem', color: '#64748b' }}>
+            Page {page} of {totalPages} ({total} citizens)
           </span>
-          <div className="flex gap-2">
-            <button
-              onClick={() => onPageChange(page - 1)}
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <button 
               disabled={page === 1}
-              className="bg-slate-900 hover:bg-slate-800 text-white px-3 py-1 rounded text-xs border border-slate-800 disabled:opacity-40 disabled:hover:bg-slate-900 transition"
+              onClick={() => onPageChange(page - 1)}
+              style={{
+                padding: '0.4rem 0.9rem',
+                borderRadius: '6px',
+                border: '1px solid #cbd5e1',
+                backgroundColor: '#ffffff',
+                color: '#475569',
+                fontSize: '0.85rem',
+                fontWeight: '600',
+                cursor: page === 1 ? 'not-allowed' : 'pointer',
+                opacity: page === 1 ? 0.5 : 1
+              }}
             >
               Previous
             </button>
-            <button
-              onClick={() => onPageChange(page + 1)}
+            <button 
               disabled={page === totalPages}
-              className="bg-slate-900 hover:bg-slate-800 text-white px-3 py-1 rounded text-xs border border-slate-800 disabled:opacity-40 disabled:hover:bg-slate-900 transition"
+              onClick={() => onPageChange(page + 1)}
+              style={{
+                padding: '0.4rem 0.9rem',
+                borderRadius: '6px',
+                border: '1px solid #cbd5e1',
+                backgroundColor: '#ffffff',
+                color: '#475569',
+                fontSize: '0.85rem',
+                fontWeight: '600',
+                cursor: page === totalPages ? 'not-allowed' : 'pointer',
+                opacity: page === totalPages ? 0.5 : 1
+              }}
             >
               Next
             </button>

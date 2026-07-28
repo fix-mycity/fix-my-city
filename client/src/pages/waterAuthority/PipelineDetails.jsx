@@ -26,15 +26,25 @@ export default function PipelineDetails() {
     try {
       const pRes = await getPipelineById(id);
       setPipeline(pRes.data);
-
-      const iRes = await getInspectionsForPipeline(id);
-      setInspections(iRes.data);
-
-      const mRes = await getMaintenancesForPipeline(id);
-      setMaintenances(mRes.data);
     } catch (err) {
       toast.error("Could not load pipeline details.");
       navigate('/water/pipelines');
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      const iRes = await getInspectionsForPipeline(id);
+      setInspections(Array.isArray(iRes.data) ? iRes.data : []);
+    } catch (_iErr) {
+      setInspections([]);
+    }
+
+    try {
+      const mRes = await getMaintenancesForPipeline(id);
+      setMaintenances(Array.isArray(mRes.data) ? mRes.data : []);
+    } catch (_mErr) {
+      setMaintenances([]);
     } finally {
       setIsLoading(false);
     }

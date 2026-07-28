@@ -1,8 +1,17 @@
 import React from 'react';
 
 const PRIORITIES = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'];
-const STATUSES = ['DECLARED', 'IN_PROGRESS', 'SUPPLY_STOPPED', 'REPAIRING', 'TESTING', 'RESTORED', 'CLOSED'];
-const TYPES = ['PIPELINE_BURST', 'MAJOR_LEAK', 'CONTAMINATION', 'PUMP_FAILURE', 'POWER_FAILURE', 'TANK_DAMAGE', 'VALVE_FAILURE', 'FLOOD', 'MAINTENANCE', 'OTHER'];
+const STATUSES = ['DECLARED', 'UNDER_REPAIR', 'RESTORED', 'CLOSED'];
+const TYPES = ['PIPELINE_BURST', 'MAJOR_LEAK', 'CONTAMINATION', 'PUMP_FAILURE', 'POWER_FAILURE', 'VALVE_FAILURE'];
+const WARDS = [
+  'Ward 1 - Central Market',
+  'Ward 2 - North Sector',
+  'Ward 3 - South Hill',
+  'Ward 4 - East Riverside',
+  'Ward 5 - Industrial Park',
+  'Ward 6 - West Suburb',
+  'Ward 12 - Green Hills'
+];
 
 export default function EmergencyFilter({ filters, onChange, onClear }) {
   const handleSelectChange = (e) => {
@@ -10,42 +19,45 @@ export default function EmergencyFilter({ filters, onChange, onClear }) {
     onChange(name, value || null);
   };
 
-  return (
-    <div className="water-card" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'flex-end', padding: '1rem' }}>
-      <div style={{ flex: '1 1 120px' }}>
-        <label className="water-label" style={{ marginBottom: '0.25rem' }}>Zone</label>
-        <input 
-          type="text" 
-          name="zone"
-          value={filters.zone || ''}
-          onChange={(e) => onChange('zone', e.target.value || null)}
-          placeholder="Filter Zone"
-          className="water-input"
-          style={{ padding: '0.4rem 0.6rem', fontSize: '0.8rem' }}
-        />
-      </div>
+  const hasActiveFilters = Object.values(filters).some(val => val !== null && val !== '');
 
-      <div style={{ flex: '1 1 120px' }}>
-        <label className="water-label" style={{ marginBottom: '0.25rem' }}>Ward</label>
+  return (
+    <div style={{
+      backgroundColor: '#ffffff',
+      border: '1px solid #e2e8f0',
+      borderRadius: '10px',
+      padding: '1rem 1.25rem',
+      display: 'flex',
+      flexWrap: 'wrap',
+      gap: '1rem',
+      alignItems: 'flex-end',
+      boxShadow: '0 1px 2px rgba(0,0,0,0.04)'
+    }}>
+      <div style={{ flex: '1 1 140px' }}>
+        <label className="water-label" style={{ fontSize: '0.78rem', marginBottom: '0.3rem' }}>Ward</label>
         <input 
           type="text" 
           name="ward"
+          list="emerg-ward-list"
           value={filters.ward || ''}
           onChange={(e) => onChange('ward', e.target.value || null)}
-          placeholder="Filter Ward"
+          placeholder="Filter by Ward..."
           className="water-input"
-          style={{ padding: '0.4rem 0.6rem', fontSize: '0.8rem' }}
+          style={{ height: '38px', fontSize: '0.85rem' }}
         />
+        <datalist id="emerg-ward-list">
+          {WARDS.map(w => <option key={w} value={w} />)}
+        </datalist>
       </div>
 
       <div style={{ flex: '1 1 140px' }}>
-        <label className="water-label" style={{ marginBottom: '0.25rem' }}>Priority</label>
+        <label className="water-label" style={{ fontSize: '0.78rem', marginBottom: '0.3rem' }}>Priority</label>
         <select 
           name="priority"
           value={filters.priority || ''}
           onChange={handleSelectChange}
-          className="water-input"
-          style={{ padding: '0.4rem 0.6rem', fontSize: '0.8rem' }}
+          className="water-select"
+          style={{ height: '38px', fontSize: '0.85rem' }}
         >
           <option value="">All Priorities</option>
           {PRIORITIES.map(p => (
@@ -54,14 +66,30 @@ export default function EmergencyFilter({ filters, onChange, onClear }) {
         </select>
       </div>
 
+      <div style={{ flex: '1 1 150px' }}>
+        <label className="water-label" style={{ fontSize: '0.78rem', marginBottom: '0.3rem' }}>Emergency Category</label>
+        <select 
+          name="emergency_type"
+          value={filters.emergency_type || ''}
+          onChange={handleSelectChange}
+          className="water-select"
+          style={{ height: '38px', fontSize: '0.85rem' }}
+        >
+          <option value="">All Categories</option>
+          {TYPES.map(t => (
+            <option key={t} value={t}>{t.replace(/_/g, ' ')}</option>
+          ))}
+        </select>
+      </div>
+
       <div style={{ flex: '1 1 140px' }}>
-        <label className="water-label" style={{ marginBottom: '0.25rem' }}>Status</label>
+        <label className="water-label" style={{ fontSize: '0.78rem', marginBottom: '0.3rem' }}>Status</label>
         <select 
           name="status"
           value={filters.status || ''}
           onChange={handleSelectChange}
-          className="water-input"
-          style={{ padding: '0.4rem 0.6rem', fontSize: '0.8rem' }}
+          className="water-select"
+          style={{ height: '38px', fontSize: '0.85rem' }}
         >
           <option value="">All Statuses</option>
           {STATUSES.map(s => (
@@ -70,40 +98,29 @@ export default function EmergencyFilter({ filters, onChange, onClear }) {
         </select>
       </div>
 
-      <div style={{ flex: '1 1 140px' }}>
-        <label className="water-label" style={{ marginBottom: '0.25rem' }}>Emergency Type</label>
-        <select 
-          name="emergency_type"
-          value={filters.emergency_type || ''}
-          onChange={handleSelectChange}
-          className="water-input"
-          style={{ padding: '0.4rem 0.6rem', fontSize: '0.8rem' }}
+      {hasActiveFilters && (
+        <button 
+          type="button" 
+          onClick={onClear}
+          style={{
+            height: '38px',
+            padding: '0 1rem',
+            border: '1px solid #fca5a5',
+            backgroundColor: '#fff5f5',
+            color: '#dc2626',
+            borderRadius: '8px',
+            fontWeight: '600',
+            fontSize: '0.8rem',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.3rem'
+          }}
         >
-          <option value="">All Types</option>
-          {TYPES.map(t => (
-            <option key={t} value={t}>{t.replace(/_/g, ' ')}</option>
-          ))}
-        </select>
-      </div>
-
-      <button 
-        type="button" 
-        onClick={onClear}
-        className="water-btn"
-        style={{
-          padding: '0.4rem 0.8rem',
-          fontSize: '0.8rem',
-          borderColor: 'var(--water-border)',
-          color: 'var(--water-text-muted)',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '0.25rem',
-          height: '34px'
-        }}
-      >
-        <span className="material-symbols-outlined" style={{ fontSize: '1rem' }}>filter_alt_off</span>
-        Clear
-      </button>
+          <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>restart_alt</span>
+          Reset Filters
+        </button>
+      )}
     </div>
   );
 }

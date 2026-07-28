@@ -2,13 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 
-import TankCard from '../../components/waterAuthority/TankCard';
 import TankTable from '../../components/waterAuthority/TankTable';
 import TankFilter from '../../components/waterAuthority/TankFilter';
 import TankSearch from '../../components/waterAuthority/TankSearch';
 import LowLevelAlert from '../../components/waterAuthority/LowLevelAlert';
 import UpdateWaterLevelModal from '../../components/waterAuthority/UpdateWaterLevelModal';
-import WaterLevelChart from '../../components/waterAuthority/WaterLevelChart';
 
 import { getTanks, deleteTank, updateWaterLevel, getTankDashboard } from '../../services/waterTankService';
 
@@ -29,8 +27,7 @@ export default function WaterTankManagement() {
     active_tanks: 0,
     low_level_tanks: 0,
     empty_tanks: 0,
-    maintenance_tanks: 0,
-    today_refills: 0
+    maintenance_tanks: 0
   });
 
   // Level Modal states
@@ -61,9 +58,9 @@ export default function WaterTankManagement() {
         water_source: filters.water_source || undefined
       });
 
-      setTanks(response.data.items);
-      setTotalItems(response.data.total_items);
-      setTotalPages(response.data.total_pages);
+      setTanks(response.data?.items || []);
+      setTotalItems(response.data?.total_items || 0);
+      setTotalPages(response.data?.total_pages || 1);
     } catch (err) {
       toast.error("Failed to load water tanks.");
     } finally {
@@ -74,16 +71,29 @@ export default function WaterTankManagement() {
   const fetchDashboardStats = async () => {
     try {
       const response = await getTankDashboard();
-      setDashboardStats(response.data);
+      if (response.data) {
+        setDashboardStats(response.data);
+      }
     } catch (err) {
-      console.error("Could not fetch dashboard statistics:", err);
+      console.error("Could not fetch tank statistics:", err);
     }
   };
 
   const fetchAllTanks = async () => {
     try {
-      const response = await getTanks({ page: 1, page_size: 1000 });
-      setAllTanksForAlerts(response.data.items);
+      const response = await getTanks({ page: 1, page_size: 100 });
+      const items = response.data?.items || [];
+      setAllTanksForAlerts(items);
+
+      // Fallback stats computation if dashboardStats returned zeros
+      if (items.length > 0) {
+        setDashboardStats(prev => ({
+          total_tanks: response.data?.total_items || items.length,
+          active_tanks: items.filter(t => t.status === 'ACTIVE').length,
+          low_level_tanks: items.filter(t => t.status === 'LOW_LEVEL' || t.status === 'EMPTY').length,
+          maintenance_tanks: items.filter(t => t.status === 'UNDER_MAINTENANCE').length
+        }));
+      }
     } catch (err) {
       console.error("Could not load alert data:", err);
     }
@@ -116,21 +126,27 @@ export default function WaterTankManagement() {
   };
 
   const handleDelete = async (id) => {
-    if (window.confirm("Are you sure you want to delete this water tank? All of its refill and maintenance records will be permanently removed.")) {
+    if (window.confirm("Are you sure you want to delete this water tank?")) {
       try {
         await deleteTank(id);
         toast.success("Water tank deleted successfully.");
         fetchTanks();
       } catch (err) {
-        toast.error("Failed to delete tank.");
+        toast.error("Failed to delete water tank.");
       }
     }
   };
 
-  const handleConfirmWaterLevelUpdate = async (tankId, newLevel) => {
+  const handleOpenLevelModal = (tank) => {
+    setSelectedTankForLevel(tank);
+    setIsLevelModalOpen(true);
+  };
+
+  const handleSaveWaterLevel = async (tankId, newLevel) => {
     try {
       await updateWaterLevel(tankId, newLevel);
-      toast.success("Water level updated successfully!");
+      toast.success("Water tank storage level updated!");
+      setIsLevelModalOpen(false);
       fetchTanks();
     } catch (err) {
       toast.error(err.response?.data?.detail || "Failed to update water level.");
@@ -139,47 +155,87 @@ export default function WaterTankManagement() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-      
       {/* Header Panel */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
-          <h2 style={{ fontSize: '1.6rem', fontWeight: '800', color: 'var(--water-text)' }}>
+          <h2 style={{ fontSize: '1.5rem', fontWeight: '800', color: '#0f172a', margin: 0 }}>
             Water Tank Management
           </h2>
-          <p style={{ fontSize: '0.88rem', color: 'var(--water-text-muted)', marginTop: '0.2rem' }}>
-            Monitor municipal water storage levels, manage tankers, reservoirs, and schedule cleanings.
+          <p style={{ fontSize: '0.85rem', color: '#64748b', margin: '0.2rem 0 0 0' }}>
+            Monitor municipal water storage levels, manage overhead reservoirs, and track refill schedules.
           </p>
         </div>
+
         <button 
           onClick={() => navigate('/water/tanks/new')}
-          className="water-btn"
-          style={{ backgroundColor: 'var(--water-primary)', color: '#ffffff', border: 'none', display: 'flex', alignItems: 'center', gap: '0.4rem', fontWeight: '700' }}
+          style={{
+            backgroundColor: '#2563eb',
+            color: '#ffffff',
+            border: 'none',
+            borderRadius: '8px',
+            padding: '0.6rem 1.25rem',
+            fontWeight: '700',
+            fontSize: '0.88rem',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.4rem',
+            boxShadow: '0 2px 4px rgba(37, 99, 235, 0.2)'
+          }}
         >
-          <span className="material-symbols-outlined">add_circle</span>
+          <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>add_circle</span>
           Register Water Tank
         </button>
       </div>
 
-      {/* Critical Alarms Banners */}
+      {/* Critical Storage Alerts Banner */}
       <LowLevelAlert tanks={allTanksForAlerts} />
 
-      {/* Dashboard Metrics */}
+      {/* Clean Metrics Summary Row */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
         gap: '1rem'
       }}>
-        <TankCard title="Total Tanks" value={dashboardStats.total_tanks} icon="propane_tank" color="var(--water-primary-light)" />
-        <TankCard title="Active Tanks" value={dashboardStats.active_tanks} icon="check_circle" color="var(--water-success)" />
-        <TankCard title="Low Level Tanks" value={dashboardStats.low_level_tanks} icon="warning" color="var(--water-warning)" />
-        <TankCard title="Empty Tanks" value={dashboardStats.empty_tanks} icon="battery_0_bar" color="var(--water-danger)" />
-        <TankCard title="Maintenance Ongoing" value={dashboardStats.maintenance_tanks} icon="engineering" color="#8e44ad" />
-        <TankCard title="Today's Refills" value={dashboardStats.today_refills} icon="local_shipping" color="#16a085" />
-      </div>
+        <div style={{ backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '1.25rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <div style={{ width: '44px', height: '44px', borderRadius: '10px', backgroundColor: '#eff6ff', color: '#2563eb', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <span className="material-symbols-outlined" style={{ fontSize: '24px' }}>propane_tank</span>
+          </div>
+          <div>
+            <div style={{ fontSize: '0.75rem', fontWeight: '700', color: '#64748b', textTransform: 'uppercase' }}>Total Storage Tanks</div>
+            <div style={{ fontSize: '1.5rem', fontWeight: '800', color: '#0f172a' }}>{dashboardStats.total_tanks}</div>
+          </div>
+        </div>
 
-      {/* Grid: Charts Comparison and Filters */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.5rem' }}>
-        <WaterLevelChart tanks={allTanksForAlerts} />
+        <div style={{ backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '1.25rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <div style={{ width: '44px', height: '44px', borderRadius: '10px', backgroundColor: '#f0fdf4', color: '#16a34a', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <span className="material-symbols-outlined" style={{ fontSize: '24px' }}>check_circle</span>
+          </div>
+          <div>
+            <div style={{ fontSize: '0.75rem', fontWeight: '700', color: '#64748b', textTransform: 'uppercase' }}>Active & Operational</div>
+            <div style={{ fontSize: '1.5rem', fontWeight: '800', color: '#16a34a' }}>{dashboardStats.active_tanks}</div>
+          </div>
+        </div>
+
+        <div style={{ backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '1.25rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <div style={{ width: '44px', height: '44px', borderRadius: '10px', backgroundColor: '#fff7ed', color: '#ea580c', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <span className="material-symbols-outlined" style={{ fontSize: '24px' }}>warning</span>
+          </div>
+          <div>
+            <div style={{ fontSize: '0.75rem', fontWeight: '700', color: '#64748b', textTransform: 'uppercase' }}>Low Level / Empty</div>
+            <div style={{ fontSize: '1.5rem', fontWeight: '800', color: '#ea580c' }}>{(dashboardStats.low_level_tanks || 0) + (dashboardStats.empty_tanks || 0)}</div>
+          </div>
+        </div>
+
+        <div style={{ backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '1.25rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <div style={{ width: '44px', height: '44px', borderRadius: '10px', backgroundColor: '#fef2f2', color: '#dc2626', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <span className="material-symbols-outlined" style={{ fontSize: '24px' }}>engineering</span>
+          </div>
+          <div>
+            <div style={{ fontSize: '0.75rem', fontWeight: '700', color: '#64748b', textTransform: 'uppercase' }}>Under Maintenance</div>
+            <div style={{ fontSize: '1.5rem', fontWeight: '800', color: '#dc2626' }}>{dashboardStats.maintenance_tanks}</div>
+          </div>
+        </div>
       </div>
 
       {/* Search & Filter Controls */}
@@ -191,7 +247,7 @@ export default function WaterTankManagement() {
       {/* Table Section */}
       {isLoading ? (
         <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '30vh' }}>
-          <span className="material-symbols-outlined" style={{ animation: 'spin 2s linear infinite', fontSize: '2.5rem', color: 'var(--water-primary-light)' }}>
+          <span className="material-symbols-outlined" style={{ animation: 'spin 2s linear infinite', fontSize: '2.5rem', color: '#2563eb' }}>
             autorenew
           </span>
         </div>
@@ -201,7 +257,7 @@ export default function WaterTankManagement() {
             tanks={tanks}
             onView={(id) => navigate(`/water/tanks/${id}`)}
             onEdit={(id) => navigate(`/water/tanks/${id}/edit`)}
-            onUpdateLevel={(tank) => { setSelectedTankForLevel(tank); setIsLevelModalOpen(true); }}
+            onUpdateLevel={handleOpenLevelModal}
             onRefill={(id) => navigate(`/water/tanks/${id}/refill`)}
             onMaintenance={(id) => navigate(`/water/tanks/${id}/maintenance`)}
             onDelete={handleDelete}
@@ -210,23 +266,41 @@ export default function WaterTankManagement() {
           {/* Pagination Controls */}
           {totalPages > 1 && (
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1rem' }}>
-              <span style={{ fontSize: '0.85rem', color: 'var(--water-text-muted)' }}>
-                Showing page {page} of {totalPages} ({totalItems} items)
+              <span style={{ fontSize: '0.85rem', color: '#64748b' }}>
+                Page {page} of {totalPages} ({totalItems} water tanks registered)
               </span>
               <div style={{ display: 'flex', gap: '0.5rem' }}>
                 <button 
                   disabled={page === 1}
                   onClick={() => setPage(p => Math.max(p - 1, 1))}
-                  className="water-btn"
-                  style={{ opacity: page === 1 ? 0.5 : 1, cursor: page === 1 ? 'not-allowed' : 'pointer' }}
+                  style={{
+                    padding: '0.4rem 0.9rem',
+                    borderRadius: '6px',
+                    border: '1px solid #cbd5e1',
+                    backgroundColor: '#ffffff',
+                    color: '#475569',
+                    fontSize: '0.85rem',
+                    fontWeight: '600',
+                    cursor: page === 1 ? 'not-allowed' : 'pointer',
+                    opacity: page === 1 ? 0.5 : 1
+                  }}
                 >
                   Previous
                 </button>
                 <button 
                   disabled={page === totalPages}
                   onClick={() => setPage(p => Math.min(p + 1, totalPages))}
-                  className="water-btn"
-                  style={{ opacity: page === totalPages ? 0.5 : 1, cursor: page === totalPages ? 'not-allowed' : 'pointer' }}
+                  style={{
+                    padding: '0.4rem 0.9rem',
+                    borderRadius: '6px',
+                    border: '1px solid #cbd5e1',
+                    backgroundColor: '#ffffff',
+                    color: '#475569',
+                    fontSize: '0.85rem',
+                    fontWeight: '600',
+                    cursor: page === totalPages ? 'not-allowed' : 'pointer',
+                    opacity: page === totalPages ? 0.5 : 1
+                  }}
                 >
                   Next
                 </button>
@@ -236,13 +310,14 @@ export default function WaterTankManagement() {
         </>
       )}
 
-      {/* Quick Level Update Modal */}
-      <UpdateWaterLevelModal 
-        isOpen={isLevelModalOpen}
-        onClose={() => { setIsLevelModalOpen(false); setSelectedTankForLevel(null); }}
-        onConfirm={handleConfirmWaterLevelUpdate}
-        tank={selectedTankForLevel}
-      />
+      {/* Water Level Update Modal */}
+      {isLevelModalOpen && selectedTankForLevel && (
+        <UpdateWaterLevelModal 
+          tank={selectedTankForLevel}
+          onClose={() => setIsLevelModalOpen(false)}
+          onSave={handleSaveWaterLevel}
+        />
+      )}
     </div>
   );
 }

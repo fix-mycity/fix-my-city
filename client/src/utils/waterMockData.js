@@ -13,8 +13,7 @@ export const sidebarItems = [
   { id: 'emergency', label: 'Emergency Shutdown', icon: 'dangerous', path: '/water/emergency' },
   { id: 'notifications', label: 'Notifications', icon: 'notifications_active', path: '/water/notifications' },
   { id: 'reports', label: 'Reports', icon: 'assessment', path: '/water/reports' },
-  { id: 'citizens', label: 'Citizen Management', icon: 'people', path: '/water/citizens' },
-  { id: 'settings', label: 'Settings', icon: 'settings', path: '/water/settings' }
+  { id: 'citizens', label: 'Citizen Management', icon: 'people', path: '/water/citizens' }
 ];
 
 export const statsData = [

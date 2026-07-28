@@ -1,19 +1,48 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 
-const PRIORITIES = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'];
-const STATUSES = ['DECLARED', 'IN_PROGRESS', 'SUPPLY_STOPPED', 'REPAIRING', 'TESTING', 'RESTORED', 'CLOSED'];
-const TYPES = ['PIPELINE_BURST', 'MAJOR_LEAK', 'CONTAMINATION', 'PUMP_FAILURE', 'POWER_FAILURE', 'TANK_DAMAGE', 'VALVE_FAILURE', 'FLOOD', 'MAINTENANCE', 'OTHER'];
+const PRIORITIES = [
+  { value: 'LOW', label: 'Low Priority' },
+  { value: 'MEDIUM', label: 'Medium Priority' },
+  { value: 'HIGH', label: 'High Priority' },
+  { value: 'CRITICAL', label: 'Critical / Emergency Action' }
+];
 
-export default function EmergencyForm({ initialData = {}, pipelines = [], tanks = [], schedules = [], onSubmit, onCancel, isEdit = false }) {
+const STATUSES = [
+  { value: 'DECLARED', label: 'Declared (Water Supply Isolated)' },
+  { value: 'UNDER_REPAIR', label: 'Under Repair (Crew On-Site)' },
+  { value: 'RESTORED', label: 'Restored (Water Supply Restored)' },
+  { value: 'CLOSED', label: 'Closed & Documented' }
+];
+
+const TYPES = [
+  { value: 'PIPELINE_BURST', label: 'Main Pipeline Burst (Water Loss / Flooding)' },
+  { value: 'MAJOR_LEAK', label: 'Major Joint Leakage' },
+  { value: 'CONTAMINATION', label: 'Water Contamination Alert' },
+  { value: 'PUMP_FAILURE', label: 'Central Pumping Station Failure' },
+  { value: 'POWER_FAILURE', label: 'Power Grid Outage' },
+  { value: 'VALVE_FAILURE', label: 'Main Isolation Valve Failure' }
+];
+
+const MUNICIPAL_WARDS = [
+  'Ward 1 - Central Market',
+  'Ward 2 - North Sector',
+  'Ward 3 - South Hill',
+  'Ward 4 - East Riverside',
+  'Ward 5 - Industrial Park',
+  'Ward 6 - West Suburb',
+  'Ward 12 - Green Hills'
+];
+
+export default function EmergencyForm({ initialData = {}, onSubmit, onCancel, isEdit = false }) {
   const [formData, setFormData] = useState({
     shutdown_number: initialData.shutdown_number || '',
     title: initialData.title || '',
     description: initialData.description || '',
     emergency_type: initialData.emergency_type || 'PIPELINE_BURST',
-    priority: initialData.priority || 'MEDIUM',
+    priority: initialData.priority || 'CRITICAL',
     status: initialData.status || 'DECLARED',
-    zone: initialData.zone || '',
-    ward: initialData.ward || '',
+    zone: initialData.zone || 'Zone 1 - Central',
+    ward: initialData.ward || 'Ward 1 - Central Market',
     area: initialData.area || '',
     affected_pipeline_id: initialData.affected_pipeline_id || '',
     affected_tank_id: initialData.affected_tank_id || '',
@@ -22,14 +51,11 @@ export default function EmergencyForm({ initialData = {}, pipelines = [], tanks 
     shutdown_start: initialData.shutdown_start ? new Date(initialData.shutdown_start).toISOString().slice(0, 16) : new Date().toISOString().slice(0, 16),
     expected_restore_time: initialData.expected_restore_time ? new Date(initialData.expected_restore_time).toISOString().slice(0, 16) : '',
     assigned_supervisor: initialData.assigned_supervisor || '',
-    assigned_team: initialData.assigned_team || '',
+    assigned_team: initialData.assigned_team || 'Municipal Disaster Response Crew 1',
     remarks: initialData.remarks || '',
     actual_restore_time: initialData.actual_restore_time ? new Date(initialData.actual_restore_time).toISOString().slice(0, 16) : '',
-    citizen_notification_sent: initialData.citizen_notification_sent || false
+    citizen_notification_sent: initialData.citizen_notification_sent || true
   });
-
-  const [affectedAreas, setAffectedAreas] = useState(initialData.affected_areas || []);
-  const [newArea, setNewArea] = useState({ zone: '', ward: '', area: '', population: '' });
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -39,29 +65,11 @@ export default function EmergencyForm({ initialData = {}, pipelines = [], tanks 
     }));
   };
 
-  const handleAddArea = () => {
-    if (!newArea.ward.trim() || !newArea.area.trim()) {
-      alert("Ward and Area are required to add an affected location.");
-      return;
-    }
-    setAffectedAreas(prev => [...prev, {
-      zone: newArea.zone || null,
-      ward: newArea.ward,
-      area: newArea.area,
-      population: parseInt(newArea.population) || 0
-    }]);
-    setNewArea({ zone: '', ward: '', area: '', population: '' });
-  };
-
-  const handleRemoveArea = (index) => {
-    setAffectedAreas(prev => prev.filter((_, i) => i !== index));
-  };
-
   const handleFormSubmit = (e) => {
     e.preventDefault();
 
-    if (!formData.ward.trim() || !formData.area.trim() || !formData.title.trim()) {
-      alert("Title, Ward, and Area are required.");
+    if (!formData.title.trim() || !formData.ward.trim() || !formData.area.trim()) {
+      alert("Incident Title, Ward, and Area are required.");
       return;
     }
 
@@ -72,8 +80,7 @@ export default function EmergencyForm({ initialData = {}, pipelines = [], tanks 
       affected_schedule_id: formData.affected_schedule_id ? parseInt(formData.affected_schedule_id) : null,
       shutdown_start: new Date(formData.shutdown_start).toISOString(),
       expected_restore_time: formData.expected_restore_time ? new Date(formData.expected_restore_time).toISOString() : null,
-      actual_restore_time: formData.actual_restore_time ? new Date(formData.actual_restore_time).toISOString() : null,
-      affected_areas: affectedAreas
+      actual_restore_time: formData.actual_restore_time ? new Date(formData.actual_restore_time).toISOString() : null
     };
 
     if (!payload.shutdown_number.trim()) {
@@ -84,383 +91,259 @@ export default function EmergencyForm({ initialData = {}, pipelines = [], tanks 
   };
 
   return (
-    <form onSubmit={handleFormSubmit} className="water-card" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-      <h3 style={{ fontSize: '1.2rem', fontWeight: '800', color: 'var(--water-primary)', borderBottom: '1px solid var(--water-border)', paddingBottom: '0.75rem', margin: 0 }}>
-        {isEdit ? `Edit Emergency: ${initialData.shutdown_number}` : 'Declare Emergency Shutdown'}
-      </h3>
-
-      {/* Main Parameters */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
-        <div>
-          <label className="water-label">Incident Number (Optional)</label>
-          <input 
-            type="text" 
-            name="shutdown_number"
-            value={formData.shutdown_number}
-            onChange={handleChange}
-            placeholder="e.g. ESD-123456"
-            disabled={isEdit}
-            className="water-input"
-          />
-        </div>
-
-        <div>
-          <label className="water-label">Emergency Type *</label>
-          <select 
-            name="emergency_type" 
-            value={formData.emergency_type} 
-            onChange={handleChange}
-            className="water-input"
-          >
-            {TYPES.map(t => (
-              <option key={t} value={t}>{t.replace(/_/g, ' ')}</option>
-            ))}
-          </select>
-        </div>
-
-        <div>
-          <label className="water-label">Priority</label>
-          <select 
-            name="priority" 
-            value={formData.priority} 
-            onChange={handleChange}
-            className="water-input"
-          >
-            {PRIORITIES.map(p => (
-              <option key={p} value={p}>{p}</option>
-            ))}
-          </select>
-        </div>
+    <form onSubmit={handleFormSubmit} className="water-form-container" style={{ maxWidth: '850px', margin: '0 auto' }}>
+      {/* Header */}
+      <div style={{
+        borderBottom: '1px solid #e2e8f0',
+        paddingBottom: '1.25rem',
+        marginBottom: '1.5rem'
+      }}>
+        <h3 style={{ fontSize: '1.25rem', fontWeight: '700', color: '#dc2626', margin: 0 }}>
+          {isEdit ? `Edit Emergency Shutdown (${initialData.shutdown_number})` : 'Declare Emergency Water Shutdown'}
+        </h3>
+        <p style={{ fontSize: '0.85rem', color: '#64748b', margin: '0.3rem 0 0 0' }}>
+          Stop water flow to isolate main line pipe bursts or contamination, and broadcast alerts to affected citizens.
+        </p>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
-        <div>
-          <label className="water-label">Incident Title *</label>
-          <input 
-            type="text" 
-            name="title"
-            value={formData.title}
-            onChange={handleChange}
-            placeholder="e.g. Major pipe burst near Sector A market"
-            required
-            className="water-input"
-          />
-        </div>
+      {/* 1. Incident Title & Location */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+        <h4 style={{ fontSize: '0.95rem', fontWeight: '700', color: '#dc2626', margin: 0 }}>
+          1. Incident Details & Affected Ward
+        </h4>
 
-        <div>
-          <label className="water-label">Incident Status</label>
-          <select 
-            name="status" 
-            value={formData.status} 
-            onChange={handleChange}
-            className="water-input"
-          >
-            {STATUSES.map(s => (
-              <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>
-            ))}
-          </select>
-        </div>
-      </div>
-
-      <div>
-        <label className="water-label">Description / Reason *</label>
-        <textarea 
-          name="description"
-          value={formData.description}
-          onChange={handleChange}
-          placeholder="Describe the incident root cause..."
-          className="water-input"
-          style={{ height: '80px', fontFamily: 'inherit' }}
-        />
-      </div>
-
-      {/* Linked Resources */}
-      <h4 style={{ fontSize: '0.9rem', fontWeight: '800', textTransform: 'uppercase', color: 'var(--water-text-muted)', margin: '0.5rem 0 0 0', letterSpacing: '0.5px' }}>
-        Linked Infrastructure Resources
-      </h4>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
-        <div>
-          <label className="water-label">Affected Pipeline</label>
-          <select 
-            name="affected_pipeline_id" 
-            value={formData.affected_pipeline_id} 
-            onChange={handleChange}
-            className="water-input"
-          >
-            <option value="">None Selected</option>
-            {pipelines.map(p => (
-              <option key={p.id} value={p.id}>{p.pipeline_number} - {p.pipeline_name || p.pipeline_type}</option>
-            ))}
-          </select>
-        </div>
-
-        <div>
-          <label className="water-label">Affected Water Tank</label>
-          <select 
-            name="affected_tank_id" 
-            value={formData.affected_tank_id} 
-            onChange={handleChange}
-            className="water-input"
-          >
-            <option value="">None Selected</option>
-            {tanks.map(t => (
-              <option key={t.id} value={t.id}>{t.tank_number} - {t.tank_name}</option>
-            ))}
-          </select>
-        </div>
-
-        <div>
-          <label className="water-label">Associated Supply Schedule</label>
-          <select 
-            name="affected_schedule_id" 
-            value={formData.affected_schedule_id} 
-            onChange={handleChange}
-            className="water-input"
-          >
-            <option value="">None Selected</option>
-            {schedules.map(s => (
-              <option key={s.id} value={s.id}>{s.schedule_number} - {s.ward} ({s.supply_type})</option>
-            ))}
-          </select>
-        </div>
-      </div>
-
-      {/* Primary Location */}
-      <h4 style={{ fontSize: '0.9rem', fontWeight: '800', textTransform: 'uppercase', color: 'var(--water-text-muted)', margin: '0.5rem 0 0 0', letterSpacing: '0.5px' }}>
-        Epicenter Location
-      </h4>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
-        <div>
-          <label className="water-label">Zone</label>
-          <input 
-            type="text" 
-            name="zone"
-            value={formData.zone}
-            onChange={handleChange}
-            placeholder="e.g. West Zone"
-            className="water-input"
-          />
-        </div>
-
-        <div>
-          <label className="water-label">Ward *</label>
-          <input 
-            type="text" 
-            name="ward"
-            value={formData.ward}
-            onChange={handleChange}
-            placeholder="e.g. Ward 12"
-            required
-            className="water-input"
-          />
-        </div>
-
-        <div>
-          <label className="water-label">Area *</label>
-          <input 
-            type="text" 
-            name="area"
-            value={formData.area}
-            onChange={handleChange}
-            placeholder="e.g. North Avenue Street"
-            required
-            className="water-input"
-          />
-        </div>
-      </div>
-
-      {/* Dynamic Affected Areas */}
-      <h4 style={{ fontSize: '0.9rem', fontWeight: '800', textTransform: 'uppercase', color: 'var(--water-text-muted)', margin: '0.5rem 0 0 0', letterSpacing: '0.5px' }}>
-        Affected Areas & Population Impacted
-      </h4>
-      <div className="water-card" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: '1rem' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '0.5rem', alignItems: 'flex-end' }}>
-          <div>
-            <label className="water-label" style={{ fontSize: '0.75rem' }}>Zone</label>
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+          gap: '1rem'
+        }}>
+          <div style={{ gridColumn: '1 / -1' }}>
+            <label className="water-label">Incident Title *</label>
             <input 
               type="text" 
-              value={newArea.zone} 
-              onChange={e => setNewArea(p => ({ ...p, zone: e.target.value }))}
-              placeholder="e.g. East" 
+              name="title"
+              value={formData.title}
+              onChange={handleChange}
+              placeholder="e.g. Ward 12 Main Trunk Pipeline Burst Emergency Isolation"
+              required
               className="water-input"
-              style={{ padding: '0.35rem 0.5rem', fontSize: '0.8rem' }}
             />
           </div>
+
           <div>
-            <label className="water-label" style={{ fontSize: '0.75rem' }}>Ward *</label>
+            <label className="water-label">Shutdown Number (Auto-generated if blank)</label>
             <input 
               type="text" 
-              value={newArea.ward} 
-              onChange={e => setNewArea(p => ({ ...p, ward: e.target.value }))}
-              placeholder="e.g. Ward 1" 
+              name="shutdown_number"
+              value={formData.shutdown_number}
+              onChange={handleChange}
+              placeholder="e.g. ESD-900412"
+              disabled={isEdit}
               className="water-input"
-              style={{ padding: '0.35rem 0.5rem', fontSize: '0.8rem' }}
             />
           </div>
+
           <div>
-            <label className="water-label" style={{ fontSize: '0.75rem' }}>Area *</label>
+            <label className="water-label">Emergency Category</label>
+            <select 
+              name="emergency_type" 
+              value={formData.emergency_type} 
+              onChange={handleChange}
+              className="water-select"
+            >
+              {TYPES.map(t => (
+                <option key={t.value} value={t.value}>{t.label}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="water-label">Priority</label>
+            <select 
+              name="priority" 
+              value={formData.priority} 
+              onChange={handleChange}
+              className="water-select"
+            >
+              {PRIORITIES.map(p => (
+                <option key={p.value} value={p.value}>{p.label}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="water-label">Municipal Ward *</label>
             <input 
               type="text" 
-              value={newArea.area} 
-              onChange={e => setNewArea(p => ({ ...p, area: e.target.value }))}
-              placeholder="e.g. Street C" 
+              name="ward"
+              list="emerg-form-ward-list"
+              value={formData.ward}
+              onChange={handleChange}
+              placeholder="e.g. Ward 12 - Green Hills"
+              required
               className="water-input"
-              style={{ padding: '0.35rem 0.5rem', fontSize: '0.8rem' }}
             />
+            <datalist id="emerg-form-ward-list">
+              {MUNICIPAL_WARDS.map(w => <option key={w} value={w} />)}
+            </datalist>
           </div>
+
           <div>
-            <label className="water-label" style={{ fontSize: '0.75rem' }}>Population</label>
+            <label className="water-label">Area / Locality *</label>
             <input 
-              type="number" 
-              value={newArea.population} 
-              onChange={e => setNewArea(p => ({ ...p, population: e.target.value }))}
-              placeholder="e.g. 500" 
+              type="text" 
+              name="area"
+              value={formData.area}
+              onChange={handleChange}
+              placeholder="e.g. Green Hills Colony"
+              required
               className="water-input"
-              style={{ padding: '0.35rem 0.5rem', fontSize: '0.8rem' }}
             />
           </div>
-          <button 
-            type="button" 
-            onClick={handleAddArea}
-            className="water-btn"
-            style={{ padding: '0.35rem 0.75rem', fontSize: '0.8rem', backgroundColor: 'var(--water-primary)', color: '#ffffff', border: 'none', height: '32px' }}
-          >
-            Add Location
-          </button>
-        </div>
-
-        {/* Affected Areas list */}
-        {affectedAreas.length > 0 && (
-          <div style={{ marginTop: '0.5rem', maxHeight: '150px', overflowY: 'auto', border: '1px solid var(--water-border)', borderRadius: '6px' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.8rem' }}>
-              <thead style={{ backgroundColor: 'var(--water-bg-light)' }}>
-                <tr>
-                  <th style={{ padding: '0.5rem' }}>Zone</th>
-                  <th style={{ padding: '0.5rem' }}>Ward</th>
-                  <th style={{ padding: '0.5rem' }}>Area</th>
-                  <th style={{ padding: '0.5rem' }}>Population</th>
-                  <th style={{ padding: '0.5rem', textAlign: 'center' }}>Remove</th>
-                </tr>
-              </thead>
-              <tbody>
-                {affectedAreas.map((area, idx) => (
-                  <tr key={idx} style={{ borderBottom: '1px solid var(--water-border)' }}>
-                    <td style={{ padding: '0.5rem' }}>{area.zone || '--'}</td>
-                    <td style={{ padding: '0.5rem', fontWeight: 'bold' }}>{area.ward}</td>
-                    <td style={{ padding: '0.5rem' }}>{area.area}</td>
-                    <td style={{ padding: '0.5rem' }}>{area.population}</td>
-                    <td style={{ padding: '0.5rem', textAlign: 'center' }}>
-                      <button 
-                        type="button" 
-                        onClick={() => handleRemoveArea(idx)}
-                        style={{ border: 'none', background: 'none', color: 'var(--water-danger)', cursor: 'pointer', padding: 0 }}
-                      >
-                        <span className="material-symbols-outlined" style={{ fontSize: '1.1rem' }}>delete</span>
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-
-      {/* Dates and Teams */}
-      <h4 style={{ fontSize: '0.9rem', fontWeight: '800', textTransform: 'uppercase', color: 'var(--water-text-muted)', margin: '0.5rem 0 0 0', letterSpacing: '0.5px' }}>
-        Operation Details & Timeline
-      </h4>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
-        <div>
-          <label className="water-label">Shutdown Start Time *</label>
-          <input 
-            type="datetime-local" 
-            name="shutdown_start"
-            value={formData.shutdown_start}
-            onChange={handleChange}
-            required
-            className="water-input"
-          />
-        </div>
-
-        <div>
-          <label className="water-label">Expected Restore Time</label>
-          <input 
-            type="datetime-local" 
-            name="expected_restore_time"
-            value={formData.expected_restore_time}
-            onChange={handleChange}
-            className="water-input"
-          />
-        </div>
-
-        <div>
-          <label className="water-label">Assigned Supervisor</label>
-          <input 
-            type="text" 
-            name="assigned_supervisor"
-            value={formData.assigned_supervisor}
-            onChange={handleChange}
-            placeholder="e.g. Supervisor Davis"
-            className="water-input"
-          />
         </div>
       </div>
 
-      {isEdit && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
+      {/* 2. Schedule & Crew */}
+      <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '1.25rem', marginTop: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+        <h4 style={{ fontSize: '0.95rem', fontWeight: '700', color: '#2563eb', margin: 0 }}>
+          2. Shutdown Timetable & Rapid Response Crew
+        </h4>
+
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+          gap: '1rem'
+        }}>
           <div>
-            <label className="water-label">Actual Restore Time</label>
+            <label className="water-label">Shutdown Start Time *</label>
             <input 
               type="datetime-local" 
-              name="actual_restore_time"
-              value={formData.actual_restore_time}
+              name="shutdown_start"
+              value={formData.shutdown_start}
+              onChange={handleChange}
+              required
+              className="water-input"
+            />
+          </div>
+
+          <div>
+            <label className="water-label">Target Restoration Time</label>
+            <input 
+              type="datetime-local" 
+              name="expected_restore_time"
+              value={formData.expected_restore_time}
               onChange={handleChange}
               className="water-input"
             />
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', marginTop: '1.25rem' }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 'bold' }}>
-              <input 
-                type="checkbox" 
-                name="citizen_notification_sent"
-                checked={formData.citizen_notification_sent}
-                onChange={handleChange}
-              />
-              Citizen Notifications Sent
-            </label>
+          <div>
+            <label className="water-label">Assigned Disaster Response Crew</label>
+            <input 
+              type="text" 
+              name="assigned_team"
+              value={formData.assigned_team}
+              onChange={handleChange}
+              placeholder="e.g. Municipal Rapid Response Unit 1"
+              className="water-input"
+            />
           </div>
         </div>
-      )}
-
-      <div>
-        <label className="water-label">Remarks</label>
-        <input 
-          type="text" 
-          name="remarks"
-          value={formData.remarks}
-          onChange={handleChange}
-          placeholder="Special notes..."
-          className="water-input"
-        />
       </div>
 
-      <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
+      {/* 3. Reason & Instructions */}
+      <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '1.25rem', marginTop: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+        <h4 style={{ fontSize: '0.95rem', fontWeight: '700', color: '#2563eb', margin: 0 }}>
+          3. Diagnosis, Status & Instructions
+        </h4>
+
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+          gap: '1rem'
+        }}>
+          <div>
+            <label className="water-label">Status</label>
+            <select 
+              name="status" 
+              value={formData.status} 
+              onChange={handleChange}
+              className="water-select"
+            >
+              {STATUSES.map(s => (
+                <option key={s.value} value={s.value}>{s.label}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label className="water-label">Root Cause / Failure Reason</label>
+          <textarea 
+            name="reason"
+            value={formData.reason}
+            onChange={handleChange}
+            placeholder="State the technical failure reason (e.g. 500mm Cast Iron pipe burst at joint #14 due to pressure surge)..."
+            rows="2"
+            className="water-input"
+            style={{ resize: 'vertical' }}
+          />
+        </div>
+
+        <div>
+          <label className="water-label">Emergency Directives & Advisory</label>
+          <textarea 
+            name="remarks"
+            value={formData.remarks}
+            onChange={handleChange}
+            placeholder="Special advisory notes for citizens and field engineers..."
+            rows="2"
+            className="water-input"
+            style={{ resize: 'vertical' }}
+          />
+        </div>
+      </div>
+
+      {/* Buttons */}
+      <div style={{
+        display: 'flex',
+        gap: '0.75rem',
+        justifyContent: 'flex-end',
+        marginTop: '1.5rem',
+        borderTop: '1px solid #e2e8f0',
+        paddingTop: '1.25rem'
+      }}>
         <button 
           type="button" 
           onClick={onCancel}
-          className="water-btn"
-          style={{ borderColor: 'var(--water-border)', color: 'var(--water-text)' }}
+          style={{
+            padding: '0.55rem 1.25rem',
+            borderRadius: '8px',
+            border: '1px solid #cbd5e1',
+            backgroundColor: '#ffffff',
+            color: '#475569',
+            fontWeight: '600',
+            fontSize: '0.9rem',
+            cursor: 'pointer'
+          }}
         >
           Cancel
         </button>
+
         <button 
           type="submit" 
-          className="water-btn"
-          style={{ backgroundColor: 'var(--water-primary)', color: '#ffffff', border: 'none' }}
+          style={{
+            padding: '0.55rem 1.5rem',
+            borderRadius: '8px',
+            border: 'none',
+            backgroundColor: '#dc2626',
+            color: '#ffffff',
+            fontWeight: '600',
+            fontSize: '0.9rem',
+            cursor: 'pointer'
+          }}
         >
-          {isEdit ? 'Save Changes' : 'Declare Shutdown'}
+          {isEdit ? 'Save Changes' : 'Declare Emergency Shutdown'}
         </button>
       </div>
     </form>

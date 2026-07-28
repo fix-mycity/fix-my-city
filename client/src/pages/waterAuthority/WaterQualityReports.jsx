@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { getQualityReport } from "../../services/reportService";
+import { getWaterQualityReport } from "../../services/reportService";
 import KpiCard from "../../components/waterAuthority/KpiCard";
 import ReportFilter from "../../components/waterAuthority/ReportFilter";
-import QualityStatisticsTable from "../../components/waterAuthority/QualityStatisticsTable";
 import ExportButton from "../../components/waterAuthority/ExportButton";
-import ReportCard from "../../components/waterAuthority/ReportCard";
+import QualityStatisticsTable from "../../components/waterAuthority/QualityStatisticsTable";
 
 export default function WaterQualityReports() {
   const navigate = useNavigate();
@@ -34,7 +33,7 @@ export default function WaterQualityReports() {
   const fetchReport = async () => {
     setLoading(true);
     try {
-      const res = await getQualityReport(filters);
+      const res = await getWaterQualityReport(filters);
       setReport(res.data);
     } catch (err) {
       console.error("Failed to fetch quality report:", err);
@@ -48,28 +47,35 @@ export default function WaterQualityReports() {
   }, [filters]);
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-800 pb-4">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
-          <h1 className="text-2xl font-bold text-white tracking-wide">Water Quality Monitoring</h1>
-          <p className="text-slate-400 text-sm mt-1">
-            Review pH standards compliance, TDS levels, and bacteriological contamination alerts.
+          <h2 style={{ fontSize: '1.5rem', fontWeight: '800', color: '#0f172a', margin: 0 }}>
+            Water Quality Laboratory Analytics
+          </h2>
+          <p style={{ fontSize: '0.85rem', color: '#64748b', margin: '0.2rem 0 0 0' }}>
+            Monitor potability test results, pH/TDS levels, residual chlorine, and contamination alarms.
           </p>
         </div>
         <ExportButton reportType="quality" filters={filters} />
       </div>
 
-      {/* Tabs */}
-      <div className="flex flex-wrap gap-1 border-b border-slate-800/60 pb-2">
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', borderBottom: '1px solid #e2e8f0', pb: '0.5rem' }}>
         {tabs.map((tab) => (
           <button
             key={tab.id}
             onClick={() => navigate(tab.path)}
-            className={`px-4 py-2 rounded-lg text-sm font-semibold transition ${
-              tab.id === "quality"
-                ? "bg-blue-600 text-white shadow-md shadow-blue-500/20"
-                : "text-slate-400 hover:text-white hover:bg-slate-800/50"
-            }`}
+            style={{
+              padding: '0.5rem 1rem',
+              borderRadius: '8px',
+              fontSize: '0.85rem',
+              fontWeight: '700',
+              border: 'none',
+              borderBottom: tab.id === "quality" ? '3px solid #2563eb' : '3px solid transparent',
+              backgroundColor: tab.id === "quality" ? '#eff6ff' : 'transparent',
+              color: tab.id === "quality" ? '#2563eb' : '#64748b',
+              cursor: 'pointer'
+            }}
           >
             {tab.label}
           </button>
@@ -84,48 +90,51 @@ export default function WaterQualityReports() {
       />
 
       {loading ? (
-        <div className="h-[300px] flex items-center justify-center">
-          <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-blue-500" />
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '30vh' }}>
+          <span className="material-symbols-outlined" style={{ animation: 'spin 2s linear infinite', fontSize: '2.5rem', color: '#2563eb' }}>
+            autorenew
+          </span>
         </div>
-      ) : report ? (
-        <>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+            gap: '1rem'
+          }}>
             <KpiCard
-              title="Quality Tests Registered"
-              value={report.total_reports}
+              title="Total Test Reports"
+              value={report?.summary?.total_reports || 0}
               icon="biotech"
-              description="Laboratory samples registered"
+              description="Lab test reports"
               color="blue"
             />
             <KpiCard
-              title="Unsafe Warning Alerts"
-              value={report.unsafe_reports_count}
-              icon="dangerous"
-              description="Tests violating safety standards"
-              color="rose"
+              title="Safe Drinking Water"
+              value={report?.summary?.safe_reports || 0}
+              icon="check_circle"
+              description="Potable water samples"
+              color="emerald"
             />
             <KpiCard
-              title="Safe Samples Rating"
-              value={`${((report.safe_reports_count / (report.total_reports || 1)) * 100).toFixed(1)}%`}
-              icon="verified"
-              description="SLA purity index score"
-              color="emerald"
+              title="Warnings Flagged"
+              value={report?.summary?.warning_reports || 0}
+              icon="warning"
+              description="Minor parameter deviations"
+              color="amber"
+            />
+            <KpiCard
+              title="Unsafe Contaminated"
+              value={report?.summary?.unsafe_reports || 0}
+              icon="dangerous"
+              description="Contamination alarms"
+              color="rose"
             />
           </div>
 
-          <ReportCard title="Purity Standards Metrics" subtitle="Overview of pH, TDS, and safety tests status">
-            <QualityStatisticsTable
-              safe={report.safe_reports_count}
-              warning={report.warning_reports_count}
-              unsafe={report.unsafe_reports_count}
-              avgPh={report.avg_ph_level}
-              avgTds={report.avg_tds_level}
-            />
-          </ReportCard>
-        </>
-      ) : (
-        <div className="h-[200px] flex items-center justify-center text-slate-500">
-          No Reports Available
+          {report?.by_ward && (
+            <QualityStatisticsTable data={report.by_ward} />
+          )}
         </div>
       )}
     </div>

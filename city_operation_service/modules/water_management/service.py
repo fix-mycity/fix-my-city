@@ -13,7 +13,8 @@ from .schema import (
     WaterQualityCreate, WaterQualityUpdate, InspectionCreate as QualInspectionCreate, InspectionUpdate as QualInspectionUpdate,
     MaintenanceCreate, MaintenanceUpdate, TaskCreate, TaskUpdateSchema, MaterialCreate, PhotoUpload,
     EmergencyCreate, EmergencyUpdate, ResponseTeamCreate, AffectedAreaCreate,
-    NotificationCreate, NotificationUpdate, TemplateCreate, TemplateUpdate
+    NotificationCreate, NotificationUpdate, TemplateCreate, TemplateUpdate,
+    WaterCitizenAccessCreate, WaterCitizenAccessUpdate, DepartmentSettingsCreate, DepartmentSettingsUpdate, DepartmentProfileUpdate, CitizenServiceStatusUpdate
 )
 from .repository import WaterComplaintRepository, WaterFieldWorkerRepository, WorkerAssignmentRepository, WaterSupplyScheduleRepository, WaterPipelineRepository, WaterTankRepository, WaterQualityRepository, MaintenanceRepository, EmergencyRepository, NotificationRepository, ReportsRepository, CitizenRepository, SettingsRepository
 from .constants import (
@@ -240,9 +241,63 @@ class WaterFieldWorkerService:
             )
 
     @staticmethod
-    def create_worker(db: Session, schema: WorkerCreate) -> WaterFieldWorker:
+    def create_worker(db: Session, schema: WorkerCreate, manager_id: Optional[int] = None) -> WaterFieldWorker:
         WaterFieldWorkerService._validate_worker_data(db, schema)
         WaterFieldWorkerService._validate_enums(schema.availability, schema.employment_status, schema.skill)
+
+        # 1. Register worker user in Auth Service so the worker can log in
+        from core.auth_client import register_worker_user
+        import random
+        clean_email = schema.email.strip().lower()
+        username = clean_email.split("@")[0] if clean_email else f"worker_{random.randint(1000, 9999)}"
+
+        user_res = register_worker_user({
+            "username": username,
+            "email": clean_email,
+            "password": schema.password,
+            "confirm_password": schema.password,
+            "state": "Kerala",
+            "district": "Malappuram",
+            "pincode": schema.pin_code or "676505",
+            "manager_id": manager_id or 1,
+            "role": "Worker",
+            "department": "water"
+        })
+
+        if not user_res.get("success"):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=user_res.get("message", "Failed to register worker in Auth service.")
+            )
+
+        worker_user_id = user_res.get("user_id")
+
+        # 2. Sync to central worker profiles
+        if worker_user_id:
+            try:
+                from modules.workers.repository import WorkerRepository
+                from modules.workers.schema import WorkerUpdateSchema
+                update_schema = WorkerUpdateSchema(
+                    first_name=schema.first_name,
+                    last_name=schema.last_name,
+                    phone=schema.phone,
+                    photo=schema.photo,
+                    gender=schema.gender,
+                    date_of_birth=schema.date_of_birth,
+                    address=schema.address,
+                    place=schema.place,
+                    designation=schema.designation or "Water Field Worker",
+                    skill=schema.skill,
+                    experience=schema.experience or 0,
+                    joining_date=schema.joining_date or datetime.utcnow(),
+                    emergency_contact_phone=schema.emergency_contact_phone,
+                    availability=schema.availability or "AVAILABLE",
+                    employment_status=schema.employment_status or "ACTIVE"
+                )
+                WorkerRepository.create_or_update_profile(db, worker_user_id, manager_id or 1, "water", update_schema)
+            except Exception as _e:
+                print(f"Notice: Failed to sync worker to central profile: {_e}")
+
         pw_hash = hash_password(schema.password)
         return WaterFieldWorkerRepository.create(db, schema, pw_hash)
 
@@ -386,6 +441,15 @@ class WorkerAssignmentService:
 
     @staticmethod
     def create_assignment(db: Session, schema: AssignmentCreate, assigned_by: int) -> WorkerAssignment:
+        # Resolve worker to ensure schema.worker_id uses water_field_workers.id
+        worker = WaterFieldWorkerRepository.get_by_id(db, schema.worker_id)
+        if not worker:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Field worker with ID {schema.worker_id} not found."
+            )
+        schema.worker_id = worker.id
+
         WorkerAssignmentService._validate_assignment_creation(db, schema)
         
         # Check if an assignment already exists for this complaint and is not completed/verified
@@ -452,6 +516,7 @@ class WorkerAssignmentService:
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail=f"Field worker is not active."
                 )
+            schema.worker_id = worker.id
 
         if schema.deadline is not None:
             deadline_naive = schema.deadline.replace(tzinfo=None)

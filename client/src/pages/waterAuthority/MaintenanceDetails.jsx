@@ -33,24 +33,44 @@ export default function MaintenanceDetails() {
   const [isMaterialFormOpen, setIsMaterialFormOpen] = useState(false);
 
   const fetchAllData = async () => {
+    setIsLoading(true);
     try {
       const maintRes = await getMaintenance(id);
       setMaint(maintRes.data);
       setPhotos(maintRes.data.photos || []);
-
-      const taskRes = await getMaintenanceTasks(id);
-      setTasks(taskRes.data);
-
-      const matRes = await getMaintenanceMaterials(id);
-      setMaterials(matRes.data);
-
-      const histRes = await getMaintenanceHistory(id);
-      setHistory(histRes.data);
-
-      const workerRes = await getWorkers();
-      setWorkers(workerRes.data.workers || []);
     } catch (err) {
-      toast.error("Failed to load maintenance job details.");
+      toast.error("Failed to load maintenance details.");
+      navigate('/water/maintenance');
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      const taskRes = await getMaintenanceTasks(id);
+      setTasks(Array.isArray(taskRes.data) ? taskRes.data : []);
+    } catch (_tErr) {
+      setTasks([]);
+    }
+
+    try {
+      const matRes = await getMaintenanceMaterials(id);
+      setMaterials(Array.isArray(matRes.data) ? matRes.data : []);
+    } catch (_mErr) {
+      setMaterials([]);
+    }
+
+    try {
+      const histRes = await getMaintenanceHistory(id);
+      setHistory(Array.isArray(histRes.data) ? histRes.data : []);
+    } catch (_hErr) {
+      setHistory([]);
+    }
+
+    try {
+      const workerRes = await getWorkers();
+      setWorkers(Array.isArray(workerRes.data?.items) ? workerRes.data.items : (Array.isArray(workerRes.data) ? workerRes.data : []));
+    } catch (_wErr) {
+      setWorkers([]);
     } finally {
       setIsLoading(false);
     }

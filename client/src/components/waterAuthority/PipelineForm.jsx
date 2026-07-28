@@ -1,25 +1,64 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { getTanks } from '../../services/waterTankService';
 
-const PIPELINE_TYPES = ['MAIN_LINE', 'SUB_LINE', 'SERVICE_LINE', 'DISTRIBUTION_LINE'];
-const MATERIALS = ['PVC', 'HDPE', 'DI', 'STEEL', 'CI', 'OTHER'];
-const CONDITIONS = ['EXCELLENT', 'GOOD', 'FAIR', 'POOR', 'CRITICAL'];
-const STATUSES = ['ACTIVE', 'UNDER_MAINTENANCE', 'DAMAGED', 'OUT_OF_SERVICE', 'REPLACED'];
+const PIPELINE_TYPES = [
+  { value: 'MAIN_LINE', label: 'Main Trunk Line' },
+  { value: 'SUB_LINE', label: 'Sub-Trunk Line' },
+  { value: 'DISTRIBUTION_LINE', label: 'Distribution Line' },
+  { value: 'SERVICE_LINE', label: 'Service Line' }
+];
+
+const MATERIALS = [
+  { value: 'HDPE', label: 'HDPE (Polyethylene)' },
+  { value: 'DI', label: 'Ductile Iron (DI)' },
+  { value: 'PVC', label: 'PVC' },
+  { value: 'STEEL', label: 'Steel' },
+  { value: 'CI', label: 'Cast Iron' },
+  { value: 'OTHER', label: 'Other' }
+];
+
+const CONDITIONS = [
+  { value: 'EXCELLENT', label: 'Excellent' },
+  { value: 'GOOD', label: 'Good' },
+  { value: 'FAIR', label: 'Fair' },
+  { value: 'POOR', label: 'Poor' },
+  { value: 'CRITICAL', label: 'Critical' }
+];
+
+const STATUSES = [
+  { value: 'ACTIVE', label: 'Active' },
+  { value: 'UNDER_MAINTENANCE', label: 'Under Maintenance' },
+  { value: 'DAMAGED', label: 'Damaged' },
+  { value: 'OUT_OF_SERVICE', label: 'Out of Service' }
+];
+
+const MUNICIPAL_WARDS = [
+  'Ward 1 - Central Market',
+  'Ward 2 - North Sector',
+  'Ward 3 - South Hill',
+  'Ward 4 - East Riverside',
+  'Ward 5 - Industrial Park',
+  'Ward 6 - West Suburb',
+  'Ward 12 - Green Hills'
+];
 
 export default function PipelineForm({ initialData = {}, onSubmit, onCancel, isEdit = false }) {
+  const [tanks, setTanks] = useState([]);
   const [formData, setFormData] = useState({
     pipeline_number: initialData.pipeline_number || '',
     pipeline_name: initialData.pipeline_name || '',
-    zone: initialData.zone || '',
-    ward: initialData.ward || '',
+    zone: initialData.zone || 'Zone 1 - Central',
+    ward: initialData.ward || 'Ward 1 - Central Market',
     area: initialData.area || '',
     street: initialData.street || '',
     pipeline_type: initialData.pipeline_type || 'DISTRIBUTION_LINE',
     diameter: initialData.diameter || '',
     length: initialData.length || '',
-    material: initialData.material || 'PVC',
-    installation_date: initialData.installation_date || '',
-    expected_life: initialData.expected_life || '',
+    material: initialData.material || 'HDPE',
+    installation_date: initialData.installation_date || new Date().toISOString().split('T')[0],
+    expected_life: initialData.expected_life || 25,
     water_source: initialData.water_source || '',
+    tank_id: initialData.tank_id || '',
     start_location: initialData.start_location || '',
     end_location: initialData.end_location || '',
     latitude: initialData.latitude || '',
@@ -29,6 +68,19 @@ export default function PipelineForm({ initialData = {}, onSubmit, onCancel, isE
     current_status: initialData.current_status || 'ACTIVE',
     remarks: initialData.remarks || ''
   });
+
+  useEffect(() => {
+    fetchTanksList();
+  }, []);
+
+  const fetchTanksList = async () => {
+    try {
+      const res = await getTanks({ page_size: 100 });
+      setTanks(res.data?.items || res.data || []);
+    } catch (_err) {
+      setTanks([]);
+    }
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -41,13 +93,11 @@ export default function PipelineForm({ initialData = {}, onSubmit, onCancel, isE
   const handleFormSubmit = (e) => {
     e.preventDefault();
 
-    // Validations
     if (!formData.ward.trim() || !formData.area.trim()) {
-      alert("Ward and Area are required.");
+      alert("Please specify the Ward and Area / Locality.");
       return;
     }
 
-    // Prepare payload (convert strings to float/int if present)
     const payload = {
       ...formData,
       diameter: formData.diameter ? parseFloat(formData.diameter) : null,
@@ -55,352 +105,275 @@ export default function PipelineForm({ initialData = {}, onSubmit, onCancel, isE
       expected_life: formData.expected_life ? parseInt(formData.expected_life) : null,
       latitude: formData.latitude ? parseFloat(formData.latitude) : null,
       longitude: formData.longitude ? parseFloat(formData.longitude) : null,
-      pressure_level: formData.pressure_level ? parseFloat(formData.pressure_level) : null
+      pressure_level: formData.pressure_level ? parseFloat(formData.pressure_level) : null,
+      tank_id: formData.tank_id ? parseInt(formData.tank_id) : null
     };
 
     if (!payload.pipeline_number.trim()) {
-      delete payload.pipeline_number; // database generates unique WPL-XXXXXX if null/empty
+      delete payload.pipeline_number;
     }
 
     onSubmit(payload);
   };
 
   return (
-    <form onSubmit={handleFormSubmit} className="water-card" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-      <h3 style={{ fontSize: '1.2rem', fontWeight: '800', color: 'var(--water-primary)', borderBottom: '1px solid var(--water-border)', paddingBottom: '0.75rem', margin: 0 }}>
-        {isEdit ? `Edit Pipeline: ${initialData.pipeline_number}` : 'Register New Pipeline'}
-      </h3>
-
+    <form onSubmit={handleFormSubmit} className="water-form-container">
+      {/* Header */}
       <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-        gap: '1rem'
+        borderBottom: '1px solid #e2e8f0',
+        paddingBottom: '1.25rem',
+        marginBottom: '1.5rem'
       }}>
-        {/* Basic Details */}
-        <div>
-          <label className="water-label">Pipeline Number (Leave blank to auto-generate)</label>
-          <input 
-            type="text" 
-            name="pipeline_number"
-            value={formData.pipeline_number}
-            onChange={handleChange}
-            placeholder="e.g. WPL-100244"
-            disabled={isEdit}
-            className="water-input"
-          />
+        <h3 style={{ fontSize: '1.25rem', fontWeight: '700', color: '#0f172a', margin: 0 }}>
+          {isEdit ? `Edit Pipeline (${initialData.pipeline_number})` : 'Register Pipeline'}
+        </h3>
+        <p style={{ fontSize: '0.85rem', color: '#64748b', margin: '0.3rem 0 0 0' }}>
+          Fill in the details below to register a water pipeline network.
+        </p>
+      </div>
+
+      {/* 1. Location & Identity */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+        <h4 style={{ fontSize: '0.95rem', fontWeight: '700', color: '#2563eb', margin: 0 }}>
+          1. Location & Classification
+        </h4>
+
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+          gap: '1rem'
+        }}>
+          <div>
+            <label className="water-label">Municipal Ward *</label>
+            <input 
+              type="text" 
+              name="ward"
+              list="ward-list"
+              value={formData.ward}
+              onChange={handleChange}
+              placeholder="e.g. Ward 12 - Green Hills"
+              required
+              className="water-input"
+            />
+            <datalist id="ward-list">
+              {MUNICIPAL_WARDS.map(w => <option key={w} value={w} />)}
+            </datalist>
+          </div>
+
+          <div>
+            <label className="water-label">Area / Locality *</label>
+            <input 
+              type="text" 
+              name="area"
+              value={formData.area}
+              onChange={handleChange}
+              placeholder="e.g. Green Hills Colony"
+              required
+              className="water-input"
+            />
+          </div>
+
+          <div>
+            <label className="water-label">Pipeline Name / Descriptor</label>
+            <input 
+              type="text" 
+              name="pipeline_name"
+              value={formData.pipeline_name}
+              onChange={handleChange}
+              placeholder="e.g. Main Distribution Feeder 1"
+              className="water-input"
+            />
+          </div>
+
+          <div>
+            <label className="water-label">Pipeline Type</label>
+            <select 
+              name="pipeline_type" 
+              value={formData.pipeline_type} 
+              onChange={handleChange}
+              className="water-select"
+            >
+              {PIPELINE_TYPES.map(t => (
+                <option key={t.value} value={t.value}>{t.label}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+      </div>
+
+      {/* 2. Water Source & Specs */}
+      <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '1.25rem', marginTop: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+        <h4 style={{ fontSize: '0.95rem', fontWeight: '700', color: '#2563eb', margin: 0 }}>
+          2. Source & Specs
+        </h4>
+
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+          gap: '1rem'
+        }}>
+          <div>
+            <label className="water-label">Water Source</label>
+            <input 
+              type="text" 
+              name="water_source"
+              value={formData.water_source}
+              onChange={handleChange}
+              placeholder="e.g. Central Reservoir B"
+              className="water-input"
+            />
+          </div>
+
+          <div>
+            <label className="water-label">Connected Storage Tank</label>
+            <select 
+              name="tank_id" 
+              value={formData.tank_id} 
+              onChange={handleChange}
+              className="water-select"
+            >
+              <option value="">-- Optional Storage Tank Connection --</option>
+              {tanks.map(t => (
+                <option key={t.id} value={t.id}>
+                  {t.tank_number} ({t.ward || t.tank_type})
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="water-label">Pipe Material</label>
+            <select 
+              name="material" 
+              value={formData.material} 
+              onChange={handleChange}
+              className="water-select"
+            >
+              {MATERIALS.map(m => (
+                <option key={m.value} value={m.value}>{m.label}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="water-label">Diameter (mm)</label>
+            <input 
+              type="number" 
+              name="diameter"
+              value={formData.diameter}
+              onChange={handleChange}
+              placeholder="e.g. 150"
+              className="water-input"
+            />
+          </div>
+
+          <div>
+            <label className="water-label">Total Length (meters)</label>
+            <input 
+              type="number" 
+              step="0.1"
+              name="length"
+              value={formData.length}
+              onChange={handleChange}
+              placeholder="e.g. 750"
+              className="water-input"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* 3. Status & Remarks */}
+      <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '1.25rem', marginTop: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+        <h4 style={{ fontSize: '0.95rem', fontWeight: '700', color: '#2563eb', margin: 0 }}>
+          3. Status & Remarks
+        </h4>
+
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+          gap: '1rem'
+        }}>
+          <div>
+            <label className="water-label">Operational Status</label>
+            <select 
+              name="current_status" 
+              value={formData.current_status} 
+              onChange={handleChange}
+              className="water-select"
+            >
+              {STATUSES.map(s => (
+                <option key={s.value} value={s.value}>{s.label}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="water-label">Physical Condition</label>
+            <select 
+              name="condition" 
+              value={formData.condition} 
+              onChange={handleChange}
+              className="water-select"
+            >
+              {CONDITIONS.map(c => (
+                <option key={c.value} value={c.value}>{c.label}</option>
+              ))}
+            </select>
+          </div>
         </div>
 
         <div>
-          <label className="water-label">Pipeline Name / Descriptor</label>
-          <input 
-            type="text" 
-            name="pipeline_name"
-            value={formData.pipeline_name}
+          <label className="water-label">Remarks & Notes</label>
+          <textarea 
+            name="remarks"
+            value={formData.remarks}
             onChange={handleChange}
-            placeholder="e.g. Trunk Line North A"
+            placeholder="Optional additional notes..."
+            rows="2"
             className="water-input"
-          />
-        </div>
-
-        <div>
-          <label className="water-label">Water Source</label>
-          <input 
-            type="text" 
-            name="water_source"
-            value={formData.water_source}
-            onChange={handleChange}
-            placeholder="e.g. Reservoir B"
-            className="water-input"
+            style={{ resize: 'vertical' }}
           />
         </div>
       </div>
 
-      {/* Location Details */}
-      <h4 style={{ fontSize: '0.9rem', fontWeight: '800', textTransform: 'uppercase', color: 'var(--water-text-muted)', margin: '0.5rem 0 0 0', letterSpacing: '0.5px' }}>
-        Location Details
-      </h4>
+      {/* Buttons */}
       <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-        gap: '1rem'
+        display: 'flex',
+        gap: '0.75rem',
+        justifyContent: 'flex-end',
+        marginTop: '1.5rem',
+        borderTop: '1px solid #e2e8f0',
+        paddingTop: '1.25rem'
       }}>
-        <div>
-          <label className="water-label">Zone</label>
-          <input 
-            type="text" 
-            name="zone"
-            value={formData.zone}
-            onChange={handleChange}
-            placeholder="e.g. Zone 4"
-            className="water-input"
-          />
-        </div>
-
-        <div>
-          <label className="water-label">Ward *</label>
-          <input 
-            type="text" 
-            name="ward"
-            value={formData.ward}
-            onChange={handleChange}
-            placeholder="e.g. Ward 12"
-            required
-            className="water-input"
-          />
-        </div>
-
-        <div>
-          <label className="water-label">Area *</label>
-          <input 
-            type="text" 
-            name="area"
-            value={formData.area}
-            onChange={handleChange}
-            placeholder="e.g. Green Hills"
-            required
-            className="water-input"
-          />
-        </div>
-
-        <div>
-          <label className="water-label">Street</label>
-          <input 
-            type="text" 
-            name="street"
-            value={formData.street}
-            onChange={handleChange}
-            placeholder="e.g. Maple Avenue"
-            className="water-input"
-          />
-        </div>
-      </div>
-
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-        gap: '1rem'
-      }}>
-        <div>
-          <label className="water-label">Start Location</label>
-          <input 
-            type="text" 
-            name="start_location"
-            value={formData.start_location}
-            onChange={handleChange}
-            placeholder="e.g. Tank 4 Outlet Valve"
-            className="water-input"
-          />
-        </div>
-
-        <div>
-          <label className="water-label">End Location</label>
-          <input 
-            type="text" 
-            name="end_location"
-            value={formData.end_location}
-            onChange={handleChange}
-            placeholder="e.g. Ward 12 Junction"
-            className="water-input"
-          />
-        </div>
-
-        <div>
-          <label className="water-label">GPS Latitude</label>
-          <input 
-            type="number" 
-            step="0.000001"
-            name="latitude"
-            value={formData.latitude}
-            onChange={handleChange}
-            placeholder="e.g. 12.9715987"
-            className="water-input"
-          />
-        </div>
-
-        <div>
-          <label className="water-label">GPS Longitude</label>
-          <input 
-            type="number" 
-            step="0.000001"
-            name="longitude"
-            value={formData.longitude}
-            onChange={handleChange}
-            placeholder="e.g. 77.5945622"
-            className="water-input"
-          />
-        </div>
-      </div>
-
-      {/* Technical Specifications */}
-      <h4 style={{ fontSize: '0.9rem', fontWeight: '800', textTransform: 'uppercase', color: 'var(--water-text-muted)', margin: '0.5rem 0 0 0', letterSpacing: '0.5px' }}>
-        Technical Specifications
-      </h4>
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-        gap: '1rem'
-      }}>
-        <div>
-          <label className="water-label">Pipeline Type</label>
-          <select 
-            name="pipeline_type" 
-            value={formData.pipeline_type} 
-            onChange={handleChange}
-            className="water-input"
-          >
-            {PIPELINE_TYPES.map(t => (
-              <option key={t} value={t}>{t.replace(/_/g, ' ')}</option>
-            ))}
-          </select>
-        </div>
-
-        <div>
-          <label className="water-label">Diameter (mm)</label>
-          <input 
-            type="number" 
-            name="diameter"
-            value={formData.diameter}
-            onChange={handleChange}
-            placeholder="e.g. 150"
-            className="water-input"
-          />
-        </div>
-
-        <div>
-          <label className="water-label">Length (meters)</label>
-          <input 
-            type="number" 
-            step="0.1"
-            name="length"
-            value={formData.length}
-            onChange={handleChange}
-            placeholder="e.g. 750"
-            className="water-input"
-          />
-        </div>
-
-        <div>
-          <label className="water-label">Material</label>
-          <select 
-            name="material" 
-            value={formData.material} 
-            onChange={handleChange}
-            className="water-input"
-          >
-            {MATERIALS.map(m => (
-              <option key={m} value={m}>{m}</option>
-            ))}
-          </select>
-        </div>
-      </div>
-
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-        gap: '1rem'
-      }}>
-        <div>
-          <label className="water-label">Installation Date</label>
-          <input 
-            type="date" 
-            name="installation_date"
-            value={formData.installation_date}
-            onChange={handleChange}
-            className="water-input"
-          />
-        </div>
-
-        <div>
-          <label className="water-label">Expected Life (years)</label>
-          <input 
-            type="number" 
-            name="expected_life"
-            value={formData.expected_life}
-            onChange={handleChange}
-            placeholder="e.g. 25"
-            className="water-input"
-          />
-        </div>
-
-        <div>
-          <label className="water-label">Current Pressure Level (psi / bar)</label>
-          <input 
-            type="number" 
-            step="0.1"
-            name="pressure_level"
-            value={formData.pressure_level}
-            onChange={handleChange}
-            placeholder="e.g. 4.5"
-            className="water-input"
-          />
-        </div>
-      </div>
-
-      {/* Conditions & Remarks */}
-      <h4 style={{ fontSize: '0.9rem', fontWeight: '800', textTransform: 'uppercase', color: 'var(--water-text-muted)', margin: '0.5rem 0 0 0', letterSpacing: '0.5px' }}>
-        Current State & Condition
-      </h4>
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: '1fr 1fr',
-        gap: '1rem'
-      }}>
-        <div>
-          <label className="water-label">Condition Status</label>
-          <select 
-            name="condition" 
-            value={formData.condition} 
-            onChange={handleChange}
-            className="water-input"
-          >
-            {CONDITIONS.map(c => (
-              <option key={c} value={c}>{c}</option>
-            ))}
-          </select>
-        </div>
-
-        <div>
-          <label className="water-label">Operational Status</label>
-          <select 
-            name="current_status" 
-            value={formData.current_status} 
-            onChange={handleChange}
-            className="water-input"
-          >
-            {STATUSES.map(s => (
-              <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>
-            ))}
-          </select>
-        </div>
-      </div>
-
-      <div>
-        <label className="water-label">Remarks & Instructions</label>
-        <textarea 
-          name="remarks"
-          value={formData.remarks}
-          onChange={handleChange}
-          placeholder="Enter additional remarks..."
-          rows="3"
-          className="water-input"
-          style={{ resize: 'vertical' }}
-        />
-      </div>
-
-      {/* Action Buttons */}
-      <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', marginTop: '1rem' }}>
         <button 
           type="button" 
           onClick={onCancel}
-          className="water-btn"
-          style={{ borderColor: 'var(--water-border)', color: 'var(--water-text)' }}
+          style={{
+            padding: '0.55rem 1.25rem',
+            borderRadius: '8px',
+            border: '1px solid #cbd5e1',
+            backgroundColor: '#ffffff',
+            color: '#475569',
+            fontWeight: '600',
+            fontSize: '0.9rem',
+            cursor: 'pointer'
+          }}
         >
           Cancel
         </button>
+
         <button 
           type="submit" 
-          className="water-btn"
-          style={{ backgroundColor: 'var(--water-primary)', color: '#ffffff', border: 'none' }}
+          style={{
+            padding: '0.55rem 1.5rem',
+            borderRadius: '8px',
+            border: 'none',
+            backgroundColor: '#2563eb',
+            color: '#ffffff',
+            fontWeight: '600',
+            fontSize: '0.9rem',
+            cursor: 'pointer'
+          }}
         >
           {isEdit ? 'Save Changes' : 'Register Pipeline'}
         </button>

@@ -20,6 +20,7 @@ try:
     with engine.connect() as conn:
         conn.execute(text("ALTER TABLE complaints ADD COLUMN IF NOT EXISTS resolution_image VARCHAR(500);"))
         conn.execute(text("ALTER TABLE complaints ADD COLUMN IF NOT EXISTS resolved_at TIMESTAMP WITH TIME ZONE;"))
+        conn.execute(text("ALTER TABLE water_complaints ADD COLUMN IF NOT EXISTS central_complaint_id INTEGER;"))
         conn.commit()
 except Exception as _e:
     print(f"Migration check notice: {_e}")

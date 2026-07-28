@@ -27,14 +27,25 @@ export default function TankDetails() {
     try {
       const tankResponse = await getTankById(id);
       setTank(tankResponse.data);
-
-      const refillsResponse = await getRefillHistory(id);
-      setRefills(refillsResponse.data);
-
-      const maintResponse = await getTankMaintenances(id);
-      setMaintenances(maintResponse.data);
     } catch (err) {
       toast.error("Failed to load tank details.");
+      navigate('/water/tanks');
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      const refillsResponse = await getRefillHistory(id);
+      setRefills(Array.isArray(refillsResponse.data) ? refillsResponse.data : []);
+    } catch (_rErr) {
+      setRefills([]);
+    }
+
+    try {
+      const maintResponse = await getTankMaintenances(id);
+      setMaintenances(Array.isArray(maintResponse.data) ? maintResponse.data : []);
+    } catch (_mErr) {
+      setMaintenances([]);
     } finally {
       setIsLoading(false);
     }

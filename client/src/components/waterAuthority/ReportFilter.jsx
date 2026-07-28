@@ -1,92 +1,141 @@
 import React from "react";
 
+const WARDS = [
+  'Ward 1 - Central Market',
+  'Ward 2 - North Sector',
+  'Ward 3 - South Hill',
+  'Ward 4 - East Riverside',
+  'Ward 5 - Industrial Park',
+  'Ward 6 - West Suburb',
+  'Ward 12 - Green Hills'
+];
+
+const ZONES = [
+  'Central Zone',
+  'West Zone',
+  'East Zone',
+  'South Zone',
+  'North Zone'
+];
+
 export default function ReportFilter({ filters, onChange, onClear, onRefresh }) {
   const handleChange = (e) => {
     const { name, value } = e.target;
     onChange({ [name]: value });
   };
 
+  const hasActiveFilters = Object.values(filters).some(val => val !== null && val !== '');
+
   return (
-    <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-md mb-6 flex flex-wrap gap-4 items-end">
-      <div className="flex-1 min-w-[200px]">
-        <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
-          Ward Filter
-        </label>
+    <div style={{
+      backgroundColor: '#ffffff',
+      border: '1px solid #e2e8f0',
+      borderRadius: '10px',
+      padding: '1rem 1.25rem',
+      display: 'flex',
+      flexWrap: 'wrap',
+      gap: '1rem',
+      alignItems: 'flex-end',
+      boxShadow: '0 1px 2px rgba(0,0,0,0.04)'
+    }}>
+      <div style={{ flex: '1 1 150px' }}>
+        <label className="water-label" style={{ fontSize: '0.78rem', marginBottom: '0.3rem' }}>Municipal Ward</label>
         <select
           name="ward"
           value={filters.ward || ""}
           onChange={handleChange}
-          className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500"
+          className="water-select"
+          style={{ height: '38px', fontSize: '0.85rem' }}
         >
           <option value="">All Wards</option>
-          <option value="Ward 1">Ward 1</option>
-          <option value="Ward 2">Ward 2</option>
-          <option value="Ward 3">Ward 3</option>
-          <option value="Ward 4">Ward 4</option>
-          <option value="Ward 5">Ward 5</option>
-          <option value="Ward 12">Ward 12</option>
+          {WARDS.map(w => <option key={w} value={w}>{w}</option>)}
         </select>
       </div>
 
-      <div className="flex-1 min-w-[200px]">
-        <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
-          Zone Filter
-        </label>
+      <div style={{ flex: '1 1 140px' }}>
+        <label className="water-label" style={{ fontSize: '0.78rem', marginBottom: '0.3rem' }}>Zone Filter</label>
         <select
           name="zone"
           value={filters.zone || ""}
           onChange={handleChange}
-          className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500"
+          className="water-select"
+          style={{ height: '38px', fontSize: '0.85rem' }}
         >
           <option value="">All Zones</option>
-          <option value="Central Zone">Central Zone</option>
-          <option value="West Zone">West Zone</option>
-          <option value="East Zone">East Zone</option>
-          <option value="South Zone">South Zone</option>
-          <option value="North Zone">North Zone</option>
+          {ZONES.map(z => <option key={z} value={z}>{z}</option>)}
         </select>
       </div>
 
-      <div className="flex-1 min-w-[180px]">
-        <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
-          Start Date
-        </label>
+      <div style={{ flex: '1 1 140px' }}>
+        <label className="water-label" style={{ fontSize: '0.78rem', marginBottom: '0.3rem' }}>Start Date</label>
         <input
           type="date"
           name="start_date"
           value={filters.start_date || ""}
           onChange={handleChange}
-          className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500"
+          className="water-input"
+          style={{ height: '38px', fontSize: '0.85rem' }}
         />
       </div>
 
-      <div className="flex-1 min-w-[180px]">
-        <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
-          End Date
-        </label>
+      <div style={{ flex: '1 1 140px' }}>
+        <label className="water-label" style={{ fontSize: '0.78rem', marginBottom: '0.3rem' }}>End Date</label>
         <input
           type="date"
           name="end_date"
           value={filters.end_date || ""}
           onChange={handleChange}
-          className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500"
+          className="water-input"
+          style={{ height: '38px', fontSize: '0.85rem' }}
         />
       </div>
 
-      <div className="flex gap-2">
+      <div style={{ display: 'flex', gap: '0.5rem' }}>
         <button
+          type="button"
           onClick={onRefresh}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2"
+          style={{
+            height: '38px',
+            padding: '0 1rem',
+            backgroundColor: '#2563eb',
+            color: '#ffffff',
+            border: 'none',
+            borderRadius: '8px',
+            fontWeight: '600',
+            fontSize: '0.82rem',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.3rem'
+          }}
         >
-          <span className="material-icons text-sm">refresh</span>
-          Refresh
+          <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>refresh</span>
+          Refresh Analytics
         </button>
-        <button
-          onClick={onClear}
-          className="bg-slate-800 hover:bg-slate-700 text-slate-300 px-4 py-2 rounded-lg text-sm font-medium transition"
-        >
-          Clear
-        </button>
+
+        {hasActiveFilters && (
+          <button
+            type="button"
+            onClick={onClear}
+            style={{
+              height: '38px',
+              padding: '0 1rem',
+              border: '1px solid #fca5a5',
+              backgroundColor: '#fff5f5',
+              color: '#dc2626',
+              borderRadius: '8px',
+              fontWeight: '600',
+              fontSize: '0.82rem',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.3rem'
+            }}
+          >
+            <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>restart_alt</span>
+            Reset
+          </button>
+        )}
       </div>
     </div>
   );

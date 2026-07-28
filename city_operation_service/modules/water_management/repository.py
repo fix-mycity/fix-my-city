@@ -1,10 +1,10 @@
 import random
 from sqlalchemy.orm import Session
-from sqlalchemy import case, or_, func
-from datetime import datetime
+from sqlalchemy import case, or_, func, text
+from datetime import datetime, date
 from typing import Optional, List, Tuple
-from .model import WaterComplaint, WaterFieldWorker, WorkerAssignment, WorkerTaskUpdate, AuthorityVerification, WaterSupplySchedule, WaterPipeline, PipelineInspection, PipelineMaintenance, WaterTank, TankRefillHistory, TankMaintenanceHistory, WaterQuality, QualityInspectionSchedule, QualityAlert, MaintenanceRequest, MaintenanceTask, MaintenanceMaterial, MaintenancePhoto, MaintenanceHistory, EmergencyShutdown, EmergencyAffectedArea, EmergencyResponseTeam, EmergencyTimeline, EmergencyNotification, WaterNotification, NotificationRecipient, NotificationTemplate, NotificationHistory
-from .schema import ComplaintCreate, ComplaintUpdate, WorkerCreate, WorkerUpdate, AssignmentCreate, AssignmentUpdate, WorkerTaskUpdateCreate, VerificationSchema, WaterSupplyCreate, WaterSupplyUpdate, PipelineCreate, PipelineUpdate, InspectionCreate, InspectionUpdate, MaintenanceCreate as OldMaintCreate, MaintenanceUpdate as OldMaintUpdate, TankCreate, TankUpdate, TankRefillCreate, TankMaintenanceCreate, TankMaintenanceUpdate, WaterQualityCreate, WaterQualityUpdate, InspectionCreate as QualInspectionCreate, InspectionUpdate as QualInspectionUpdate, MaintenanceCreate, MaintenanceUpdate, TaskCreate, TaskUpdateSchema, MaterialCreate, PhotoUpload, EmergencyCreate, EmergencyUpdate, ResponseTeamCreate, AffectedAreaCreate, NotificationCreate, NotificationUpdate, TemplateCreate, TemplateUpdate
+from .model import WaterComplaint, WaterFieldWorker, WorkerAssignment, WorkerTaskUpdate, AuthorityVerification, WaterSupplySchedule, WaterPipeline, PipelineInspection, PipelineMaintenance, WaterTank, TankRefillHistory, TankMaintenanceHistory, WaterQuality, QualityInspectionSchedule, QualityAlert, MaintenanceRequest, MaintenanceTask, MaintenanceMaterial, MaintenancePhoto, MaintenanceHistory, EmergencyShutdown, EmergencyAffectedArea, EmergencyResponseTeam, EmergencyTimeline, EmergencyNotification, WaterNotification, NotificationRecipient, NotificationTemplate, NotificationHistory, WaterCitizenAccess, WaterDepartmentSettings, DepartmentProfile
+from .schema import ComplaintCreate, ComplaintUpdate, WorkerCreate, WorkerUpdate, AssignmentCreate, AssignmentUpdate, WorkerTaskUpdateCreate, VerificationSchema, WaterSupplyCreate, WaterSupplyUpdate, PipelineCreate, PipelineUpdate, InspectionCreate, InspectionUpdate, MaintenanceCreate as OldMaintCreate, MaintenanceUpdate as OldMaintUpdate, TankCreate, TankUpdate, TankRefillCreate, TankMaintenanceCreate, TankMaintenanceUpdate, WaterQualityCreate, WaterQualityUpdate, InspectionCreate as QualInspectionCreate, InspectionUpdate as QualInspectionUpdate, MaintenanceCreate, MaintenanceUpdate, TaskCreate, TaskUpdateSchema, MaterialCreate, PhotoUpload, EmergencyCreate, EmergencyUpdate, ResponseTeamCreate, AffectedAreaCreate, NotificationCreate, NotificationUpdate, TemplateCreate, TemplateUpdate, WaterCitizenAccessCreate, WaterCitizenAccessUpdate, DepartmentSettingsCreate, DepartmentSettingsUpdate, DepartmentProfileUpdate
 
 
 
@@ -48,7 +48,129 @@ class WaterComplaintRepository:
         return db_complaint
 
     @staticmethod
+    def sync_to_central_complaint(db: Session, wc: WaterComplaint):
+        try:
+            from modules.complaints.model import Complaint, ComplaintStatus
+            central_c = None
+            if hasattr(wc, 'central_complaint_id') and wc.central_complaint_id:
+                central_c = db.query(Complaint).filter(Complaint.id == wc.central_complaint_id).first()
+            
+            if not central_c and wc.complaint_number:
+                parts = wc.complaint_number.split('-')
+                if len(parts) >= 3 and parts[2].isdigit():
+                    cid = int(parts[2])
+                    central_c = db.query(Complaint).filter(Complaint.id == cid).first()
+
+            if not central_c:
+                central_c = db.query(Complaint).filter(
+                    (Complaint.title == wc.title) & (Complaint.reported_by == wc.citizen_id)
+                ).first()
+
+            if central_c:
+                status_map = {
+                    "NEW": ComplaintStatus.PENDING.value,
+                    "ACCEPTED": ComplaintStatus.PENDING.value,
+                    "WORKER_ASSIGNED": ComplaintStatus.ASSIGNED.value,
+                    "IN_PROGRESS": ComplaintStatus.IN_PROGRESS.value,
+                    "COMPLETED": ComplaintStatus.RESOLVED.value,
+                    "VERIFIED": ComplaintStatus.CLOSED.value,
+                    "CLOSED": ComplaintStatus.CLOSED.value,
+                    "REJECTED": ComplaintStatus.PENDING.value,
+                }
+                mapped_status = status_map.get(wc.status, ComplaintStatus.PENDING.value)
+                central_c.status = mapped_status
+                if wc.assigned_worker_id:
+                    central_c.assigned_worker_id = wc.assigned_worker_id
+                if wc.resolution_notes or wc.authority_notes:
+                    central_c.resolution_report = wc.resolution_notes or wc.authority_notes
+                if wc.after_image:
+                    central_c.resolution_image = wc.after_image
+                if wc.resolved_at:
+                    central_c.resolved_at = wc.resolved_at
+                db.commit()
+        except Exception as _e:
+            db.rollback()
+            print(f"Notice: sync_to_central_complaint warning: {_e}")
+
+    @staticmethod
+    def sync_real_complaints(db: Session):
+        try:
+            from modules.complaints.model import Complaint
+            from modules.users.service import get_or_create_profile
+            real_water_complaints = db.query(Complaint).filter(Complaint.department == "water").all()
+
+            # Sync real water complaints from main complaints table
+            for main_c in real_water_complaints:
+                profile = get_or_create_profile(db, main_c.reported_by)
+                citizen_name = profile.full_name if (profile and profile.full_name) else f"Citizen #{main_c.reported_by}"
+                phone = profile.phone_number if (profile and profile.phone_number) else None
+
+                exists = db.query(WaterComplaint).filter(
+                    (WaterComplaint.title == main_c.title) & (WaterComplaint.citizen_id == main_c.reported_by)
+                ).first()
+
+                if not exists:
+                    exists = db.query(WaterComplaint).filter(WaterComplaint.title == main_c.title).first()
+
+                if exists:
+                    if hasattr(exists, 'central_complaint_id') and not exists.central_complaint_id:
+                        exists.central_complaint_id = main_c.id
+                    if main_c.image_url and exists.before_image != main_c.image_url:
+                        exists.before_image = main_c.image_url
+                    if citizen_name and exists.citizen_name != citizen_name:
+                        exists.citizen_name = citizen_name
+                    if phone and exists.phone != phone:
+                        exists.phone = phone
+                    if main_c.location_lat:
+                        exists.latitude = main_c.location_lat
+                    if main_c.location_lng:
+                        exists.longitude = main_c.location_lng
+                    if main_c.description:
+                        exists.description = main_c.description
+                    db.commit()
+                    WaterComplaintRepository.sync_to_central_complaint(db, exists)
+                else:
+                    random_num = random.randint(1000, 9999)
+                    c_num = f"WC-2026-{main_c.id:04d}-{random_num}"
+                    wc = WaterComplaint(
+                        complaint_number=c_num,
+                        central_complaint_id=main_c.id,
+                        citizen_id=main_c.reported_by,
+                        citizen_name=citizen_name,
+                        phone=phone,
+                        latitude=main_c.location_lat,
+                        longitude=main_c.location_lng,
+                        category="Pipe Leakage",
+                        title=main_c.title,
+                        description=main_c.description,
+                        priority="HIGH",
+                        status="NEW" if main_c.status == "PENDING" else main_c.status,
+                        before_image=main_c.image_url,
+                        created_at=main_c.created_at
+                    )
+                    db.add(wc)
+                    db.commit()
+            # Purge unlinked mock complaints when real complaints exist
+            real_ids = [main_c.id for main_c in real_water_complaints]
+            if real_ids:
+                unlinked = db.query(WaterComplaint).filter(
+                    or_(
+                        WaterComplaint.central_complaint_id.is_(None),
+                        ~WaterComplaint.central_complaint_id.in_(real_ids)
+                    )
+                ).all()
+                for mock_c in unlinked:
+                    # Clean up dependent assignments to avoid foreign key NOT NULL violations
+                    db.query(WorkerAssignment).filter(WorkerAssignment.complaint_id == mock_c.id).delete(synchronize_session=False)
+                    db.delete(mock_c)
+                db.commit()
+        except Exception as _e:
+            db.rollback()
+            print(f"Sync/Purge warning: {_e}")
+
+    @staticmethod
     def get_by_id(db: Session, complaint_id: int) -> Optional[WaterComplaint]:
+        WaterComplaintRepository.sync_real_complaints(db)
         return db.query(WaterComplaint).filter(WaterComplaint.id == complaint_id).first()
 
     @staticmethod
@@ -66,6 +188,8 @@ class WaterComplaintRepository:
         end_date: Optional[datetime] = None,
         sort_by: Optional[str] = "newest"
     ) -> Tuple[List[WaterComplaint], int]:
+        WaterComplaintRepository.sync_real_complaints(db)
+
         query = db.query(WaterComplaint)
 
         # Filters
@@ -171,11 +295,14 @@ class WaterComplaintRepository:
             else:
                 db_complaint.authority_notes = notes
 
-        if status in ["COMPLETED", "CLOSED"]:
+        if status in ["COMPLETED", "CLOSED", "VERIFIED"]:
             db_complaint.resolved_at = datetime.utcnow()
 
         db.commit()
         db.refresh(db_complaint)
+
+        WaterComplaintRepository.sync_to_central_complaint(db, db_complaint)
+
         return db_complaint
 
     @staticmethod
@@ -191,10 +318,14 @@ class WaterComplaintRepository:
 
         db.commit()
         db.refresh(db_complaint)
+
+        WaterComplaintRepository.sync_to_central_complaint(db, db_complaint)
+
         return db_complaint
 
     @staticmethod
     def get_dashboard_summary(db: Session) -> dict:
+        WaterComplaintRepository.sync_real_complaints(db)
         # Group status counts
         status_counts = db.query(WaterComplaint.status, func.count(WaterComplaint.id)).group_by(WaterComplaint.status).all()
         # Group priority counts
@@ -239,7 +370,54 @@ class WaterFieldWorkerRepository:
 
     @staticmethod
     def get_by_id(db: Session, worker_id: int) -> Optional[WaterFieldWorker]:
-        return db.query(WaterFieldWorker).filter(WaterFieldWorker.id == worker_id).first()
+        # 1. Try matching directly by water_field_workers.id
+        worker = db.query(WaterFieldWorker).filter(WaterFieldWorker.id == worker_id).first()
+        if worker:
+            return worker
+
+        # 2. Try matching by central User.id
+        user_row = db.execute(
+            text("""
+                SELECT u.id, u.username, u.email, p.first_name, p.last_name, p.phone, p.designation, p.skill, p.experience
+                FROM users u
+                LEFT JOIN worker_profiles p ON u.id = p.user_id
+                WHERE u.id = :uid
+            """),
+            {"uid": worker_id}
+        ).fetchone()
+
+        if user_row:
+            u_email = user_row[2]
+            if u_email:
+                worker_by_email = db.query(WaterFieldWorker).filter(WaterFieldWorker.email == u_email).first()
+                if worker_by_email:
+                    return worker_by_email
+
+            # 3. Auto-sync worker profile into water_field_workers if not present
+            worker_phone = user_row[5] if user_row[5] and user_row[5] != "1234567890" and user_row[5] != "N/A" else f"98460{worker_id:05d}"
+            # Ensure unique phone
+            existing_phone = db.query(WaterFieldWorker).filter(WaterFieldWorker.phone == worker_phone).first()
+            if existing_phone:
+                worker_phone = f"98460{worker_id:05d}"
+
+            new_worker = WaterFieldWorker(
+                first_name=user_row[3] or user_row[1] or "Field",
+                last_name=user_row[4] or "Officer",
+                email=u_email or f"worker_{worker_id}@fixmycity.com",
+                phone=worker_phone,
+                password_hash="",
+                designation=user_row[6] or "Water Worker",
+                skill=user_row[7] or "Leak Repair",
+                experience=user_row[8] or 1,
+                availability="AVAILABLE",
+                employment_status="ACTIVE"
+            )
+            db.add(new_worker)
+            db.commit()
+            db.refresh(new_worker)
+            return new_worker
+
+        return None
 
     @staticmethod
     def get_by_email(db: Session, email: str) -> Optional[WaterFieldWorker]:
@@ -468,6 +646,19 @@ class WorkerAssignmentRepository:
         db.add(db_update)
         db.commit()
         db.refresh(db_update)
+
+        if schema.after_image or schema.completion_notes:
+            assignment = db.query(WorkerAssignment).filter(WorkerAssignment.id == assignment_id).first()
+            if assignment and assignment.complaint_id:
+                wc = db.query(WaterComplaint).filter(WaterComplaint.id == assignment.complaint_id).first()
+                if wc:
+                    if schema.after_image:
+                        wc.after_image = schema.after_image
+                    if schema.completion_notes:
+                        wc.resolution_notes = schema.completion_notes
+                    db.commit()
+                    WaterComplaintRepository.sync_to_central_complaint(db, wc)
+
         return db_update
 
     @staticmethod
@@ -1615,21 +1806,21 @@ class MaintenanceRepository:
     ) -> Tuple[List[MaintenanceRequest], int]:
         query = db.query(MaintenanceRequest)
 
-        if priority:
+        if priority and str(priority).strip():
             query = query.filter(MaintenanceRequest.priority == priority)
-        if status:
+        if status and str(status).strip():
             query = query.filter(MaintenanceRequest.status == status)
-        if maintenance_type:
+        if maintenance_type and str(maintenance_type).strip():
             query = query.filter(MaintenanceRequest.maintenance_type == maintenance_type)
-        if ward:
-            query = query.filter(MaintenanceRequest.ward == ward)
-        if zone:
-            query = query.filter(MaintenanceRequest.zone == zone)
-        if source_type:
+        if ward and str(ward).strip():
+            query = query.filter(MaintenanceRequest.ward.ilike(f"%{str(ward).strip()}%"))
+        if zone and str(zone).strip():
+            query = query.filter(MaintenanceRequest.zone.ilike(f"%{str(zone).strip()}%"))
+        if source_type and str(source_type).strip():
             query = query.filter(MaintenanceRequest.source_type == source_type)
 
-        if search:
-            search_pattern = f"%{search}%"
+        if search and str(search).strip():
+            search_pattern = f"%{str(search).strip()}%"
             query = query.filter(
                 or_(
                     MaintenanceRequest.maintenance_number.ilike(search_pattern),
@@ -1893,19 +2084,19 @@ class EmergencyRepository:
     ) -> Tuple[List[EmergencyShutdown], int]:
         query = db.query(EmergencyShutdown)
 
-        if priority:
+        if priority and str(priority).strip():
             query = query.filter(EmergencyShutdown.priority == priority)
-        if status:
+        if status and str(status).strip():
             query = query.filter(EmergencyShutdown.status == status)
-        if emergency_type:
+        if emergency_type and str(emergency_type).strip():
             query = query.filter(EmergencyShutdown.emergency_type == emergency_type)
-        if ward:
-            query = query.filter(EmergencyShutdown.ward == ward)
-        if zone:
-            query = query.filter(EmergencyShutdown.zone == zone)
+        if ward and str(ward).strip():
+            query = query.filter(EmergencyShutdown.ward.ilike(f"%{str(ward).strip()}%"))
+        if zone and str(zone).strip():
+            query = query.filter(EmergencyShutdown.zone.ilike(f"%{str(zone).strip()}%"))
 
-        if search:
-            search_pattern = f"%{search}%"
+        if search and str(search).strip():
+            search_pattern = f"%{str(search).strip()}%"
             query = query.filter(
                 or_(
                     EmergencyShutdown.shutdown_number.ilike(search_pattern),

@@ -2,11 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 
-import QualityCard from '../../components/waterAuthority/QualityCard';
 import QualityTable from '../../components/waterAuthority/QualityTable';
 import QualityFilter from '../../components/waterAuthority/QualityFilter';
 import QualitySearch from '../../components/waterAuthority/QualitySearch';
-import WaterQualityChart from '../../components/waterAuthority/WaterQualityChart';
 
 import { getQualityReports, deleteQualityReport, getQualityDashboard } from '../../services/waterQualityService';
 
@@ -15,7 +13,6 @@ export default function WaterQuality() {
 
   // Data states
   const [reports, setReports] = useState([]);
-  const [allReportsForCharts, setAllReportsForCharts] = useState([]);
   const [totalItems, setTotalItems] = useState(0);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -26,10 +23,7 @@ export default function WaterQuality() {
     total_reports: 0,
     safe_reports: 0,
     warning_reports: 0,
-    unsafe_reports: 0,
-    today_tests: 0,
-    pending_inspections: 0,
-    critical_alerts: 0
+    unsafe_reports: 0
   });
 
   // Search & Filters
@@ -56,11 +50,11 @@ export default function WaterQuality() {
         sample_date: filters.sample_date || undefined
       });
 
-      setReports(response.data.items);
-      setTotalItems(response.data.total_items);
-      setTotalPages(response.data.total_pages);
+      setReports(response.data?.items || []);
+      setTotalItems(response.data?.total_items || 0);
+      setTotalPages(response.data?.total_pages || 1);
     } catch (err) {
-      toast.error("Failed to load water quality reports.");
+      toast.error("Failed to load water quality lab reports.");
     } finally {
       setIsLoading(false);
     }
@@ -69,18 +63,30 @@ export default function WaterQuality() {
   const fetchDashboardStats = async () => {
     try {
       const response = await getQualityDashboard();
-      setDashboardStats(response.data);
+      if (response.data) {
+        setDashboardStats(response.data);
+      }
     } catch (err) {
       console.error("Could not fetch quality dashboard stats:", err);
     }
   };
 
-  const fetchAllReports = async () => {
+  const fetchAllReportsStats = async () => {
     try {
-      const response = await getQualityReports({ page: 1, page_size: 1000 });
-      setAllReportsForCharts(response.data.items);
+      const response = await getQualityReports({ page: 1, page_size: 100 });
+      const items = response.data?.items || [];
+      const totalCount = response.data?.total_items || items.length;
+
+      if (items.length > 0) {
+        setDashboardStats(prev => ({
+          total_reports: totalCount,
+          safe_reports: items.filter(r => r.overall_status === 'SAFE').length,
+          warning_reports: items.filter(r => r.overall_status === 'WARNING').length,
+          unsafe_reports: items.filter(r => r.overall_status === 'UNSAFE').length
+        }));
+      }
     } catch (err) {
-      console.error("Could not load reports for charts:", err);
+      console.error("Could not compute fallback quality stats:", err);
     }
   };
 
@@ -90,7 +96,7 @@ export default function WaterQuality() {
 
   useEffect(() => {
     fetchDashboardStats();
-    fetchAllReports();
+    fetchAllReportsStats();
   }, [reports]);
 
   const handleFilterChange = (name, value) => {
@@ -111,94 +117,109 @@ export default function WaterQuality() {
   };
 
   const handleDelete = async (id) => {
-    if (window.confirm("Are you sure you want to delete this water quality report? This will permanently remove its record and related alarm logs.")) {
+    if (window.confirm("Are you sure you want to delete this water quality test report?")) {
       try {
         await deleteQualityReport(id);
         toast.success("Quality report deleted successfully.");
         fetchReports();
       } catch (err) {
-        toast.error("Failed to delete report.");
+        toast.error("Failed to delete quality report.");
       }
     }
   };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-      
-      {/* Header */}
+      {/* Header Panel */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
-          <h2 style={{ fontSize: '1.6rem', fontWeight: '800', color: 'var(--water-text)' }}>
-            Water Quality Monitoring
+          <h2 style={{ fontSize: '1.5rem', fontWeight: '800', color: '#0f172a', margin: 0 }}>
+            Water Quality Laboratory Monitoring
           </h2>
-          <p style={{ fontSize: '0.88rem', color: 'var(--water-text-muted)', marginTop: '0.2rem' }}>
-            Register quality test logs, monitor pH/TDS levels across zones, schedule inspections, and resolve contaminant alarms.
+          <p style={{ fontSize: '0.85rem', color: '#64748b', margin: '0.2rem 0 0 0' }}>
+            Register lab test reports, monitor pH/TDS levels across municipal wards, and detect water contaminants.
           </p>
         </div>
 
-        <div style={{ display: 'flex', gap: '0.5rem' }}>
-          <button 
-            onClick={() => navigate('/water/quality/inspection')}
-            className="water-btn"
-            style={{ borderColor: 'var(--water-border)', color: 'var(--water-text)', display: 'flex', alignItems: 'center', gap: '0.25rem', fontWeight: '700' }}
-          >
-            <span className="material-symbols-outlined" style={{ fontSize: '1.1rem' }}>event_available</span>
-            Inspection Schedules
-          </button>
-          <button 
-            onClick={() => navigate('/water/quality/alerts')}
-            className="water-btn"
-            style={{ 
-              backgroundColor: dashboardStats.critical_alerts > 0 ? 'rgba(231, 76, 60, 0.15)' : '#ffffff', 
-              borderColor: dashboardStats.critical_alerts > 0 ? '#c0392b' : 'var(--water-border)',
-              color: dashboardStats.critical_alerts > 0 ? '#c0392b' : 'var(--water-text)', 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: '0.25rem',
-              fontWeight: '700'
-            }}
-          >
-            <span className="material-symbols-outlined" style={{ fontSize: '1.1rem', animation: dashboardStats.critical_alerts > 0 ? 'pulse 1.5s infinite' : 'none' }}>alarm</span>
-            Alarms ({dashboardStats.critical_alerts})
-          </button>
-          <button 
-            onClick={() => navigate('/water/quality/new')}
-            className="water-btn"
-            style={{ backgroundColor: 'var(--water-primary)', color: '#ffffff', border: 'none', display: 'flex', alignItems: 'center', gap: '0.4rem', fontWeight: '700' }}
-          >
-            <span className="material-symbols-outlined">add_circle</span>
-            Register Report
-          </button>
+        <button 
+          onClick={() => navigate('/water/quality/new')}
+          style={{
+            backgroundColor: '#2563eb',
+            color: '#ffffff',
+            border: 'none',
+            borderRadius: '8px',
+            padding: '0.6rem 1.25rem',
+            fontWeight: '700',
+            fontSize: '0.88rem',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.4rem',
+            boxShadow: '0 2px 4px rgba(37, 99, 235, 0.2)'
+          }}
+        >
+          <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>add_circle</span>
+          Register Lab Report
+        </button>
+      </div>
+
+      {/* Clean Metrics Summary Row */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+        gap: '1rem'
+      }}>
+        <div style={{ backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '1.25rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <div style={{ width: '44px', height: '44px', borderRadius: '10px', backgroundColor: '#eff6ff', color: '#2563eb', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <span className="material-symbols-outlined" style={{ fontSize: '24px' }}>science</span>
+          </div>
+          <div>
+            <div style={{ fontSize: '0.75rem', fontWeight: '700', color: '#64748b', textTransform: 'uppercase' }}>Total Test Reports</div>
+            <div style={{ fontSize: '1.5rem', fontWeight: '800', color: '#0f172a' }}>{dashboardStats.total_reports}</div>
+          </div>
+        </div>
+
+        <div style={{ backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '1.25rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <div style={{ width: '44px', height: '44px', borderRadius: '10px', backgroundColor: '#f0fdf4', color: '#16a34a', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <span className="material-symbols-outlined" style={{ fontSize: '24px' }}>check_circle</span>
+          </div>
+          <div>
+            <div style={{ fontSize: '0.75rem', fontWeight: '700', color: '#64748b', textTransform: 'uppercase' }}>Safe Drinking Water</div>
+            <div style={{ fontSize: '1.5rem', fontWeight: '800', color: '#16a34a' }}>{dashboardStats.safe_reports}</div>
+          </div>
+        </div>
+
+        <div style={{ backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '1.25rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <div style={{ width: '44px', height: '44px', borderRadius: '10px', backgroundColor: '#fff7ed', color: '#ea580c', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <span className="material-symbols-outlined" style={{ fontSize: '24px' }}>warning</span>
+          </div>
+          <div>
+            <div style={{ fontSize: '0.75rem', fontWeight: '700', color: '#64748b', textTransform: 'uppercase' }}>Warnings Flagged</div>
+            <div style={{ fontSize: '1.5rem', fontWeight: '800', color: '#ea580c' }}>{dashboardStats.warning_reports}</div>
+          </div>
+        </div>
+
+        <div style={{ backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '1.25rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <div style={{ width: '44px', height: '44px', borderRadius: '10px', backgroundColor: '#fef2f2', color: '#dc2626', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <span className="material-symbols-outlined" style={{ fontSize: '24px' }}>dangerous</span>
+          </div>
+          <div>
+            <div style={{ fontSize: '0.75rem', fontWeight: '700', color: '#64748b', textTransform: 'uppercase' }}>Unsafe Contaminated</div>
+            <div style={{ fontSize: '1.5rem', fontWeight: '800', color: '#dc2626' }}>{dashboardStats.unsafe_reports}</div>
+          </div>
         </div>
       </div>
 
-      {/* Stats row */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
-        gap: '1rem'
-      }}>
-        <QualityCard title="Total Reports" value={dashboardStats.total_reports} icon="assignment" color="var(--water-primary-light)" />
-        <QualityCard title="Safe Samples" value={dashboardStats.safe_reports} icon="check_circle" color="var(--water-success)" />
-        <QualityCard title="Warnings flagged" value={dashboardStats.warning_reports} icon="warning" color="var(--water-warning)" />
-        <QualityCard title="Unsafe Samples" value={dashboardStats.unsafe_reports} icon="dangerous" color="#e74c3c" />
-        <QualityCard title="Tests Completed Today" value={dashboardStats.today_tests} icon="science" color="#16a085" />
-        <QualityCard title="Pending Inspections" value={dashboardStats.pending_inspections} icon="calendar_today" color="#8e44ad" />
-      </div>
-
-      {/* Pure SVG comparisons */}
-      <WaterQualityChart reports={allReportsForCharts} />
-
-      {/* Filter and Search */}
+      {/* Search & Filter Controls */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
         <QualitySearch value={search} onSearch={(val) => { setSearch(val); setPage(1); }} />
         <QualityFilter filters={filters} onChange={handleFilterChange} onClear={handleClearFilters} />
       </div>
 
-      {/* Table grid */}
+      {/* Table Section */}
       {isLoading ? (
         <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '30vh' }}>
-          <span className="material-symbols-outlined" style={{ animation: 'spin 2s linear infinite', fontSize: '2.5rem', color: 'var(--water-primary-light)' }}>
+          <span className="material-symbols-outlined" style={{ animation: 'spin 2s linear infinite', fontSize: '2.5rem', color: '#2563eb' }}>
             autorenew
           </span>
         </div>
@@ -211,26 +232,44 @@ export default function WaterQuality() {
             onDelete={handleDelete}
           />
 
-          {/* Pagination */}
+          {/* Pagination Controls */}
           {totalPages > 1 && (
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1rem' }}>
-              <span style={{ fontSize: '0.85rem', color: 'var(--water-text-muted)' }}>
-                Showing page {page} of {totalPages} ({totalItems} items)
+              <span style={{ fontSize: '0.85rem', color: '#64748b' }}>
+                Page {page} of {totalPages} ({totalItems} quality test reports)
               </span>
               <div style={{ display: 'flex', gap: '0.5rem' }}>
                 <button 
                   disabled={page === 1}
                   onClick={() => setPage(p => Math.max(p - 1, 1))}
-                  className="water-btn"
-                  style={{ opacity: page === 1 ? 0.5 : 1, cursor: page === 1 ? 'not-allowed' : 'pointer' }}
+                  style={{
+                    padding: '0.4rem 0.9rem',
+                    borderRadius: '6px',
+                    border: '1px solid #cbd5e1',
+                    backgroundColor: '#ffffff',
+                    color: '#475569',
+                    fontSize: '0.85rem',
+                    fontWeight: '600',
+                    cursor: page === 1 ? 'not-allowed' : 'pointer',
+                    opacity: page === 1 ? 0.5 : 1
+                  }}
                 >
                   Previous
                 </button>
                 <button 
                   disabled={page === totalPages}
                   onClick={() => setPage(p => Math.min(p + 1, totalPages))}
-                  className="water-btn"
-                  style={{ opacity: page === totalPages ? 0.5 : 1, cursor: page === totalPages ? 'not-allowed' : 'pointer' }}
+                  style={{
+                    padding: '0.4rem 0.9rem',
+                    borderRadius: '6px',
+                    border: '1px solid #cbd5e1',
+                    backgroundColor: '#ffffff',
+                    color: '#475569',
+                    fontSize: '0.85rem',
+                    fontWeight: '600',
+                    cursor: page === totalPages ? 'not-allowed' : 'pointer',
+                    opacity: page === totalPages ? 0.5 : 1
+                  }}
                 >
                   Next
                 </button>
@@ -239,7 +278,6 @@ export default function WaterQuality() {
           )}
         </>
       )}
-
     </div>
   );
 }

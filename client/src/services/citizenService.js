@@ -8,6 +8,8 @@ export const getCitizenById = (id) => {
   return axiosInstance.get(`/city/water/citizens/${id}`);
 };
 
+export const getCitizenDetails = getCitizenById;
+
 export const getCitizenComplaints = (id) => {
   return axiosInstance.get(`/city/water/citizens/${id}/complaints`);
 };

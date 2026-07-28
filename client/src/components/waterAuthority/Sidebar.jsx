@@ -96,9 +96,9 @@ export default function Sidebar({
           <button className="water-sidebar-footer-btn" title="View Profile">
             <span className="material-symbols-outlined">account_circle</span>
           </button>
-          <button className="water-sidebar-footer-btn" title="Settings">
+          <Link to="/water/settings" onClick={() => handleItemClick('settings')} className="water-sidebar-footer-btn" title="Settings">
             <span className="material-symbols-outlined">settings</span>
-          </button>
+          </Link>
           <button
             className="water-sidebar-footer-btn logout-btn"
             onClick={onLogout}

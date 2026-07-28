@@ -6,42 +6,37 @@ export default function KpiCard({ title, value, icon, description, trend, trendT
       case "emerald":
       case "green":
         return {
-          bg: "from-emerald-500/10 to-teal-500/5",
-          border: "hover:border-emerald-500/30",
-          iconBg: "bg-emerald-500/20 text-emerald-400",
-          text: "text-emerald-400"
+          iconBg: "#f0fdf4",
+          iconColor: "#16a34a",
+          border: "#bbf7d0"
         };
       case "rose":
       case "red":
         return {
-          bg: "from-rose-500/10 to-pink-500/5",
-          border: "hover:border-rose-500/30",
-          iconBg: "bg-rose-500/20 text-rose-400",
-          text: "text-rose-400"
+          iconBg: "#fef2f2",
+          iconColor: "#dc2626",
+          border: "#fecaca"
         };
       case "amber":
       case "orange":
         return {
-          bg: "from-amber-500/10 to-yellow-500/5",
-          border: "hover:border-amber-500/30",
-          iconBg: "bg-amber-500/20 text-amber-400",
-          text: "text-amber-400"
+          iconBg: "#fff7ed",
+          iconColor: "#ea580c",
+          border: "#fed7aa"
         };
       case "violet":
       case "purple":
         return {
-          bg: "from-violet-500/10 to-indigo-500/5",
-          border: "hover:border-violet-500/30",
-          iconBg: "bg-violet-500/20 text-violet-400",
-          text: "text-violet-400"
+          iconBg: "#f3e8ff",
+          iconColor: "#7c3aed",
+          border: "#ddd6fe"
         };
       case "blue":
       default:
         return {
-          bg: "from-blue-500/10 to-indigo-500/5",
-          border: "hover:border-blue-500/30",
-          iconBg: "bg-blue-500/20 text-blue-400",
-          text: "text-blue-400"
+          iconBg: "#eff6ff",
+          iconColor: "#2563eb",
+          border: "#bfdbfe"
         };
     }
   };
@@ -49,30 +44,66 @@ export default function KpiCard({ title, value, icon, description, trend, trendT
   const colors = getColors();
 
   return (
-    <div className={`relative bg-gradient-to-br ${colors.bg} bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-md transition-all duration-300 hover:-translate-y-1 ${colors.border}`}>
-      <div className="flex justify-between items-start">
-        <div className="space-y-2">
-          <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">{title}</span>
-          <h2 className="text-2xl font-bold text-white tracking-tight">{value}</h2>
+    <div style={{
+      backgroundColor: '#ffffff',
+      border: '1px solid #e2e8f0',
+      borderRadius: '10px',
+      padding: '1.25rem',
+      display: 'flex',
+      flexDirection: 'column',
+      justify: 'space-between',
+      gap: '1rem',
+      boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+      transition: 'transform 0.2s ease, box-shadow 0.2s ease'
+    }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <div>
+          <div style={{ fontSize: '0.75rem', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', tracking: '0.5px' }}>
+            {title}
+          </div>
+          <div style={{ fontSize: '1.6rem', fontWeight: '800', color: '#0f172a', marginTop: '0.3rem' }}>
+            {value}
+          </div>
         </div>
-        <div className={`p-2.5 rounded-lg ${colors.iconBg}`}>
-          <span className="material-icons text-xl">{icon}</span>
+
+        <div style={{
+          width: '42px',
+          height: '42px',
+          borderRadius: '10px',
+          backgroundColor: colors.iconBg,
+          color: colors.iconColor,
+          display: 'flex',
+          alignItems: 'center',
+          justify: 'center'
+        }}>
+          <span className="material-symbols-outlined" style={{ fontSize: '22px' }}>
+            {icon}
+          </span>
         </div>
       </div>
       
-      <div className="mt-4 flex items-center justify-between">
-        <span className="text-xs text-slate-400 truncate max-w-[70%]">{description}</span>
-        {trend && (
-          <span className={`text-xs font-semibold flex items-center gap-1 ${
-            trendType === "up" ? "text-emerald-450" : trendType === "down" ? "text-rose-450" : "text-amber-450"
-          }`}>
-            <span className="material-icons text-[12px]">
-              {trendType === "up" ? "arrow_upward" : trendType === "down" ? "arrow_downward" : "swap_horiz"}
-            </span>
-            {trend}
+      {(description || trend) && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid #f1f5f9', paddingTop: '0.6rem', marginTop: '0.2rem' }}>
+          <span style={{ fontSize: '0.78rem', color: '#64748b', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', maxWidth: '70%' }}>
+            {description}
           </span>
-        )}
-      </div>
+          {trend && (
+            <span style={{
+              fontSize: '0.75rem',
+              fontWeight: '700',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.2rem',
+              color: trendType === "up" ? "#16a34a" : trendType === "down" ? "#dc2626" : "#ea580c"
+            }}>
+              <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>
+                {trendType === "up" ? "arrow_upward" : trendType === "down" ? "arrow_downward" : "swap_horiz"}
+              </span>
+              {trend}
+            </span>
+          )}
+        </div>
+      )}
     </div>
   );
 }

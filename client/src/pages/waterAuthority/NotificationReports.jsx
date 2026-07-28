@@ -1,11 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { getNotificationsReport } from "../../services/reportService";
+import { getNotificationReport } from "../../services/reportService";
 import KpiCard from "../../components/waterAuthority/KpiCard";
 import ReportFilter from "../../components/waterAuthority/ReportFilter";
-import NotificationStatisticsTable from "../../components/waterAuthority/NotificationStatisticsTable";
 import ExportButton from "../../components/waterAuthority/ExportButton";
-import ReportCard from "../../components/waterAuthority/ReportCard";
 
 export default function NotificationReports() {
   const navigate = useNavigate();
@@ -34,10 +32,10 @@ export default function NotificationReports() {
   const fetchReport = async () => {
     setLoading(true);
     try {
-      const res = await getNotificationsReport(filters);
+      const res = await getNotificationReport(filters);
       setReport(res.data);
     } catch (err) {
-      console.error("Failed to fetch notifications report:", err);
+      console.error("Failed to fetch notification report:", err);
     } finally {
       setLoading(false);
     }
@@ -48,28 +46,35 @@ export default function NotificationReports() {
   }, [filters]);
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-800 pb-4">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
-          <h1 className="text-2xl font-bold text-white tracking-wide">Notifications Broadcast</h1>
-          <p className="text-slate-400 text-sm mt-1">
-            Review delivery channels success metrics and manual/auto templates ratios.
+          <h2 style={{ fontSize: '1.5rem', fontWeight: '800', color: '#0f172a', margin: 0 }}>
+            Notification & Broadcast Analytics
+          </h2>
+          <p style={{ fontSize: '0.85rem', color: '#64748b', margin: '0.2rem 0 0 0' }}>
+            Monitor citizen broadcast delivery rates, channel reach, and emergency alert dispatches.
           </p>
         </div>
         <ExportButton reportType="notifications" filters={filters} />
       </div>
 
-      {/* Tabs */}
-      <div className="flex flex-wrap gap-1 border-b border-slate-800/60 pb-2">
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', borderBottom: '1px solid #e2e8f0', pb: '0.5rem' }}>
         {tabs.map((tab) => (
           <button
             key={tab.id}
             onClick={() => navigate(tab.path)}
-            className={`px-4 py-2 rounded-lg text-sm font-semibold transition ${
-              tab.id === "notifications"
-                ? "bg-blue-600 text-white shadow-md shadow-blue-500/20"
-                : "text-slate-400 hover:text-white hover:bg-slate-800/50"
-            }`}
+            style={{
+              padding: '0.5rem 1rem',
+              borderRadius: '8px',
+              fontSize: '0.85rem',
+              fontWeight: '700',
+              border: 'none',
+              borderBottom: tab.id === "notifications" ? '3px solid #2563eb' : '3px solid transparent',
+              backgroundColor: tab.id === "notifications" ? '#eff6ff' : 'transparent',
+              color: tab.id === "notifications" ? '#2563eb' : '#64748b',
+              cursor: 'pointer'
+            }}
           >
             {tab.label}
           </button>
@@ -84,47 +89,47 @@ export default function NotificationReports() {
       />
 
       {loading ? (
-        <div className="h-[300px] flex items-center justify-center">
-          <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-blue-500" />
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '30vh' }}>
+          <span className="material-symbols-outlined" style={{ animation: 'spin 2s linear infinite', fontSize: '2.5rem', color: '#2563eb' }}>
+            autorenew
+          </span>
         </div>
-      ) : report ? (
-        <>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+            gap: '1rem'
+          }}>
             <KpiCard
-              title="Dispatched Bulletins"
-              value={report.total_sent}
-              icon="notifications"
-              description="Total sent messages"
+              title="Total Dispatches"
+              value={report?.summary?.total_notifications || 0}
+              icon="send"
+              description="Broadcast dispatches"
               color="blue"
             />
             <KpiCard
-              title="Delivery Success"
-              value={`${report.delivery_success_rate}%`}
-              icon="mark_email_read"
-              description="SLA delivery accuracy rating"
+              title="Sent / Delivered"
+              value={report?.summary?.sent || 0}
+              icon="check_circle"
+              description="Delivered to citizens"
               color="emerald"
             />
             <KpiCard
-              title="Coverage Ward Reach"
-              value="100%"
-              icon="public"
-              description="Citywide broadcasting coverage"
-              color="violet"
+              title="Scheduled Slots"
+              value={report?.summary?.scheduled || 0}
+              icon="schedule"
+              description="Scheduled for future"
+              color="amber"
+            />
+            <KpiCard
+              title="Emergency Broadcasts"
+              value={report?.summary?.emergency_notifications || 0}
+              icon="warning"
+              description="Emergency alerts"
+              color="rose"
             />
           </div>
-
-          <ReportCard title="Broadcasting Channels Performance" subtitle="Alerts totals and delivery success rates">
-            <NotificationStatisticsTable
-              totalSent={report.total_sent}
-              successRate={report.delivery_success_rate}
-              byChannel={report.by_channel}
-              byType={report.by_type}
-            />
-          </ReportCard>
-        </>
-      ) : (
-        <div className="h-[200px] flex items-center justify-center text-slate-500">
-          No Reports Available
         </div>
       )}
     </div>

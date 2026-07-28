@@ -3,12 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { getComplaintsReport } from "../../services/reportService";
 import KpiCard from "../../components/waterAuthority/KpiCard";
 import ReportFilter from "../../components/waterAuthority/ReportFilter";
-import ChartContainer from "../../components/waterAuthority/ChartContainer";
-import BarChartCard from "../../components/waterAuthority/BarChartCard";
-import PieChartCard from "../../components/waterAuthority/PieChartCard";
 import ComplaintStatisticsTable from "../../components/waterAuthority/ComplaintStatisticsTable";
 import ExportButton from "../../components/waterAuthority/ExportButton";
-import ReportCard from "../../components/waterAuthority/ReportCard";
 
 export default function ComplaintReports() {
   const navigate = useNavigate();
@@ -51,28 +47,37 @@ export default function ComplaintReports() {
   }, [filters]);
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-800 pb-4">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
-          <h1 className="text-2xl font-bold text-white tracking-wide">Complaints Analytics</h1>
-          <p className="text-slate-400 text-sm mt-1">
-            Track SLA resolve durations, locations counts, and category statistics.
+          <h2 style={{ fontSize: '1.5rem', fontWeight: '800', color: '#0f172a', margin: 0 }}>
+            Complaints Analytics
+          </h2>
+          <p style={{ fontSize: '0.85rem', color: '#64748b', margin: '0.2rem 0 0 0' }}>
+            Track SLA resolution durations, ward ticket counts, and category statistics.
           </p>
         </div>
         <ExportButton reportType="complaints" filters={filters} />
       </div>
 
-      {/* Tabs */}
-      <div className="flex flex-wrap gap-1 border-b border-slate-800/60 pb-2">
+      {/* Navigation Tabs Bar */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', borderBottom: '1px solid #e2e8f0', pb: '0.5rem' }}>
         {tabs.map((tab) => (
           <button
             key={tab.id}
             onClick={() => navigate(tab.path)}
-            className={`px-4 py-2 rounded-lg text-sm font-semibold transition ${
-              tab.id === "complaints"
-                ? "bg-blue-600 text-white shadow-md shadow-blue-500/20"
-                : "text-slate-400 hover:text-white hover:bg-slate-800/50"
-            }`}
+            style={{
+              padding: '0.5rem 1rem',
+              borderRadius: '8px',
+              fontSize: '0.85rem',
+              fontWeight: '700',
+              border: 'none',
+              borderBottom: tab.id === "complaints" ? '3px solid #2563eb' : '3px solid transparent',
+              backgroundColor: tab.id === "complaints" ? '#eff6ff' : 'transparent',
+              color: tab.id === "complaints" ? '#2563eb' : '#64748b',
+              cursor: 'pointer'
+            }}
           >
             {tab.label}
           </button>
@@ -87,47 +92,51 @@ export default function ComplaintReports() {
       />
 
       {loading ? (
-        <div className="h-[300px] flex items-center justify-center">
-          <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-blue-500" />
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '30vh' }}>
+          <span className="material-symbols-outlined" style={{ animation: 'spin 2s linear infinite', fontSize: '2.5rem', color: '#2563eb' }}>
+            autorenew
+          </span>
         </div>
-      ) : report ? (
-        <>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+            gap: '1rem'
+          }}>
             <KpiCard
-              title="Complaints Registered"
-              value={report.total_complaints}
+              title="Total Complaints"
+              value={report?.summary?.total_complaints || 0}
               icon="assignment"
-              description="Total filtered reports"
+              description="Logged tickets"
               color="blue"
             />
             <KpiCard
-              title="Average Resolution Speed"
-              value={`${report.avg_resolution_time_hours} hrs`}
-              icon="shutter_speed"
-              description="Average SLA completion duration"
-              color="violet"
+              title="Resolved"
+              value={report?.summary?.resolved_complaints || 0}
+              icon="check_circle"
+              description="Resolved & closed tickets"
+              color="emerald"
             />
             <KpiCard
-              title="SLA Accuracy Rank"
-              value="94.2%"
-              icon="verified"
-              description="SLA compliance percentage index"
-              color="emerald"
+              title="Pending / In Progress"
+              value={(report?.summary?.total_complaints || 0) - (report?.summary?.resolved_complaints || 0)}
+              icon="pending_actions"
+              description="Active unresolved tickets"
+              color="amber"
+            />
+            <KpiCard
+              title="Avg Resolution Time"
+              value={report?.summary?.avg_resolution_hours ? `${report.summary.avg_resolution_hours} hrs` : "0 hrs"}
+              icon="timer"
+              description="Mean resolution duration"
+              color="purple"
             />
           </div>
 
-          <ChartContainer>
-            <PieChartCard title="Complaints by Category" data={report.by_category} />
-            <BarChartCard title="Distribution by Ward" data={report.by_ward} />
-          </ChartContainer>
-
-          <ReportCard title="Recent Complaints Log" subtitle="Showing latest registered citizen reports">
-            <ComplaintStatisticsTable complaints={report.recent_complaints} />
-          </ReportCard>
-        </>
-      ) : (
-        <div className="h-[200px] flex items-center justify-center text-slate-500">
-          No Reports Available
+          {report?.by_ward && (
+            <ComplaintStatisticsTable data={report.by_ward} />
+          )}
         </div>
       )}
     </div>

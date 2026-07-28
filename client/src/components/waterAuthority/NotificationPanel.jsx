@@ -1,7 +1,6 @@
 import React from 'react';
-import { notificationsData } from '../../utils/waterMockData';
 
-export default function NotificationPanel() {
+export default function NotificationPanel({ notifications = [] }) {
   return (
     <div className="water-panel">
       <div className="water-panel-header">
@@ -9,22 +8,27 @@ export default function NotificationPanel() {
           <span className="material-symbols-outlined">notifications_active</span>
           Department Bulletins
         </h3>
-        <button className="water-btn" style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem' }}>
-          Mark All Read
-        </button>
+        <span style={{ fontSize: '0.75rem', color: '#64748b' }}>System Bulletins</span>
       </div>
       <div className="water-panel-body">
-        {notificationsData.map((notif) => (
-          <div key={notif.id} className={`water-notif-item ${notif.type}`}>
-            <span className="water-notif-icon material-symbols-outlined">{notif.icon}</span>
-            <div className="water-notif-details">
-              <span className="water-notif-title">{notif.title}</span>
-              <span className="water-notif-msg">{notif.message}</span>
-              <span className="water-notif-time">{notif.time}</span>
+        {notifications.length > 0 ? (
+          notifications.map((notif) => (
+            <div key={notif.id || notif.title} className={`water-notif-item ${notif.type || 'info'}`}>
+              <span className="water-notif-icon material-symbols-outlined">{notif.icon || 'notifications'}</span>
+              <div className="water-notif-details">
+                <span className="water-notif-title">{notif.title}</span>
+                <span className="water-notif-msg">{notif.message}</span>
+                <span className="water-notif-time">{notif.time || 'Today'}</span>
+              </div>
             </div>
+          ))
+        ) : (
+          <div style={{ padding: '1rem', textAlign: 'center', color: '#64748b', fontSize: '0.85rem' }}>
+            No active department bulletins.
           </div>
-        ))}
+        )}
       </div>
     </div>
   );
 }
+

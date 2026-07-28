@@ -9,42 +9,41 @@ export default function TankFilter({ filters, onChange, onClear }) {
     onChange(name, value || null);
   };
 
-  return (
-    <div className="water-card" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'flex-end', padding: '1rem' }}>
-      <div style={{ flex: '1 1 120px' }}>
-        <label className="water-label" style={{ marginBottom: '0.25rem' }}>Zone</label>
-        <input 
-          type="text" 
-          name="zone"
-          value={filters.zone || ''}
-          onChange={(e) => onChange('zone', e.target.value || null)}
-          placeholder="Filter Zone"
-          className="water-input"
-          style={{ padding: '0.4rem 0.6rem', fontSize: '0.8rem' }}
-        />
-      </div>
+  const hasActiveFilters = Object.values(filters).some(val => val !== null && val !== '');
 
-      <div style={{ flex: '1 1 120px' }}>
-        <label className="water-label" style={{ marginBottom: '0.25rem' }}>Ward</label>
+  return (
+    <div style={{
+      backgroundColor: '#ffffff',
+      border: '1px solid #e2e8f0',
+      borderRadius: '10px',
+      padding: '1rem 1.25rem',
+      display: 'flex',
+      flexWrap: 'wrap',
+      gap: '1rem',
+      alignItems: 'flex-end',
+      boxShadow: '0 1px 2px rgba(0,0,0,0.04)'
+    }}>
+      <div style={{ flex: '1 1 140px' }}>
+        <label className="water-label" style={{ fontSize: '0.78rem', marginBottom: '0.3rem' }}>Ward</label>
         <input 
           type="text" 
           name="ward"
           value={filters.ward || ''}
           onChange={(e) => onChange('ward', e.target.value || null)}
-          placeholder="Filter Ward"
+          placeholder="Filter by Ward..."
           className="water-input"
-          style={{ padding: '0.4rem 0.6rem', fontSize: '0.8rem' }}
+          style={{ height: '38px', fontSize: '0.85rem' }}
         />
       </div>
 
-      <div style={{ flex: '1 1 140px' }}>
-        <label className="water-label" style={{ marginBottom: '0.25rem' }}>Tank Type</label>
+      <div style={{ flex: '1 1 150px' }}>
+        <label className="water-label" style={{ fontSize: '0.78rem', marginBottom: '0.3rem' }}>Tank Type</label>
         <select 
           name="tank_type"
           value={filters.tank_type || ''}
           onChange={handleSelectChange}
-          className="water-input"
-          style={{ padding: '0.4rem 0.6rem', fontSize: '0.8rem' }}
+          className="water-select"
+          style={{ height: '38px', fontSize: '0.85rem' }}
         >
           <option value="">All Types</option>
           {TANK_TYPES.map(t => (
@@ -54,13 +53,13 @@ export default function TankFilter({ filters, onChange, onClear }) {
       </div>
 
       <div style={{ flex: '1 1 140px' }}>
-        <label className="water-label" style={{ marginBottom: '0.25rem' }}>Status</label>
+        <label className="water-label" style={{ fontSize: '0.78rem', marginBottom: '0.3rem' }}>Status</label>
         <select 
           name="status"
           value={filters.status || ''}
           onChange={handleSelectChange}
-          className="water-input"
-          style={{ padding: '0.4rem 0.6rem', fontSize: '0.8rem' }}
+          className="water-select"
+          style={{ height: '38px', fontSize: '0.85rem' }}
         >
           <option value="">All Statuses</option>
           {STATUSES.map(s => (
@@ -70,36 +69,41 @@ export default function TankFilter({ filters, onChange, onClear }) {
       </div>
 
       <div style={{ flex: '1 1 140px' }}>
-        <label className="water-label" style={{ marginBottom: '0.25rem' }}>Water Source</label>
+        <label className="water-label" style={{ fontSize: '0.78rem', marginBottom: '0.3rem' }}>Water Source</label>
         <input 
           type="text" 
           name="water_source"
           value={filters.water_source || ''}
           onChange={(e) => onChange('water_source', e.target.value || null)}
-          placeholder="Filter Source"
+          placeholder="Filter Source..."
           className="water-input"
-          style={{ padding: '0.4rem 0.6rem', fontSize: '0.8rem' }}
+          style={{ height: '38px', fontSize: '0.85rem' }}
         />
       </div>
 
-      <button 
-        type="button" 
-        onClick={onClear}
-        className="water-btn"
-        style={{
-          padding: '0.4rem 0.8rem',
-          fontSize: '0.8rem',
-          borderColor: 'var(--water-border)',
-          color: 'var(--water-text-muted)',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '0.25rem',
-          height: '34px'
-        }}
-      >
-        <span className="material-symbols-outlined" style={{ fontSize: '1rem' }}>filter_alt_off</span>
-        Clear
-      </button>
+      {hasActiveFilters && (
+        <button 
+          type="button" 
+          onClick={onClear}
+          style={{
+            height: '38px',
+            padding: '0 1rem',
+            border: '1px solid #fca5a5',
+            backgroundColor: '#fff5f5',
+            color: '#dc2626',
+            borderRadius: '8px',
+            fontWeight: '600',
+            fontSize: '0.8rem',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.3rem'
+          }}
+        >
+          <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>restart_alt</span>
+          Reset Filters
+        </button>
+      )}
     </div>
   );
 }

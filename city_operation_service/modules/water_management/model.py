@@ -12,6 +12,7 @@ class WaterComplaint(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     complaint_number = Column(String(50), unique=True, index=True, nullable=False)
+    central_complaint_id = Column(Integer, nullable=True, index=True)
     
     # User reference without foreign key constraint (since tables are split across service DB boundaries)
     citizen_id = Column(Integer, nullable=True, index=True)

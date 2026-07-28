@@ -2,16 +2,29 @@ import React, { useState, useEffect } from 'react';
 import { getPipelines } from '../../services/pipelineService';
 import { getTanks } from '../../services/waterTankService';
 
-const SAMPLE_TYPES = ['PIPELINE', 'OVERHEAD_TANK', 'UNDERGROUND_TANK', 'PUBLIC_TAP', 'RESERVOIR'];
-const ODORS = ['NONE', 'MUSTY', 'CHLORINE', 'SULFUR', 'METALLIC', 'EARTHY'];
-const TASTES = ['NORMAL', 'METALLIC', 'SALTY', 'BITTER', 'CHLORINE', 'FLAT'];
-const COLORS = ['CLEAR', 'TURBID', 'YELLOWISH', 'BROWNISH', 'RUSTY'];
+const SAMPLE_TYPES = [
+  { value: 'PIPELINE', label: 'Main Pipeline Network' },
+  { value: 'OVERHEAD_TANK', label: 'Overhead Tank Reservoir' },
+  { value: 'UNDERGROUND_TANK', label: 'Underground Sump' },
+  { value: 'PUBLIC_TAP', label: 'Public Tap Standpost' },
+  { value: 'RESERVOIR', label: 'Central Reservoir Intake' }
+];
+
+const MUNICIPAL_WARDS = [
+  'Ward 1 - Central Market',
+  'Ward 2 - North Sector',
+  'Ward 3 - South Hill',
+  'Ward 4 - East Riverside',
+  'Ward 5 - Industrial Park',
+  'Ward 6 - West Suburb',
+  'Ward 12 - Green Hills'
+];
 
 export default function QualityForm({ initialData = {}, onSubmit, onCancel, isEdit = false }) {
   const [formData, setFormData] = useState({
     report_number: initialData.report_number || '',
-    zone: initialData.zone || '',
-    ward: initialData.ward || '',
+    zone: initialData.zone || 'Zone 1 - Central',
+    ward: initialData.ward || 'Ward 1 - Central Market',
     area: initialData.area || '',
     pipeline_id: initialData.pipeline_id || '',
     tank_id: initialData.tank_id || '',
@@ -19,11 +32,11 @@ export default function QualityForm({ initialData = {}, onSubmit, onCancel, isEd
     sample_type: initialData.sample_type || 'PIPELINE',
     sample_date: initialData.sample_date || new Date().toISOString().substring(0, 10),
     tested_by: initialData.tested_by || '',
-    laboratory_name: initialData.laboratory_name || '',
-    ph_level: initialData.ph_level || '',
-    tds: initialData.tds || '',
-    turbidity: initialData.turbidity || '',
-    chlorine_level: initialData.chlorine_level || '',
+    laboratory_name: initialData.laboratory_name || 'Central Municipal Testing Lab',
+    ph_level: initialData.ph_level || '7.2',
+    tds: initialData.tds || '250',
+    turbidity: initialData.turbidity || '0.5',
+    chlorine_level: initialData.chlorine_level || '0.5',
     hardness: initialData.hardness || '',
     iron: initialData.iron || '',
     fluoride: initialData.fluoride || '',
@@ -43,12 +56,12 @@ export default function QualityForm({ initialData = {}, onSubmit, onCancel, isEd
     const fetchSystemsData = async () => {
       try {
         const pipeRes = await getPipelines({ page: 1, page_size: 100 });
-        setPipelines(pipeRes.data.items);
+        setPipelines(pipeRes.data?.items || []);
 
         const tankRes = await getTanks({ page: 1, page_size: 100 });
-        setTanks(tankRes.data.items);
+        setTanks(tankRes.data?.items || []);
       } catch (err) {
-        console.error("Could not load systems:", err);
+        console.error("Could not load systems for quality form:", err);
       }
     };
     fetchSystemsData();
@@ -66,7 +79,7 @@ export default function QualityForm({ initialData = {}, onSubmit, onCancel, isEd
     e.preventDefault();
 
     if (!formData.ward.trim() || !formData.area.trim()) {
-      alert("Ward and Area are required.");
+      alert("Please specify the Ward and Area / Locality.");
       return;
     }
 
@@ -78,19 +91,19 @@ export default function QualityForm({ initialData = {}, onSubmit, onCancel, isEd
 
     const tdsVal = parseFloat(formData.tds);
     if (isNaN(tdsVal) || tdsVal < 0) {
-      alert("TDS level must be a non-negative number.");
+      alert("TDS level must be a positive number.");
       return;
     }
 
     const turbVal = parseFloat(formData.turbidity);
     if (isNaN(turbVal) || turbVal < 0) {
-      alert("Turbidity must be a non-negative number.");
+      alert("Turbidity must be a positive number.");
       return;
     }
 
     const chlorVal = parseFloat(formData.chlorine_level);
     if (isNaN(chlorVal) || chlorVal < 0) {
-      alert("Chlorine level must be a non-negative number.");
+      alert("Chlorine level must be a positive number.");
       return;
     }
 
@@ -106,434 +119,284 @@ export default function QualityForm({ initialData = {}, onSubmit, onCancel, isEd
       nitrate: formData.nitrate ? parseFloat(formData.nitrate) : null,
       temperature: formData.temperature ? parseFloat(formData.temperature) : null,
       pipeline_id: formData.pipeline_id ? parseInt(formData.pipeline_id) : null,
-      tank_id: formData.tank_id ? parseInt(formData.tank_id) : null,
-      sample_date: formData.sample_date || null
+      tank_id: formData.tank_id ? parseInt(formData.tank_id) : null
     };
 
     if (!payload.report_number.trim()) {
-      delete payload.report_number; // auto-generated if empty
+      delete payload.report_number;
     }
 
     onSubmit(payload);
   };
 
   return (
-    <form onSubmit={handleFormSubmit} className="water-card" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-      <h3 style={{ fontSize: '1.2rem', fontWeight: '800', color: 'var(--water-primary)', borderBottom: '1px solid var(--water-border)', paddingBottom: '0.75rem', margin: 0 }}>
-        {isEdit ? `Modify Report: ${initialData.report_number}` : 'Register Water Quality Lab Report'}
-      </h3>
-
-      {/* Metadata */}
+    <form onSubmit={handleFormSubmit} className="water-form-container" style={{ maxWidth: '850px', margin: '0 auto' }}>
+      {/* Header */}
       <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-        gap: '1rem'
+        borderBottom: '1px solid #e2e8f0',
+        paddingBottom: '1.25rem',
+        marginBottom: '1.5rem'
       }}>
-        <div>
-          <label className="water-label">Report Number (Leave blank to auto-generate)</label>
-          <input 
-            type="text" 
-            name="report_number"
-            value={formData.report_number}
-            onChange={handleChange}
-            placeholder="e.g. WQR-990234"
-            disabled={isEdit}
-            className="water-input"
-          />
-        </div>
-
-        <div>
-          <label className="water-label">Sample Date *</label>
-          <input 
-            type="date" 
-            name="sample_date"
-            value={formData.sample_date}
-            onChange={handleChange}
-            required
-            className="water-input"
-          />
-        </div>
-
-        <div>
-          <label className="water-label">Sample Type</label>
-          <select 
-            name="sample_type" 
-            value={formData.sample_type} 
-            onChange={handleChange}
-            className="water-input"
-          >
-            {SAMPLE_TYPES.map(t => (
-              <option key={t} value={t}>{t.replace(/_/g, ' ')}</option>
-            ))}
-          </select>
-        </div>
+        <h3 style={{ fontSize: '1.25rem', fontWeight: '700', color: '#0f172a', margin: 0 }}>
+          {isEdit ? `Edit Quality Report (${initialData.report_number})` : 'Register Water Quality Lab Report'}
+        </h3>
+        <p style={{ fontSize: '0.85rem', color: '#64748b', margin: '0.3rem 0 0 0' }}>
+          Record laboratory chemical analysis, physical parameters, and safety classifications for drinking water.
+        </p>
       </div>
 
-      {/* Location */}
-      <h4 style={{ fontSize: '0.9rem', fontWeight: '800', textTransform: 'uppercase', color: 'var(--water-text-muted)', margin: '0.5rem 0 0 0', letterSpacing: '0.5px' }}>
-        Sampling Location details
-      </h4>
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-        gap: '1rem'
-      }}>
-        <div>
-          <label className="water-label">Zone</label>
-          <input 
-            type="text" 
-            name="zone"
-            value={formData.zone}
-            onChange={handleChange}
-            placeholder="e.g. Zone A"
-            className="water-input"
-          />
-        </div>
+      {/* 1. Location & Sampling */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+        <h4 style={{ fontSize: '0.95rem', fontWeight: '700', color: '#2563eb', margin: 0 }}>
+          1. Location & Sample Metadata
+        </h4>
 
-        <div>
-          <label className="water-label">Ward *</label>
-          <input 
-            type="text" 
-            name="ward"
-            value={formData.ward}
-            onChange={handleChange}
-            placeholder="e.g. Ward 1"
-            required
-            className="water-input"
-          />
-        </div>
-
-        <div>
-          <label className="water-label">Area *</label>
-          <input 
-            type="text" 
-            name="area"
-            value={formData.area}
-            onChange={handleChange}
-            placeholder="e.g. Green Gardens"
-            required
-            className="water-input"
-          />
-        </div>
-      </div>
-
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-        gap: '1rem'
-      }}>
-        <div>
-          <label className="water-label">Sample Point Location description</label>
-          <input 
-            type="text" 
-            name="sample_location"
-            value={formData.sample_location}
-            onChange={handleChange}
-            placeholder="e.g. Tap outside Community Center"
-            className="water-input"
-          />
-        </div>
-
-        <div>
-          <label className="water-label">Connected Pipeline Feed</label>
-          <select 
-            name="pipeline_id" 
-            value={formData.pipeline_id} 
-            onChange={handleChange}
-            className="water-input"
-          >
-            <option value="">None / Not linked to Pipeline</option>
-            {pipelines.map(p => (
-              <option key={p.id} value={p.id}>{p.pipeline_number} ({p.pipeline_name || 'Unnamed'})</option>
-            ))}
-          </select>
-        </div>
-
-        <div>
-          <label className="water-label">Connected Storage Tank</label>
-          <select 
-            name="tank_id" 
-            value={formData.tank_id} 
-            onChange={handleChange}
-            className="water-input"
-          >
-            <option value="">None / Not linked to Storage Tank</option>
-            {tanks.map(t => (
-              <option key={t.id} value={t.id}>{t.tank_number} ({t.tank_name || 'Unnamed'})</option>
-            ))}
-          </select>
-        </div>
-      </div>
-
-      {/* Lab details */}
-      <h4 style={{ fontSize: '0.9rem', fontWeight: '800', textTransform: 'uppercase', color: 'var(--water-text-muted)', margin: '0.5rem 0 0 0', letterSpacing: '0.5px' }}>
-        Lab Analysis Details
-      </h4>
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-        gap: '1rem'
-      }}>
-        <div>
-          <label className="water-label">Tested By / Inspector Name</label>
-          <input 
-            type="text" 
-            name="tested_by"
-            value={formData.tested_by}
-            onChange={handleChange}
-            placeholder="e.g. Dr. Sarah Jenkins"
-            className="water-input"
-          />
-        </div>
-
-        <div>
-          <label className="water-label">Laboratory Name</label>
-          <input 
-            type="text" 
-            name="laboratory_name"
-            value={formData.laboratory_name}
-            onChange={handleChange}
-            placeholder="e.g. City Quality Testing Lab"
-            className="water-input"
-          />
-        </div>
-      </div>
-
-      {/* Chemical parameters */}
-      <h4 style={{ fontSize: '0.9rem', fontWeight: '800', textTransform: 'uppercase', color: 'var(--water-text-muted)', margin: '0.5rem 0 0 0', letterSpacing: '0.5px' }}>
-        Chemical Parameters (Standard Thresholds checked)
-      </h4>
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
-        gap: '1rem'
-      }}>
-        <div>
-          <label className="water-label">pH Level * (6.5 - 8.5)</label>
-          <input 
-            type="number" 
-            step="0.01"
-            name="ph_level"
-            value={formData.ph_level}
-            onChange={handleChange}
-            placeholder="e.g. 7.2"
-            required
-            className="water-input"
-          />
-        </div>
-
-        <div>
-          <label className="water-label">TDS * (&lt; 500 mg/L)</label>
-          <input 
-            type="number" 
-            step="0.1"
-            name="tds"
-            value={formData.tds}
-            onChange={handleChange}
-            placeholder="e.g. 180"
-            required
-            className="water-input"
-          />
-        </div>
-
-        <div>
-          <label className="water-label">Turbidity * (&lt; 1.0 NTU)</label>
-          <input 
-            type="number" 
-            step="0.01"
-            name="turbidity"
-            value={formData.turbidity}
-            onChange={handleChange}
-            placeholder="e.g. 0.3"
-            required
-            className="water-input"
-          />
-        </div>
-
-        <div>
-          <label className="water-label">Chlorine Level * (0.2 - 2.0 mg/L)</label>
-          <input 
-            type="number" 
-            step="0.01"
-            name="chlorine_level"
-            value={formData.chlorine_level}
-            onChange={handleChange}
-            placeholder="e.g. 1.2"
-            required
-            className="water-input"
-          />
-        </div>
-      </div>
-
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
-        gap: '1rem'
-      }}>
-        <div>
-          <label className="water-label">Fluoride (mg/L)</label>
-          <input 
-            type="number" 
-            step="0.01"
-            name="fluoride"
-            value={formData.fluoride}
-            onChange={handleChange}
-            placeholder="e.g. 0.7"
-            className="water-input"
-          />
-        </div>
-
-        <div>
-          <label className="water-label">Nitrate (mg/L)</label>
-          <input 
-            type="number" 
-            step="0.1"
-            name="nitrate"
-            value={formData.nitrate}
-            onChange={handleChange}
-            placeholder="e.g. 12"
-            className="water-input"
-          />
-        </div>
-
-        <div>
-          <label className="water-label">Hardness (mg/L)</label>
-          <input 
-            type="number" 
-            step="0.1"
-            name="hardness"
-            value={formData.hardness}
-            onChange={handleChange}
-            placeholder="e.g. 150"
-            className="water-input"
-          />
-        </div>
-
-        <div>
-          <label className="water-label">Iron (mg/L)</label>
-          <input 
-            type="number" 
-            step="0.001"
-            name="iron"
-            value={formData.iron}
-            onChange={handleChange}
-            placeholder="e.g. 0.05"
-            className="water-input"
-          />
-        </div>
-      </div>
-
-      {/* Biological & Physical details */}
-      <h4 style={{ fontSize: '0.9rem', fontWeight: '800', textTransform: 'uppercase', color: 'var(--water-text-muted)', margin: '0.5rem 0 0 0', letterSpacing: '0.5px' }}>
-        Biological & Physical parameters
-      </h4>
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
-        gap: '1rem'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', height: '100%', padding: '1rem 0' }}>
-          <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.85rem', fontWeight: '700', color: 'var(--water-text)' }}>
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+          gap: '1rem'
+        }}>
+          <div>
+            <label className="water-label">Report Number (Auto-generated if blank)</label>
             <input 
-              type="checkbox" 
-              name="bacteria_present"
-              checked={formData.bacteria_present}
+              type="text" 
+              name="report_number"
+              value={formData.report_number}
               onChange={handleChange}
-              style={{ width: '16px', height: '16px' }}
+              placeholder="e.g. WQR-100429"
+              disabled={isEdit}
+              className="water-input"
             />
-            Bacteria Present (Coliform, etc.)
+          </div>
+
+          <div>
+            <label className="water-label">Sample Date *</label>
+            <input 
+              type="date" 
+              name="sample_date"
+              value={formData.sample_date}
+              onChange={handleChange}
+              required
+              className="water-input"
+            />
+          </div>
+
+          <div>
+            <label className="water-label">Sample Type</label>
+            <select 
+              name="sample_type" 
+              value={formData.sample_type} 
+              onChange={handleChange}
+              className="water-select"
+            >
+              {SAMPLE_TYPES.map(t => (
+                <option key={t.value} value={t.value}>{t.label}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="water-label">Municipal Ward *</label>
+            <input 
+              type="text" 
+              name="ward"
+              list="quality-ward-list"
+              value={formData.ward}
+              onChange={handleChange}
+              placeholder="e.g. Ward 12 - Green Hills"
+              required
+              className="water-input"
+            />
+            <datalist id="quality-ward-list">
+              {MUNICIPAL_WARDS.map(w => <option key={w} value={w} />)}
+            </datalist>
+          </div>
+
+          <div>
+            <label className="water-label">Area / Locality *</label>
+            <input 
+              type="text" 
+              name="area"
+              value={formData.area}
+              onChange={handleChange}
+              placeholder="e.g. Green Hills Sector 4"
+              required
+              className="water-input"
+            />
+          </div>
+
+          <div>
+            <label className="water-label">Testing Laboratory Name</label>
+            <input 
+              type="text" 
+              name="laboratory_name"
+              value={formData.laboratory_name}
+              onChange={handleChange}
+              placeholder="e.g. Municipal Public Health Water Lab"
+              className="water-input"
+            />
+          </div>
+
+          <div>
+            <label className="water-label">Tested By (Chemist / Inspector)</label>
+            <input 
+              type="text" 
+              name="tested_by"
+              value={formData.tested_by}
+              onChange={handleChange}
+              placeholder="e.g. Dr. A. Sharma (Chief Chemist)"
+              className="water-input"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* 2. Chemical & Physical Test Parameters */}
+      <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '1.25rem', marginTop: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+        <h4 style={{ fontSize: '0.95rem', fontWeight: '700', color: '#2563eb', margin: 0 }}>
+          2. Physical & Chemical Test Parameters
+        </h4>
+
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+          gap: '1rem'
+        }}>
+          <div>
+            <label className="water-label">pH Level (Ideal: 6.5 – 8.5) *</label>
+            <input 
+              type="number" 
+              step="0.1"
+              name="ph_level"
+              value={formData.ph_level}
+              onChange={handleChange}
+              placeholder="e.g. 7.2"
+              required
+              className="water-input"
+            />
+          </div>
+
+          <div>
+            <label className="water-label">Turbidity (NTU, Ideal: &lt; 1.0) *</label>
+            <input 
+              type="number" 
+              step="0.1"
+              name="turbidity"
+              value={formData.turbidity}
+              onChange={handleChange}
+              placeholder="e.g. 0.4"
+              required
+              className="water-input"
+            />
+          </div>
+
+          <div>
+            <label className="water-label">TDS (mg/L, Ideal: 50 – 500) *</label>
+            <input 
+              type="number" 
+              step="1"
+              name="tds"
+              value={formData.tds}
+              onChange={handleChange}
+              placeholder="e.g. 250"
+              required
+              className="water-input"
+            />
+          </div>
+
+          <div>
+            <label className="water-label">Residual Chlorine (mg/L) *</label>
+            <input 
+              type="number" 
+              step="0.1"
+              name="chlorine_level"
+              value={formData.chlorine_level}
+              onChange={handleChange}
+              placeholder="e.g. 0.5"
+              required
+              className="water-input"
+            />
+          </div>
+        </div>
+
+        {/* Biological Checkbox */}
+        <div style={{
+          backgroundColor: '#f8fafc',
+          border: '1px solid #e2e8f0',
+          borderRadius: '8px',
+          padding: '1rem',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.75rem'
+        }}>
+          <input 
+            type="checkbox" 
+            id="bacteria_check"
+            name="bacteria_present"
+            checked={formData.bacteria_present}
+            onChange={handleChange}
+            style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+          />
+          <label htmlFor="bacteria_check" style={{ fontSize: '0.9rem', fontWeight: '600', color: '#0f172a', cursor: 'pointer' }}>
+            Flag Harmful Bacteria / Coliform Detected (Triggers UNSAFE status alert)
           </label>
         </div>
-
-        <div>
-          <label className="water-label">Temperature (°C)</label>
-          <input 
-            type="number" 
-            step="0.1"
-            name="temperature"
-            value={formData.temperature}
-            onChange={handleChange}
-            placeholder="e.g. 18.5"
-            className="water-input"
-          />
-        </div>
-
-        <div>
-          <label className="water-label">Odor description</label>
-          <select 
-            name="odor" 
-            value={formData.odor} 
-            onChange={handleChange}
-            className="water-input"
-          >
-            {ODORS.map(o => (
-              <option key={o} value={o}>{o}</option>
-            ))}
-          </select>
-        </div>
-
-        <div>
-          <label className="water-label">Taste description</label>
-          <select 
-            name="taste" 
-            value={formData.taste} 
-            onChange={handleChange}
-            className="water-input"
-          >
-            {TASTES.map(t => (
-              <option key={t} value={t}>{t}</option>
-            ))}
-          </select>
-        </div>
       </div>
 
+      {/* 3. Remarks */}
+      <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '1.25rem', marginTop: '1.25rem' }}>
+        <label className="water-label">Chemist Remarks & Chlorination Directives</label>
+        <textarea 
+          name="remarks"
+          value={formData.remarks}
+          onChange={handleChange}
+          placeholder="Enter water safety conclusions or treatment instructions..."
+          rows="3"
+          className="water-input"
+          style={{ resize: 'vertical' }}
+        />
+      </div>
+
+      {/* Buttons */}
       <div style={{
-        display: 'grid',
-        gridTemplateColumns: '1fr 1fr',
-        gap: '1rem'
+        display: 'flex',
+        gap: '0.75rem',
+        justifyContent: 'flex-end',
+        marginTop: '1.5rem',
+        borderTop: '1px solid #e2e8f0',
+        paddingTop: '1.25rem'
       }}>
-        <div>
-          <label className="water-label">Color description</label>
-          <select 
-            name="color" 
-            value={formData.color} 
-            onChange={handleChange}
-            className="water-input"
-          >
-            {COLORS.map(c => (
-              <option key={c} value={c}>{c}</option>
-            ))}
-          </select>
-        </div>
-
-        <div>
-          <label className="water-label">Remarks & Comments</label>
-          <input 
-            type="text" 
-            name="remarks"
-            value={formData.remarks}
-            onChange={handleChange}
-            placeholder="Comments, notes..."
-            className="water-input"
-          />
-        </div>
-      </div>
-
-      <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
         <button 
           type="button" 
           onClick={onCancel}
-          className="water-btn"
-          style={{ borderColor: 'var(--water-border)', color: 'var(--water-text)' }}
+          style={{
+            padding: '0.55rem 1.25rem',
+            borderRadius: '8px',
+            border: '1px solid #cbd5e1',
+            backgroundColor: '#ffffff',
+            color: '#475569',
+            fontWeight: '600',
+            fontSize: '0.9rem',
+            cursor: 'pointer'
+          }}
         >
           Cancel
         </button>
+
         <button 
           type="submit" 
-          className="water-btn"
-          style={{ backgroundColor: 'var(--water-primary)', color: '#ffffff', border: 'none' }}
+          style={{
+            padding: '0.55rem 1.5rem',
+            borderRadius: '8px',
+            border: 'none',
+            backgroundColor: '#2563eb',
+            color: '#ffffff',
+            fontWeight: '600',
+            fontSize: '0.9rem',
+            cursor: 'pointer'
+          }}
         >
-          {isEdit ? 'Save Changes' : 'Register Report'}
+          {isEdit ? 'Save Changes' : 'Register Lab Report'}
         </button>
       </div>
     </form>

@@ -1,11 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { getSupplyReport } from "../../services/reportService";
+import { getWaterSupplyReport } from "../../services/reportService";
 import KpiCard from "../../components/waterAuthority/KpiCard";
 import ReportFilter from "../../components/waterAuthority/ReportFilter";
-import ChartContainer from "../../components/waterAuthority/ChartContainer";
-import LineChartCard from "../../components/waterAuthority/LineChartCard";
-import PieChartCard from "../../components/waterAuthority/PieChartCard";
 import ExportButton from "../../components/waterAuthority/ExportButton";
 
 export default function SupplyReports() {
@@ -35,7 +32,7 @@ export default function SupplyReports() {
   const fetchReport = async () => {
     setLoading(true);
     try {
-      const res = await getSupplyReport(filters);
+      const res = await getWaterSupplyReport(filters);
       setReport(res.data);
     } catch (err) {
       console.error("Failed to fetch supply report:", err);
@@ -49,28 +46,35 @@ export default function SupplyReports() {
   }, [filters]);
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-800 pb-4">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
-          <h1 className="text-2xl font-bold text-white tracking-wide">Water Supply Analytics</h1>
-          <p className="text-slate-400 text-sm mt-1">
-            Analyze scheduled supply quantities, types proportions, and daily trends.
+          <h2 style={{ fontSize: '1.5rem', fontWeight: '800', color: '#0f172a', margin: 0 }}>
+            Water Supply Analytics
+          </h2>
+          <p style={{ fontSize: '0.85rem', color: '#64748b', margin: '0.2rem 0 0 0' }}>
+            Monitor daily water supply schedules, active flow duration, and ward delivery compliance.
           </p>
         </div>
         <ExportButton reportType="supply" filters={filters} />
       </div>
 
-      {/* Tabs */}
-      <div className="flex flex-wrap gap-1 border-b border-slate-800/60 pb-2">
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', borderBottom: '1px solid #e2e8f0', pb: '0.5rem' }}>
         {tabs.map((tab) => (
           <button
             key={tab.id}
             onClick={() => navigate(tab.path)}
-            className={`px-4 py-2 rounded-lg text-sm font-semibold transition ${
-              tab.id === "supply"
-                ? "bg-blue-600 text-white shadow-md shadow-blue-500/20"
-                : "text-slate-400 hover:text-white hover:bg-slate-800/50"
-            }`}
+            style={{
+              padding: '0.5rem 1rem',
+              borderRadius: '8px',
+              fontSize: '0.85rem',
+              fontWeight: '700',
+              border: 'none',
+              borderBottom: tab.id === "supply" ? '3px solid #2563eb' : '3px solid transparent',
+              backgroundColor: tab.id === "supply" ? '#eff6ff' : 'transparent',
+              color: tab.id === "supply" ? '#2563eb' : '#64748b',
+              cursor: 'pointer'
+            }}
           >
             {tab.label}
           </button>
@@ -85,43 +89,47 @@ export default function SupplyReports() {
       />
 
       {loading ? (
-        <div className="h-[300px] flex items-center justify-center">
-          <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-blue-500" />
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '30vh' }}>
+          <span className="material-symbols-outlined" style={{ animation: 'spin 2s linear infinite', fontSize: '2.5rem', color: '#2563eb' }}>
+            autorenew
+          </span>
         </div>
-      ) : report ? (
-        <>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+            gap: '1rem'
+          }}>
             <KpiCard
-              title="Supply Schedules count"
-              value={report.total_schedules}
+              title="Total Schedules"
+              value={report?.summary?.total_schedules || 0}
               icon="water_drop"
-              description="Total filtered schedules"
+              description="Configured supply schedules"
               color="blue"
             />
             <KpiCard
-              title="Est. Discharge Volume"
-              value={`${report.total_volume_mgd.toFixed(1)} MGD`}
-              icon="opacity"
-              description="Million Gallons per Day"
+              title="Active Flow"
+              value={report?.summary?.active_schedules || 0}
+              icon="waves"
+              description="Water currently flowing"
               color="emerald"
             />
             <KpiCard
-              title="Resource Efficiency"
-              value="96.8%"
-              icon="speed"
-              description="Pressure delivery rating"
-              color="violet"
+              title="Scheduled Slots"
+              value={report?.summary?.scheduled_slots || 0}
+              icon="schedule"
+              description="Scheduled morning/evening slots"
+              color="amber"
+            />
+            <KpiCard
+              title="Paused / Interrupted"
+              value={report?.summary?.paused_schedules || 0}
+              icon="pause_circle"
+              description="Supply interruptions"
+              color="rose"
             />
           </div>
-
-          <ChartContainer>
-            <PieChartCard title="Supply by Classification" data={report.by_type} />
-            <LineChartCard title="Daily Supply Schedules Count" data={report.supply_trends} />
-          </ChartContainer>
-        </>
-      ) : (
-        <div className="h-[200px] flex items-center justify-center text-slate-500">
-          No Reports Available
         </div>
       )}
     </div>

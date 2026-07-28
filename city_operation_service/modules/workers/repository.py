@@ -16,28 +16,33 @@ class WorkerRepository:
     ) -> Tuple[List[dict], int]:
         
         # Base query for counting
-        count_query = "SELECT COUNT(*) FROM users WHERE manager_id = :manager_id"
+        count_query = """
+            SELECT COUNT(DISTINCT u.id)
+            FROM users u
+            LEFT JOIN worker_profiles p ON u.id = p.user_id
+            WHERE (u.role_id = 5 OR p.department = :department OR u.manager_id = :manager_id)
+        """
         params = {"manager_id": manager_id, "department": department}
         
         if search:
-            count_query += " AND (username ILIKE :search OR email ILIKE :search)"
+            count_query += " AND (u.username ILIKE :search OR u.email ILIKE :search OR p.first_name ILIKE :search OR p.last_name ILIKE :search)"
             params["search"] = f"%{search}%"
             
         total_items = db.execute(text(count_query), params).scalar()
         
-        # Query for items using LEFT JOIN with worker_profiles, filtering by department
+        # Query for items using LEFT JOIN with worker_profiles
         data_query = """
             SELECT u.id, u.username, u.email, u.is_active, u.created_at,
                    p.first_name, p.last_name, p.phone, p.photo, p.gender, 
                    p.date_of_birth, p.address, p.place, p.designation, 
                    p.skill, p.experience, p.joining_date, p.emergency_contact_phone,
-                   p.availability, p.employment_status, p.department
+                   p.availability, p.employment_status, COALESCE(p.department, :department) as department
             FROM users u
             LEFT JOIN worker_profiles p ON u.id = p.user_id
-            WHERE u.manager_id = :manager_id AND p.department = :department
+            WHERE (u.role_id = 5 OR p.department = :department OR u.manager_id = :manager_id)
         """
         if search:
-            data_query += " AND (u.username ILIKE :search OR u.email ILIKE :search)"
+            data_query += " AND (u.username ILIKE :search OR u.email ILIKE :search OR p.first_name ILIKE :search OR p.last_name ILIKE :search)"
             
         data_query += " ORDER BY u.created_at DESC LIMIT :limit OFFSET :offset"
         
@@ -281,9 +286,17 @@ class LeaveRequestRepository:
 class WorkerTaskRepository:
     @staticmethod
     def list_assigned_tasks(db: Session, worker_id: int, department: str):
+        target_ids = {worker_id}
         if department == "water":
-            from modules.water_management.model import WaterComplaint
-            query = db.query(WaterComplaint).filter(WaterComplaint.assigned_worker_id == worker_id).order_by(WaterComplaint.created_at.desc())
+            from modules.water_management.model import WaterComplaint, WaterFieldWorker
+            from sqlalchemy import func
+            email = db.execute(text("SELECT email FROM users WHERE id = :id"), {"id": worker_id}).scalar()
+            if email:
+                wfw = db.query(WaterFieldWorker).filter(func.lower(WaterFieldWorker.email) == func.lower(email)).first()
+                if wfw:
+                    target_ids.add(wfw.id)
+
+            query = db.query(WaterComplaint).filter(WaterComplaint.assigned_worker_id.in_(list(target_ids))).order_by(WaterComplaint.created_at.desc())
             items = query.all()
             total = query.count()
             
@@ -301,7 +314,10 @@ class WorkerTaskRepository:
                     "location_lng": item.longitude,
                     "area": item.area,
                     "address": item.address,
+                    "before_image": item.before_image,
+                    "after_image": getattr(item, "after_image", None),
                     "image_url": item.before_image,
+                    "resolution_report": getattr(item, "resolution_notes", None),
                     "created_at": item.created_at,
                     "resolved_at": item.resolved_at
                 })
@@ -341,9 +357,17 @@ class WorkerTaskRepository:
         from core.s3 import clean_s3_url
         clean_after = clean_s3_url(after_image) if after_image else None
 
+        target_ids = {worker_id}
         if department == "water":
-            from modules.water_management.model import WaterComplaint
-            item = db.query(WaterComplaint).filter(WaterComplaint.id == task_id, WaterComplaint.assigned_worker_id == worker_id).first()
+            from modules.water_management.model import WaterComplaint, WaterFieldWorker
+            from sqlalchemy import func
+            email = db.execute(text("SELECT email FROM users WHERE id = :id"), {"id": worker_id}).scalar()
+            if email:
+                wfw = db.query(WaterFieldWorker).filter(func.lower(WaterFieldWorker.email) == func.lower(email)).first()
+                if wfw:
+                    target_ids.add(wfw.id)
+
+            item = db.query(WaterComplaint).filter(WaterComplaint.id == task_id, WaterComplaint.assigned_worker_id.in_(list(target_ids))).first()
             if not item: return None
             
             item.status = "RESOLVED"
@@ -352,6 +376,13 @@ class WorkerTaskRepository:
                 item.after_image = clean_after
             item.resolved_at = datetime.datetime.utcnow()
             db.commit()
+
+            try:
+                from modules.water_management.repository import WaterComplaintRepository
+                WaterComplaintRepository.sync_to_central_complaint(db, item)
+            except Exception as _e:
+                print(f"Notice: sync_to_central_complaint warning on resolve: {_e}")
+
             return True
         else:
             from modules.complaints.model import Complaint, ComplaintStatus

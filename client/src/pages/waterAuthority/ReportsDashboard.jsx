@@ -3,10 +3,6 @@ import { useNavigate } from "react-router-dom";
 import { getDashboardAnalytics } from "../../services/analyticsService";
 import KpiCard from "../../components/waterAuthority/KpiCard";
 import ReportFilter from "../../components/waterAuthority/ReportFilter";
-import ChartContainer from "../../components/waterAuthority/ChartContainer";
-import LineChartCard from "../../components/waterAuthority/LineChartCard";
-import BarChartCard from "../../components/waterAuthority/BarChartCard";
-import PieChartCard from "../../components/waterAuthority/PieChartCard";
 import ExportButton from "../../components/waterAuthority/ExportButton";
 
 export default function ReportsDashboard() {
@@ -58,29 +54,38 @@ export default function ReportsDashboard() {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Upper Navigation Row */}
-      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-800 pb-4">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+      {/* Header Panel */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
-          <h1 className="text-2xl font-bold text-white tracking-wide">Reports & Analytics Console</h1>
-          <p className="text-slate-400 text-sm mt-1">
-            General metrics aggregator across all municipal water operations.
+          <h2 style={{ fontSize: '1.5rem', fontWeight: '800', color: '#0f172a', margin: 0 }}>
+            Reports & Analytics Console
+          </h2>
+          <p style={{ fontSize: '0.85rem', color: '#64748b', margin: '0.2rem 0 0 0' }}>
+            Aggregated operational analytics, complaints breakdown, water supply performance, and infrastructure health metrics.
           </p>
         </div>
+
         <ExportButton reportType="dashboard" filters={filters} />
       </div>
 
       {/* Navigation Tabs Bar */}
-      <div className="flex flex-wrap gap-1 border-b border-slate-800/60 pb-2">
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', borderBottom: '1px solid #e2e8f0', pb: '0.5rem' }}>
         {tabs.map((tab) => (
           <button
             key={tab.id}
             onClick={() => navigate(tab.path)}
-            className={`px-4 py-2 rounded-lg text-sm font-semibold transition ${
-              tab.id === "dashboard"
-                ? "bg-blue-600 text-white shadow-md shadow-blue-500/20"
-                : "text-slate-400 hover:text-white hover:bg-slate-800/50"
-            }`}
+            style={{
+              padding: '0.5rem 1rem',
+              borderRadius: '8px',
+              fontSize: '0.85rem',
+              fontWeight: '700',
+              border: 'none',
+              borderBottom: tab.id === "dashboard" ? '3px solid #2563eb' : '3px solid transparent',
+              backgroundColor: tab.id === "dashboard" ? '#eff6ff' : 'transparent',
+              color: tab.id === "dashboard" ? '#2563eb' : '#64748b',
+              cursor: 'pointer'
+            }}
           >
             {tab.label}
           </button>
@@ -96,95 +101,80 @@ export default function ReportsDashboard() {
       />
 
       {loading ? (
-        <div className="h-[300px] flex items-center justify-center">
-          <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-blue-500" />
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '30vh' }}>
+          <span className="material-symbols-outlined" style={{ animation: 'spin 2s linear infinite', fontSize: '2.5rem', color: '#2563eb' }}>
+            autorenew
+          </span>
         </div>
-      ) : analytics ? (
-        <>
-          {/* Main KPIs Matrix */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+          {/* Top KPI Cards Grid */}
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+            gap: '1rem'
+          }}>
             <KpiCard
               title="Total Complaints"
-              value={analytics.total_complaints}
+              value={analytics?.kpis?.total_complaints || 0}
               icon="assignment"
-              description="Total logged cases"
-              trend={`${analytics.resolved_complaints} resolved`}
+              description="Logged municipal complaints"
+              trend={analytics?.kpis?.resolved_complaints ? `${analytics.kpis.resolved_complaints} resolved` : undefined}
               trendType="up"
               color="blue"
             />
             <KpiCard
               title="Avg Resolution Time"
-              value={`${analytics.avg_resolution_time_hours} hrs`}
+              value={analytics?.kpis?.avg_resolution_hours ? `${analytics.kpis.avg_resolution_hours} hrs` : "0 hrs"}
               icon="timer"
-              description="Mean hours to close"
-              color="violet"
+              description="Mean time to close ticket"
+              color="purple"
             />
             <KpiCard
               title="Capacity Usage"
-              value={`${analytics.tank_capacity_usage_pct}%`}
+              value={analytics?.kpis?.tank_capacity_pct ? `${analytics.kpis.tank_capacity_pct}%` : "0%"}
               icon="propane_tank"
-              description="Total water levels reserves"
-              trend={`${analytics.low_water_tanks} low tanks`}
-              trendType="warning"
+              description="Total reservoir fill percentage"
+              trend={analytics?.kpis?.low_level_tanks ? `${analytics.kpis.low_level_tanks} low tanks` : undefined}
+              trendType="down"
               color="emerald"
             />
             <KpiCard
               title="Unsafe Water Alerts"
-              value={analytics.unsafe_water_reports}
+              value={analytics?.kpis?.unsafe_water_alerts || 0}
               icon="biotech"
-              description="Contamination warning reports"
-              trendType="down"
+              description="Contamination warnings logged"
               color="rose"
             />
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             <KpiCard
               title="Pipelines Damaged"
-              value={analytics.damaged_pipelines}
+              value={analytics?.kpis?.damaged_pipelines || 0}
               icon="schema"
               description="Repair actions required"
-              trend={`${analytics.inspections_due} due`}
-              trendType="neutral"
               color="rose"
             />
             <KpiCard
               title="Emergency Shutdowns"
-              value={analytics.emergency_shutdowns}
+              value={analytics?.kpis?.active_emergencies || 0}
               icon="dangerous"
               description="Active ward isolation outages"
-              color="orange"
+              color="amber"
             />
             <KpiCard
               title="Field Worker Crew"
-              value={`${analytics.workers_available} / ${analytics.workers_busy}`}
+              value={analytics?.kpis?.available_workers !== undefined ? `${analytics.kpis.available_workers}/${analytics.kpis.busy_workers || 0}` : "0/0"}
               icon="engineering"
               description="Available vs Busy crews"
               color="blue"
             />
             <KpiCard
               title="Notifications Sent"
-              value={analytics.notifications_sent}
+              value={analytics?.kpis?.total_notifications || 0}
               icon="notifications"
               description="Dispatched announcements"
               color="emerald"
             />
           </div>
-
-          {/* Visual Trend Charts Grid */}
-          <ChartContainer>
-            <LineChartCard title="Monthly Complaints Trend" data={analytics.monthly_complaints_trend} />
-            <PieChartCard title="Complaints by Category" data={analytics.complaints_by_category} />
-          </ChartContainer>
-
-          <ChartContainer>
-            <BarChartCard title="Complaints by Ward Distribution" data={analytics.complaints_by_ward} />
-            <BarChartCard title="Complaints Status Breakdown" data={analytics.complaints_by_status} />
-          </ChartContainer>
-        </>
-      ) : (
-        <div className="h-[200px] flex items-center justify-center text-slate-500">
-          No Analytics Data Available
         </div>
       )}
     </div>

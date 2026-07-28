@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { getCitizens, updateCitizenServiceStatus } from "../../services/citizenService";
+import { getCitizens, updateCitizenServiceStatus, getCitizenDetails } from "../../services/citizenService";
 import CitizenTable from "../../components/waterAuthority/CitizenTable";
 import CitizenSearch from "../../components/waterAuthority/CitizenSearch";
 import CitizenFilter from "../../components/waterAuthority/CitizenFilter";
@@ -20,17 +20,23 @@ export default function CitizenManagement() {
     status: ""
   });
 
+  // Modal detail states
+  const [selectedCitizen, setSelectedCitizen] = useState(null);
+  const [showDetailModal, setShowDetailModal] = useState(false);
+
   const fetchCitizens = async () => {
     setLoading(true);
     try {
       const res = await getCitizens({
         page,
         page_size: 10,
-        search,
-        ...filters
+        search: search || undefined,
+        ward: filters.ward || undefined,
+        area: filters.area || undefined,
+        status: filters.status || undefined
       });
-      setCitizens(res.data.items);
-      setTotal(res.data.total);
+      setCitizens(res.data.items || []);
+      setTotal(res.data.total || 0);
     } catch (err) {
       console.error("Failed to fetch citizens list:", err);
     } finally {
@@ -49,6 +55,7 @@ export default function CitizenManagement() {
 
   const handleClearFilters = () => {
     setFilters({ ward: "", area: "", status: "" });
+    setSearch("");
     setPage(1);
   };
 
@@ -66,77 +73,140 @@ export default function CitizenManagement() {
     }
   };
 
-  // Compute overall totals for cards
-  const totalEnabled = citizens.filter(c => c.service_status === "ENABLED").length;
+  const handleViewCitizenDetails = async (userId) => {
+    try {
+      const res = await getCitizenDetails(userId);
+      setSelectedCitizen(res.data);
+      setShowDetailModal(true);
+    } catch (err) {
+      console.error("Failed to fetch citizen details:", err);
+    }
+  };
+
   const totalDisabled = citizens.filter(c => c.service_status === "DISABLED").length;
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-800 pb-4">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+      {/* Header Panel */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
-          <h1 className="text-2xl font-bold text-white tracking-wide">Citizen Management</h1>
-          <p className="text-slate-400 text-sm mt-1">
-            Monitor registered water users, service flags, and citizen complaint records.
+          <h2 style={{ fontSize: '1.5rem', fontWeight: '800', color: '#0f172a', margin: 0 }}>
+            Citizen Management & Service Registry
+          </h2>
+          <p style={{ fontSize: '0.85rem', color: '#64748b', margin: '0.2rem 0 0 0' }}>
+            Monitor registered water consumers, service flags, ward locations, and citizen complaint records.
           </p>
         </div>
         <ExportCitizenButton />
       </div>
 
-      {/* Cards Matrix */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+      {/* Cards Summary Grid */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+        gap: '1rem'
+      }}>
         <CitizenCard
           title="Total Citizens Loaded"
           value={total}
-          icon="people"
+          icon="group"
           color="blue"
-          description="Total synced profile records"
+          description="Synced municipal consumer profiles"
         />
         <CitizenCard
-          title="Active Access Enabled"
-          value={total - totalDisabled}
+          title="Active Service Enabled"
+          value={Math.max(total - totalDisabled, 0)}
           icon="check_circle"
           color="emerald"
           description="Authorized for water service requests"
         />
         <CitizenCard
-          title="Access Flag Disabled"
+          title="Access Service Suspended"
           value={totalDisabled}
           icon="block"
           color="rose"
-          description="Soft flagged service suspensions"
+          description="Soft-flagged service suspensions"
         />
       </div>
 
-      {/* Search & Filter Row */}
-      <div className="flex flex-col sm:flex-row gap-4 items-center">
-        <CitizenSearch value={search} onChange={(val) => { setSearch(val); setPage(1); }} />
-        <button
-          onClick={fetchCitizens}
-          className="bg-slate-900 border border-slate-800 text-slate-350 p-2.5 rounded-lg hover:bg-slate-800 transition"
-        >
-          <span className="material-icons block text-sm">refresh</span>
-        </button>
+      {/* Search & Filter Controls */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+        <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+          <CitizenSearch value={search} onChange={(val) => { setSearch(val); setPage(1); }} />
+        </div>
+        <CitizenFilter filters={filters} onChange={handleFilterChange} onClear={handleClearFilters} />
       </div>
 
-      <CitizenFilter
-        filters={filters}
-        onChange={handleFilterChange}
-        onClear={handleClearFilters}
-      />
-
+      {/* Table Section */}
       {loading ? (
-        <div className="h-[200px] flex items-center justify-center">
-          <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-blue-500" />
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '30vh' }}>
+          <span className="material-symbols-outlined" style={{ animation: 'spin 2s linear infinite', fontSize: '2.5rem', color: '#2563eb' }}>
+            autorenew
+          </span>
         </div>
       ) : (
-        <CitizenTable
+        <CitizenTable 
           citizens={citizens}
           total={total}
           page={page}
+          pageSize={10}
           onPageChange={setPage}
-          onView={(id) => navigate(`/water/citizens/${id}`)}
+          onView={handleViewCitizenDetails}
           onToggleStatus={handleToggleStatus}
         />
+      )}
+
+      {/* Citizen Details Modal */}
+      {showDetailModal && selectedCitizen && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: 'rgba(15, 23, 42, 0.5)',
+          display: 'flex', justifyContent: 'center', alignItems: 'center',
+          zIndex: 1000, padding: '1rem'
+        }}>
+          <div style={{
+            backgroundColor: '#ffffff',
+            borderRadius: '12px',
+            width: '100%',
+            maxWidth: '550px',
+            maxHeight: '90vh',
+            overflowY: 'auto',
+            padding: '1.5rem',
+            boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '1rem'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #e2e8f0', paddingBottom: '0.75rem' }}>
+              <div>
+                <span style={{ fontSize: '0.75rem', fontWeight: '700', color: '#2563eb' }}>
+                  Citizen ID #{selectedCitizen.profile?.user_id || selectedCitizen.id}
+                </span>
+                <h3 style={{ fontSize: '1.2rem', fontWeight: '700', color: '#0f172a', margin: '0.2rem 0 0 0' }}>
+                  {selectedCitizen.profile?.full_name || selectedCitizen.full_name || "Anonymous Citizen"}
+                </h3>
+              </div>
+              <button type="button" onClick={() => setShowDetailModal(false)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#64748b' }}>
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', fontSize: '0.85rem' }}>
+              <div><strong style={{ color: '#64748b' }}>Email:</strong> {selectedCitizen.profile?.email || selectedCitizen.email || "N/A"}</div>
+              <div><strong style={{ color: '#64748b' }}>Phone:</strong> {selectedCitizen.profile?.phone_number || selectedCitizen.phone_number || "N/A"}</div>
+              <div><strong style={{ color: '#64748b' }}>Ward:</strong> {selectedCitizen.profile?.ward || selectedCitizen.ward || "Not Configured"}</div>
+              <div><strong style={{ color: '#64748b' }}>Area:</strong> {selectedCitizen.profile?.area || selectedCitizen.area || "Not Configured"}</div>
+              <div><strong style={{ color: '#64748b' }}>Service Status:</strong> {selectedCitizen.profile?.service_status || selectedCitizen.service_status || "ENABLED"}</div>
+              <div><strong style={{ color: '#64748b' }}>Complaints Logged:</strong> {selectedCitizen.complaint_count || selectedCitizen.complaints?.length || 0}</div>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', borderTop: '1px solid #e2e8f0', paddingTop: '1rem' }}>
+              <button type="button" onClick={() => setShowDetailModal(false)} style={{ padding: '0.5rem 1.25rem', borderRadius: '8px', border: '1px solid #cbd5e1', backgroundColor: '#fff', color: '#475569', fontWeight: '600', cursor: 'pointer' }}>
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
