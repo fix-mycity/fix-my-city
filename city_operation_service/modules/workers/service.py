@@ -80,6 +80,40 @@ def create_worker(db: Session, manager_id: int, department: str, schema: WorkerC
             )
         except Exception as e:
             print(f"Error syncing worker to traffic module: {e}")
+    elif department == "waste":
+        try:
+            from modules.waste_management.model import WasteWorker
+            from sqlalchemy import func
+            
+            role_val = getattr(schema, 'role', None) or getattr(schema, 'designation', None) or 'Collector'
+            shift_val = getattr(schema, 'shift', None) or 'Morning Shift'
+            ward_val = getattr(schema, 'ward', None) or getattr(schema, 'place', None) or 'Ward 4'
+            area_val = getattr(schema, 'area', None) or getattr(schema, 'place', None) or 'Connaught Place'
+            
+            full_name = f"{schema.first_name or ''} {schema.last_name or ''}".strip() or schema.username
+            
+            max_id = db.query(func.max(WasteWorker.id)).scalar() or 0
+            candidate_id = max_id + 101
+            while db.query(WasteWorker).filter(WasteWorker.worker_id_number == f"WMW-{candidate_id}").first():
+                candidate_id += 1
+            worker_code = f"WMW-{candidate_id}"
+            
+            waste_worker = WasteWorker(
+                worker_id_number=worker_code,
+                name=full_name,
+                email=schema.email,
+                phone=schema.phone or "",
+                role=role_val,
+                ward=ward_val,
+                area=area_val,
+                status="Active",
+                shift=shift_val,
+                performance_rating=4.8
+            )
+            db.add(waste_worker)
+            db.commit()
+        except Exception as e:
+            print(f"Error syncing worker to waste module: {e}")
             
     return {"success": True, "worker_id": worker_user_id, "message": "Worker registered successfully"}
 

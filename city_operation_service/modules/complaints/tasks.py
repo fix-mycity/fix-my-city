@@ -52,6 +52,29 @@ def upload_complaint_media_task(self, complaint_id: int, temp_file_path: str, or
         complaint.media_status = ComplaintMediaStatus.READY.value
         db.commit()
 
+        try:
+            from modules.water_management.model import WaterComplaint
+            water_comp = db.query(WaterComplaint).filter(WaterComplaint.title == complaint.title, WaterComplaint.citizen_id == complaint.reported_by).first()
+            if water_comp:
+                water_comp.before_image = file_url
+                db.commit()
+        except Exception as _e:
+            logger.warning(f"Could not sync media to WaterComplaint: {_e}")
+
+        try:
+            from modules.waste_management.model import WasteComplaint
+            from sqlalchemy import or_
+            waste_comp = db.query(WasteComplaint).filter(
+                or_(
+                    WasteComplaint.id == complaint.id,
+                    (WasteComplaint.title == complaint.title) & (WasteComplaint.citizen_id == complaint.reported_by)
+                )
+            ).first()
+            if waste_comp:
+                waste_comp.before_image = file_url
+                db.commit()
+        except Exception as _e:
+            logger.warning(f"Could not sync media to WasteComplaint: {_e}")
     except Exception as exc:
         logger.error(f"Exception occurred while uploading media for complaint {complaint_id}: {exc}", exc_info=True)
         try:

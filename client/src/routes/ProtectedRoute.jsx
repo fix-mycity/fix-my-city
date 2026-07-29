@@ -10,16 +10,22 @@ export default function ProtectedRoute({ children, allowedRoles, requiredPermiss
   }
 
   // Structured role-based authorization check
-  if (allowedRoles && (!user || !allowedRoles.includes(user.role))) {
-    return <Navigate to="/dashboard" replace />;
+  if (allowedRoles && user) {
+    const isRoleAllowed = allowedRoles.includes(user.role) || user.role === 'Super_Admin' || user.role === 'Admin';
+    if (!isRoleAllowed) {
+      return <Navigate to="/dashboard" replace />;
+    }
   }
 
   // Permission-based authorization check
   if (requiredPermissions && user) {
-    const userPermissions = user.permissions || [];
-    const hasRequired = requiredPermissions.every((p) => userPermissions.includes(p));
-    if (!hasRequired) {
-      return <Navigate to="/dashboard" replace />;
+    // Super_Admin and Admin have universal access across department modules
+    if (user.role !== 'Super_Admin' && user.role !== 'Admin') {
+      const userPermissions = user.permissions || [];
+      const hasRequired = requiredPermissions.every((p) => userPermissions.includes(p));
+      if (!hasRequired && userPermissions.length > 0) {
+        return <Navigate to="/dashboard" replace />;
+      }
     }
   }
 

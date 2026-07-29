@@ -4,16 +4,23 @@ from .schema import ComplaintCreate
 
 def classify_department(title: str, description: str) -> str:
     text = (title + " " + description).lower()
+    if any(keyword in text for keyword in ["garbage", "waste", "trash", "dump", "litter", "recycle", "sewage", "drain", "bin", "bins", "sanitation", "clean", "smell", "odor", "rubbish", "junk", "dumpster", "sweeping", "overflowing bin", "wandoor"]):
+        return ComplaintDepartment.WASTE.value
+    if any(keyword in text for keyword in ["water", "pipe", "pipeline", "leak", "kwa", "kerala water authority", "drainage", "tap", "hydration", "plumbing", "water supply", "water overflow", "sewer overflow"]):
+        return ComplaintDepartment.WATER.value
     if any(keyword in text for keyword in ["traffic", "road", "parking", "signal", "accident", "congestion", "vehicle", "street light"]):
         return ComplaintDepartment.TRAFFIC.value
-    if any(keyword in text for keyword in ["garbage", "waste", "trash", "dump", "litter", "recycle", "sewage", "drain"]):
-        return ComplaintDepartment.WASTE.value
-    if any(keyword in text for keyword in ["water", "pipe", "leak", "overflow", "drainage", "tap", "hydration"]):
-        return ComplaintDepartment.WATER.value
     return ComplaintDepartment.GENERAL.value
 
 def create_complaint(db: Session, user_id: int, data: ComplaintCreate) -> Complaint:
-    dept = classify_department(data.title, data.description)
+    dept = None
+    if hasattr(data, 'department') and data.department:
+        dept_str = str(data.department).lower()
+        if dept_str in [d.value for d in ComplaintDepartment]:
+            dept = dept_str
+
+    if not dept:
+        dept = classify_department(data.title, data.description)
     
     complaint = Complaint(
         title=data.title,
@@ -29,6 +36,77 @@ def create_complaint(db: Session, user_id: int, data: ComplaintCreate) -> Compla
     db.add(complaint)
     db.commit()
     db.refresh(complaint)
+
+    # Sync to Water Management module if department is water
+    if dept == ComplaintDepartment.WATER.value:
+        try:
+            profile = get_or_create_profile(db, user_id)
+            random_num = random.randint(1000, 9999)
+            complaint_no = f"WC-2026-{complaint.id:04d}-{random_num}"
+            
+            water_complaint = WaterComplaint(
+                complaint_number=complaint_no,
+                central_complaint_id=complaint.id,
+                citizen_id=user_id,
+                citizen_name=profile.full_name if (profile and profile.full_name) else f"Citizen #{user_id}",
+                phone=profile.phone_number if profile else None,
+                latitude=data.location_lat,
+                longitude=data.location_lng,
+                category="Pipe Leakage",
+                title=data.title,
+                description=data.description,
+                priority="HIGH",
+                status="NEW",
+                before_image=data.image_url
+            )
+            db.add(water_complaint)
+            db.commit()
+        except Exception as _e:
+            print(f"Notice: Failed to auto-sync WaterComplaint: {_e}")
+    elif dept == ComplaintDepartment.WASTE.value:
+        try:
+            from modules.waste_management.model import WasteComplaint, WasteComplaintHistory
+            profile = get_or_create_profile(db, user_id)
+            random_num = random.randint(1000, 9999)
+            complaint_no = f"WC-2026-{complaint.id:04d}-{random_num}"
+            
+            c_name = profile.full_name if (profile and profile.full_name) else f"Citizen #{user_id}"
+            c_phone = profile.phone_number if profile else None
+            
+            waste_complaint = WasteComplaint(
+                id=complaint.id,
+                complaint_number=complaint_no,
+                citizen_id=user_id,
+                citizen_name=c_name,
+                phone=c_phone,
+                email=None,
+                ward="Ward 4",
+                area="Connaught Place",
+                address="City Location",
+                latitude=data.location_lat,
+                longitude=data.location_lng,
+                category="Waste Pickup",
+                title=data.title,
+                description=data.description,
+                priority="HIGH",
+                status="PENDING",
+                before_image=data.image_url
+            )
+            db.add(waste_complaint)
+            db.commit()
+            db.refresh(waste_complaint)
+
+            history = WasteComplaintHistory(
+                complaint_id=waste_complaint.id,
+                action="Complaint Created",
+                notes="Reported via Citizen Portal with status PENDING.",
+                performed_by=c_name
+            )
+            db.add(history)
+            db.commit()
+        except Exception as _e:
+            print(f"Notice: Failed to auto-sync WasteComplaint: {_e}")
+
     return complaint
 
 def get_complaint_by_id(db: Session, complaint_id: int) -> Complaint | None:

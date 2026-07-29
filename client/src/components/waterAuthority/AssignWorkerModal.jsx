@@ -1,8 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { getWorkers } from '../../services/workerService';
 
 export default function AssignWorkerModal({ isOpen, onClose, onAssign, complaintNumber }) {
   const [workerId, setWorkerId] = useState('');
   const [notes, setNotes] = useState('');
+  const [workers, setWorkers] = useState([]);
+  const [loading, setLoading] = useState(false);
 
   const mockWorkers = [
     { id: 101, name: "John Doe (Sector A Leak Specialist)" },
@@ -10,6 +13,30 @@ export default function AssignWorkerModal({ isOpen, onClose, onAssign, complaint
     { id: 103, name: "Mike Tyson (Heavy Pipeline Excavator)" },
     { id: 104, name: "Robert Downey Jr. (Valve Calibration Tech)" }
   ];
+
+  useEffect(() => {
+    if (isOpen) {
+      const fetchWorkers = async () => {
+        setLoading(true);
+        try {
+          const response = await getWorkers({ department: 'water', page_size: 100 });
+          const activeWorkers = (response.data.items || response.data || []).filter(
+            w => w.employment_status === 'ACTIVE'
+          );
+          if (activeWorkers.length > 0) {
+            setWorkers(activeWorkers.map(w => ({ id: w.id, name: `${w.first_name || ''} ${w.last_name || ''}`.trim() || w.username || `Worker #${w.id}` })));
+          }
+        } catch (err) {
+          console.error("Error fetching workers for assignment:", err);
+        } finally {
+          setLoading(false);
+        }
+      };
+      fetchWorkers();
+    }
+  }, [isOpen]);
+
+  const displayWorkers = workers.length > 0 ? workers : mockWorkers;
 
   if (!isOpen) return null;
 
@@ -79,7 +106,7 @@ export default function AssignWorkerModal({ isOpen, onClose, onAssign, complaint
               }}
             >
               <option value="">-- Choose Field Worker --</option>
-              {mockWorkers.map((w) => (
+              {displayWorkers.map((w) => (
                 <option key={w.id} value={w.id}>
                   ID #{w.id} - {w.name}
                 </option>

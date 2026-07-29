@@ -10,6 +10,7 @@ class ComplaintCreate(BaseModel):
     location_lat: float
     location_lng: float
     image_url: Optional[str] = None
+    department: Optional[str] = None
 
 class WorkerAssignSchema(BaseModel):
     worker_id: int

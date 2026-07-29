@@ -117,7 +117,17 @@ export default function Login() {
       const user = result?.data?.user;
       if (user) {
         const permissions = user.permissions || [];
-        const deptPermissions = permissions.filter(p => p.startsWith('dept:'));
+        let deptPermissions = permissions.filter(p => p.startsWith('dept:'));
+
+        if (deptPermissions.length === 0) {
+          if (permissions.some(p => p.startsWith('waste:'))) {
+            deptPermissions = ['dept:waste'];
+          } else if (permissions.some(p => p.startsWith('water:'))) {
+            deptPermissions = ['dept:water'];
+          } else if (permissions.some(p => p.startsWith('traffic:'))) {
+            deptPermissions = ['dept:traffic'];
+          }
+        }
 
         if (user.role === 'Citizen') {
           navigate('/dashboard', { replace: true });
@@ -136,7 +146,7 @@ export default function Login() {
           } else if (deptPermissions.length >= 2) {
             navigate('/admin/portal', { replace: true });
           } else {
-            navigate('/dashboard', { replace: true });
+            navigate('/waste/dashboard', { replace: true });
           }
         } else if (user.role === 'Worker') {
           navigate('/worker/dashboard', { replace: true });

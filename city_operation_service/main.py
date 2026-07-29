@@ -12,14 +12,39 @@ from modules.workers.router import router as workers_router
 # Ensure worker models including leave_requests and worker_profiles exist in database
 import modules.workers.model
 import modules.complaints.model
+import modules.waste_management.model
 
 Base.metadata.create_all(bind=engine)
 
-# Auto-migrate schema columns for complaints if table existed previously
+# Auto-migrate schema columns for complaints & waste management if tables existed previously
 try:
     with engine.connect() as conn:
         conn.execute(text("ALTER TABLE complaints ADD COLUMN IF NOT EXISTS resolution_image VARCHAR(500);"))
         conn.execute(text("ALTER TABLE complaints ADD COLUMN IF NOT EXISTS resolved_at TIMESTAMP WITH TIME ZONE;"))
+        conn.execute(text("ALTER TABLE water_complaints ADD COLUMN IF NOT EXISTS central_complaint_id INTEGER;"))
+        
+        # Waste management schema migrations
+        conn.execute(text("ALTER TABLE waste_collection_schedules ADD COLUMN IF NOT EXISTS start_point VARCHAR(200);"))
+        conn.execute(text("ALTER TABLE waste_collection_schedules ADD COLUMN IF NOT EXISTS end_point VARCHAR(200);"))
+        conn.execute(text("ALTER TABLE waste_collection_schedules ADD COLUMN IF NOT EXISTS distance_km FLOAT DEFAULT 12.5;"))
+        conn.execute(text("ALTER TABLE waste_collection_schedules ADD COLUMN IF NOT EXISTS estimated_minutes INTEGER DEFAULT 45;"))
+        conn.execute(text("ALTER TABLE waste_collection_schedules ADD COLUMN IF NOT EXISTS assigned_worker_ids VARCHAR(200);"))
+        
+        conn.execute(text("ALTER TABLE waste_vehicles ADD COLUMN IF NOT EXISTS assigned_route_id INTEGER;"))
+        conn.execute(text("ALTER TABLE waste_vehicles ADD COLUMN IF NOT EXISTS latitude FLOAT;"))
+        conn.execute(text("ALTER TABLE waste_vehicles ADD COLUMN IF NOT EXISTS longitude FLOAT;"))
+        conn.execute(text("ALTER TABLE waste_vehicles ADD COLUMN IF NOT EXISTS last_serviced_at TIMESTAMP WITH TIME ZONE;"))
+        
+        conn.execute(text("ALTER TABLE waste_workers ADD COLUMN IF NOT EXISTS assigned_vehicle_id INTEGER;"))
+        conn.execute(text("ALTER TABLE waste_workers ADD COLUMN IF NOT EXISTS performance_rating FLOAT DEFAULT 4.8;"))
+        
+        conn.execute(text("ALTER TABLE waste_bins ADD COLUMN IF NOT EXISTS area VARCHAR(100);"))
+        conn.execute(text("ALTER TABLE waste_bins ADD COLUMN IF NOT EXISTS latitude FLOAT;"))
+        conn.execute(text("ALTER TABLE waste_bins ADD COLUMN IF NOT EXISTS longitude FLOAT;"))
+        conn.execute(text("ALTER TABLE waste_bins ADD COLUMN IF NOT EXISTS assigned_route_id INTEGER;"))
+        conn.execute(text("ALTER TABLE waste_bins ADD COLUMN IF NOT EXISTS installation_date DATE;"))
+        conn.execute(text("ALTER TABLE waste_bins ADD COLUMN IF NOT EXISTS qr_code_data VARCHAR(255);"))
+        conn.execute(text("ALTER TABLE waste_bins ADD COLUMN IF NOT EXISTS last_emptied_at TIMESTAMP WITH TIME ZONE;"))
         conn.commit()
 except Exception as _e:
     print(f"Migration check notice: {_e}")

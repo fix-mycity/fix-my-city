@@ -152,9 +152,10 @@ export default function WorkerForm({ department }) {
   };
 
   const buttonClasses = {
-    water: 'bg-blue-600 hover:bg-blue-700',
-    traffic: 'bg-amber-600 hover:bg-amber-700',
-    default: 'bg-slate-600 hover:bg-slate-700'
+    water: 'bg-blue-600 hover:bg-blue-700 focus:ring-blue-500',
+    traffic: 'bg-amber-600 hover:bg-amber-700 focus:ring-amber-500',
+    waste: 'bg-emerald-600 hover:bg-emerald-700 focus:ring-emerald-500',
+    default: 'bg-slate-700 hover:bg-slate-800 focus:ring-slate-500'
   };
   const primaryBtnClass = buttonClasses[department] || buttonClasses.default;
 
@@ -180,7 +181,7 @@ export default function WorkerForm({ department }) {
             {isEditMode ? 'Edit Worker Profile' : 'Register New Worker'}
           </h1>
           <p className="text-sm text-slate-500 mt-1">
-            {department === 'water' ? 'Water Authority' : department === 'traffic' ? 'Traffic Control' : ''} Department
+            {department === 'water' ? 'Water Authority Department' : department === 'traffic' ? 'Traffic Control Unit' : department === 'waste' ? 'Waste Sanitation Management' : 'City Operations Department'}
           </p>
         </div>
       </div>
@@ -309,33 +310,154 @@ export default function WorkerForm({ department }) {
             <span className="material-symbols-outlined text-slate-400">work</span>
             Employment Details
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Designation</label>
-              <input name="designation" value={formData.designation} onChange={handleChange} className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Primary Skill</label>
-              <input name="skill" value={formData.skill} onChange={handleChange} placeholder="e.g. Electrician, Diver" className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Experience (Years)</label>
-              <input type="number" min="0" name="experience" value={formData.experience} onChange={handleChange} className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
-            </div>
+          {department === 'waste' ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wide mb-1.5">Role / Designation *</label>
+                <select 
+                  name="role" 
+                  value={formData.role || 'Collector'} 
+                  onChange={(e) => {
+                    handleChange(e);
+                    setFormData(prev => ({ ...prev, designation: e.target.value, role: e.target.value }));
+                  }} 
+                  className="w-full px-4 py-2.5 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none bg-white transition-all"
+                >
+                  <option value="Collector">Collector (Sanitation Cleaner)</option>
+                  <option value="Driver">Driver (Truck / Compactor Driver)</option>
+                  <option value="Supervisor">Supervisor</option>
+                  <option value="Inspector">Inspector</option>
+                </select>
+              </div>
 
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Joining Date</label>
-              <input 
-                type="date" 
-                max={todayStr} 
-                name="joining_date" 
-                value={formData.joining_date || ''} 
-                onChange={handleChange} 
-                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" 
-              />
-              <span className="text-[11px] text-slate-400 mt-0.5 block">Cannot be in the future</span>
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wide mb-1.5">Shift *</label>
+                <select 
+                  name="shift" 
+                  value={formData.shift || 'Morning Shift'} 
+                  onChange={handleChange} 
+                  className="w-full px-4 py-2.5 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none bg-white transition-all"
+                >
+                  <option value="Morning Shift">Morning Shift (06:00 AM - 02:00 PM)</option>
+                  <option value="Evening Shift">Evening Shift (02:00 PM - 10:00 PM)</option>
+                  <option value="Night Shift">Night Shift (10:00 PM - 06:00 AM)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wide mb-1.5">Assigned Ward *</label>
+                <select 
+                  name="ward" 
+                  value={formData.ward || 'Ward 4'} 
+                  onChange={handleChange} 
+                  className="w-full px-4 py-2.5 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none bg-white transition-all"
+                >
+                  <option value="Ward 1">Ward 1 - Old City</option>
+                  <option value="Ward 2">Ward 2 - Civil Lines</option>
+                  <option value="Ward 4">Ward 4 - Connaught Place</option>
+                  <option value="Ward 7">Ward 7 - Vasant Kunj</option>
+                  <option value="Ward 9">Ward 9 - Green Park</option>
+                  <option value="Ward 12">Ward 12 - Okhla Phase 3</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wide mb-1.5">Area *</label>
+                <input 
+                  required 
+                  name="area" 
+                  placeholder="e.g. Connaught Place" 
+                  value={formData.area || 'Connaught Place'} 
+                  onChange={handleChange} 
+                  className="w-full px-4 py-2.5 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none transition-all" 
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wide mb-1.5">Primary Skill</label>
+                <input 
+                  name="skill" 
+                  placeholder="e.g. Waste Collection, Compactor Driving" 
+                  value={formData.skill || ''} 
+                  onChange={handleChange} 
+                  className="w-full px-4 py-2.5 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none transition-all" 
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wide mb-1.5">Experience (Years)</label>
+                <input 
+                  type="number" 
+                  min="0" 
+                  name="experience" 
+                  value={formData.experience || 0} 
+                  onChange={handleChange} 
+                  className="w-full px-4 py-2.5 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none transition-all" 
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wide mb-1.5">Joining Date</label>
+                <input
+                  type="date"
+                  max={todayStr}
+                  name="joining_date"
+                  value={formData.joining_date || ''}
+                  onChange={handleChange}
+                  className="w-full px-4 py-2.5 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none transition-all bg-white"
+                />
+              </div>
             </div>
-            
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wide mb-1.5">Designation *</label>
+                <input 
+                  required 
+                  name="designation" 
+                  placeholder="e.g. Senior Technician" 
+                  value={formData.designation} 
+                  onChange={handleChange} 
+                  className="w-full px-4 py-2.5 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all" 
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wide mb-1.5">Primary Skill *</label>
+                <input 
+                  required 
+                  name="skill" 
+                  placeholder="e.g. Pipeline Repair, Diver" 
+                  value={formData.skill} 
+                  onChange={handleChange} 
+                  className="w-full px-4 py-2.5 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all" 
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wide mb-1.5">Experience (Years) *</label>
+                <input 
+                  required 
+                  type="number" 
+                  min="0" 
+                  name="experience" 
+                  value={formData.experience} 
+                  onChange={handleChange} 
+                  className="w-full px-4 py-2.5 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all" 
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wide mb-1.5">Joining Date</label>
+                <input
+                  type="date"
+                  max={todayStr}
+                  name="joining_date"
+                  value={formData.joining_date || ''}
+                  onChange={handleChange}
+                  className="w-full px-4 py-2.5 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all bg-white"
+                />
+              </div>
+            </div>
+          )}
             {isEditMode && (
               <>
                 <div>
@@ -356,7 +478,6 @@ export default function WorkerForm({ department }) {
                 </div>
               </>
             )}
-          </div>
         </div>
 
         {/* Action Footer */}

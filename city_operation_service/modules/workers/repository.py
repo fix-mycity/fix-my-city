@@ -16,7 +16,26 @@ class WorkerRepository:
     ) -> Tuple[List[dict], int]:
         
         # Base query for counting
-        count_query = "SELECT COUNT(*) FROM users WHERE manager_id = :manager_id"
+        count_query = """
+            SELECT COUNT(DISTINCT u.id)
+            FROM users u
+            LEFT JOIN worker_profiles p ON u.id = p.user_id
+            WHERE (u.role_id = 5 OR p.user_id IS NOT NULL)
+              AND (
+                LOWER(COALESCE(p.department, '')) = LOWER(:department)
+                OR (
+                    (p.department IS NULL OR p.department = '')
+                    AND (
+                        LOWER(COALESCE(p.designation, '')) LIKE '%' || LOWER(:department) || '%'
+                        OR LOWER(COALESCE(p.skill, '')) LIKE '%' || LOWER(:department) || '%'
+                        OR LOWER(COALESCE(p.designation, '')) LIKE '%sanitation%'
+                        OR LOWER(COALESCE(p.skill, '')) LIKE '%sanitation%'
+                        OR LOWER(COALESCE(p.designation, '')) LIKE '%collector%'
+                        OR LOWER(COALESCE(p.skill, '')) LIKE '%collector%'
+                    )
+                )
+              )
+        """
         params = {"manager_id": manager_id, "department": department}
         
         if search:
@@ -34,7 +53,21 @@ class WorkerRepository:
                    p.availability, p.employment_status, p.department
             FROM users u
             LEFT JOIN worker_profiles p ON u.id = p.user_id
-            WHERE u.manager_id = :manager_id AND p.department = :department
+            WHERE (u.role_id = 5 OR p.user_id IS NOT NULL)
+              AND (
+                LOWER(COALESCE(p.department, '')) = LOWER(:department)
+                OR (
+                    (p.department IS NULL OR p.department = '')
+                    AND (
+                        LOWER(COALESCE(p.designation, '')) LIKE '%' || LOWER(:department) || '%'
+                        OR LOWER(COALESCE(p.skill, '')) LIKE '%' || LOWER(:department) || '%'
+                        OR LOWER(COALESCE(p.designation, '')) LIKE '%sanitation%'
+                        OR LOWER(COALESCE(p.skill, '')) LIKE '%sanitation%'
+                        OR LOWER(COALESCE(p.designation, '')) LIKE '%collector%'
+                        OR LOWER(COALESCE(p.skill, '')) LIKE '%collector%'
+                    )
+                )
+              )
         """
         if search:
             data_query += " AND (u.username ILIKE :search OR u.email ILIKE :search)"
@@ -355,13 +388,26 @@ class WorkerTaskRepository:
             return True
         else:
             from modules.complaints.model import Complaint, ComplaintStatus
-            item = db.query(Complaint).filter(Complaint.id == task_id, Complaint.assigned_worker_id == worker_id).first()
-            if not item: return None
-            
-            item.status = ComplaintStatus.RESOLVED.value
-            item.resolution_report = resolution_report
-            if clean_after:
-                item.resolution_image = clean_after
-            item.resolved_at = datetime.datetime.utcnow()
-            db.commit()
+            item = db.query(Complaint).filter(Complaint.id == task_id).first()
+            if item:
+                item.status = ComplaintStatus.RESOLVED.value
+                item.resolution_report = resolution_report
+                if clean_after:
+                    item.resolution_image = clean_after
+                item.resolved_at = datetime.datetime.utcnow()
+                db.commit()
+
+            try:
+                from modules.waste_management.model import WasteComplaint
+                wc = db.query(WasteComplaint).filter(WasteComplaint.id == task_id).first()
+                if wc:
+                    wc.status = "COMPLETED"
+                    wc.resolution_notes = resolution_report
+                    if clean_after:
+                        wc.after_image = clean_after
+                    wc.resolved_at = datetime.datetime.utcnow()
+                    db.commit()
+            except Exception as _e:
+                print(f"Notice: WasteComplaint sync on resolve: {_e}")
+
             return True
