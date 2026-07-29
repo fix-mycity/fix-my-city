@@ -1,18 +1,12 @@
 import os
 import io
 import urllib.request
-from celery import Celery
+from celery import shared_task
 from database import SessionLocal
 from config import settings
 from core.s3 import upload_file_to_s3, generate_presigned_url
 
-celery_app = Celery(
-    "city_operations",
-    broker=getattr(settings, "CELERY_BROKER_URL", "redis://localhost:6379/0"),
-    backend=getattr(settings, "CELERY_RESULT_BACKEND", "redis://localhost:6379/0")
-)
-
-@celery_app.task(name="tasks.generate_complaint_pdf_report")
+@shared_task(name="tasks.generate_complaint_pdf_report")
 def generate_complaint_pdf_report(task_id: int):
     """
     Background Celery Task:
@@ -30,7 +24,7 @@ def generate_complaint_pdf_report(task_id: int):
             return {"success": False, "message": "Complaint task not found"}
 
         # Fetch worker info if assigned
-        worker_name = "Assigned Field Officer"
+        worker_name = "Assigned Field Worker"
         if task.assigned_worker_id:
             row = db.execute(
                 text("SELECT u.username, p.first_name, p.last_name FROM users u LEFT JOIN worker_profiles p ON u.id = p.user_id WHERE u.id = :wid"),
@@ -132,6 +126,12 @@ def generate_complaint_pdf_report(task_id: int):
                         location_str = f"{loc_address} (GPS: {loc_lat:.4f}, {loc_lng:.4f})"
                     else:
                         location_str = f"GPS: {loc_lat:.4f}, {loc_lng:.4f}"
+
+            # Format Timestamps
+            created_at = getattr(task, "created_at", None)
+            resolved_at = getattr(task, "resolved_at", None) or getattr(task, "updated_at", None)
+            created_str = created_at.strftime("%Y-%m-%d %H:%M") if created_at and hasattr(created_at, "strftime") else (str(created_at) if created_at else "N/A")
+            resolved_str = resolved_at.strftime("%Y-%m-%d %H:%M") if resolved_at and hasattr(resolved_at, "strftime") else (str(resolved_at) if resolved_at else "N/A")
 
             meta_data = [
                 [Paragraph("<b>Incident Title:</b>", body_style), Paragraph(task.title or "N/A", body_style), Paragraph("<b>Department:</b>", body_style), Paragraph((task.department or "General").upper(), body_style)],

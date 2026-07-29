@@ -30,6 +30,7 @@ class WorkerProfile(Base):
     
     availability = Column(String(30), default="AVAILABLE", nullable=False)
     employment_status = Column(String(30), default="ACTIVE", nullable=False)
+    status_updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
     
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())

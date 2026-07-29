@@ -9,6 +9,11 @@ export default function ProtectedRoute({ children, allowedRoles, requiredPermiss
     return <Navigate to="/login" replace />;
   }
 
+  // Super_Admin and Admin roles have master access to all protected routes automatically
+  if (user && (user.role === 'Super_Admin' || user.role === 'Admin')) {
+    return children;
+  }
+
   // Structured role-based authorization check
   if (allowedRoles && user) {
     const isRoleAllowed = allowedRoles.includes(user.role) || user.role === 'Super_Admin' || user.role === 'Admin';
@@ -19,10 +24,9 @@ export default function ProtectedRoute({ children, allowedRoles, requiredPermiss
 
   // Permission-based authorization check
   if (requiredPermissions && user) {
-    // Super_Admin and Admin have universal access across department modules
     if (user.role !== 'Super_Admin' && user.role !== 'Admin') {
       const userPermissions = user.permissions || [];
-      const hasRequired = requiredPermissions.every((p) => userPermissions.includes(p));
+      const hasRequired = requiredPermissions.every((p) => userPermissions.includes(p) || userPermissions.includes('admin:all'));
       if (!hasRequired && userPermissions.length > 0) {
         return <Navigate to="/dashboard" replace />;
       }

@@ -255,7 +255,7 @@ export default function WorkerList({ department }) {
                           <div className="text-xs text-slate-500">{w.place || 'Unassigned Zone'}</div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <WorkerAvailabilityBadge availability={w.availability} />
+                          <WorkerAvailabilityBadge availability={w.availability} statusUpdatedAt={w.status_updated_at} />
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <WorkerStatusBadge status={w.is_active === false ? 'BLOCKED' : w.employment_status} />

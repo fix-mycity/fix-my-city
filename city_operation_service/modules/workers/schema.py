@@ -64,6 +64,7 @@ class WorkerResponse(BaseModel):
     emergency_contact_phone: Optional[str] = None
     availability: Optional[str] = "AVAILABLE"
     employment_status: Optional[str] = "ACTIVE"
+    status_updated_at: Optional[datetime] = None
     created_at: Optional[datetime] = None
 
     class Config:

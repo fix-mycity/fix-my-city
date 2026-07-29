@@ -19,7 +19,8 @@ export default function WorkerCard({
     place,
     pin_code,
     employment_status,
-    availability
+    availability,
+    status_updated_at
   } = worker;
 
   return (
@@ -72,7 +73,7 @@ export default function WorkerCard({
       </div>
 
       <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-        <WorkerAvailabilityBadge availability={availability} />
+        <WorkerAvailabilityBadge availability={availability} statusUpdatedAt={status_updated_at} />
         <WorkerStatusBadge status={employment_status} />
       </div>
 

@@ -1,6 +1,7 @@
 from sqlalchemy.orm import Session
 from .model import Complaint, ComplaintStatus, ComplaintDepartment
 from .schema import ComplaintCreate
+from typing import Optional
 
 def classify_department(title: str, description: str) -> str:
     text = (title + " " + description).lower()
@@ -115,8 +116,38 @@ def get_complaint_by_id(db: Session, complaint_id: int) -> Complaint | None:
 def get_my_complaints(db: Session, user_id: int) -> list[Complaint]:
     return db.query(Complaint).filter(Complaint.reported_by == user_id).all()
 
-def get_all_complaints(db: Session) -> list[Complaint]:
-    return db.query(Complaint).all()
+def get_all_complaints(
+    db: Session,
+    page: int = 1,
+    page_size: int = 10,
+    search: Optional[str] = None,
+    status: Optional[str] = None,
+    department: Optional[str] = None
+) -> dict:
+    query = db.query(Complaint)
+
+    if search:
+        query = query.filter(
+            (Complaint.title.ilike(f"%{search}%")) | (Complaint.description.ilike(f"%{search}%"))
+        )
+
+    if status:
+        query = query.filter(Complaint.status.ilike(f"%{status}%"))
+
+    if department:
+        query = query.filter(Complaint.department.ilike(f"%{department}%"))
+
+    total_items = query.count()
+    items = query.order_by(Complaint.id.desc()).offset((page - 1) * page_size).limit(page_size).all()
+    total_pages = (total_items + page_size - 1) // page_size
+
+    return {
+        "items": items,
+        "total_items": total_items,
+        "page": page,
+        "page_size": page_size,
+        "total_pages": max(total_pages, 1)
+    }
 
 def update_complaint_image(db: Session, complaint_id: int, user_id: int, image_url: str) -> Complaint | None:
     complaint = db.query(Complaint).filter(

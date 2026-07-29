@@ -8,11 +8,10 @@ export default function WorkerForm({ department }) {
   const { id } = useParams();
   const isEditMode = Boolean(id);
 
-  const todayStr = new Date().toISOString().split('T')[0];
-
   const [isLoading, setIsLoading] = useState(isEditMode);
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState({});
 
   const [formData, setFormData] = useState({
     username: '',
@@ -30,7 +29,6 @@ export default function WorkerForm({ department }) {
     designation: '',
     skill: '',
     experience: 0,
-    joining_date: '',
     place: '',
     emergency_contact_phone: '',
     availability: 'AVAILABLE',
@@ -47,21 +45,11 @@ export default function WorkerForm({ department }) {
     try {
       const response = await getWorkerById(id, department);
       const data = response.data;
-      
-      let formattedJoiningDate = '';
-      if (data.joining_date) {
-        try {
-          formattedJoiningDate = new Date(data.joining_date).toISOString().split('T')[0];
-        } catch (e) {
-          formattedJoiningDate = '';
-        }
-      }
 
       setFormData(prev => ({
         ...prev,
         ...data,
-        joining_date: formattedJoiningDate,
-        password: '', // Never populate password on edit
+        password: '',
         confirm_password: ''
       }));
     } catch (err) {
@@ -78,6 +66,10 @@ export default function WorkerForm({ department }) {
       ...prev,
       [name]: type === 'number' ? Number(value) : value
     }));
+
+    if (fieldErrors[name]) {
+      setFieldErrors(prev => ({ ...prev, [name]: null }));
+    }
   };
 
   const handlePhotoUpload = async (e) => {
@@ -106,46 +98,111 @@ export default function WorkerForm({ department }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!isEditMode && formData.password !== formData.confirm_password) {
-      toast.error("Passwords do not match");
-      return;
+    setFieldErrors({});
+
+    const errors = {};
+
+    if (!isEditMode) {
+      if (!formData.username || formData.username.trim().length < 3) {
+        errors.username = "Username must be at least 3 characters.";
+      } else if (formData.username.trim().length > 50) {
+        errors.username = "Username must be 50 characters or less.";
+      }
+
+      if (!formData.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) {
+        errors.email = "Please enter a valid email address.";
+      }
+
+      if (!formData.password || formData.password.length < 8) {
+        errors.password = "Password must be at least 8 characters.";
+      }
+
+      if (!formData.confirm_password) {
+        errors.confirm_password = "Please confirm your password.";
+      } else if (formData.password !== formData.confirm_password) {
+        errors.confirm_password = "Passwords do not match.";
+      }
+
+      if (!formData.state || !formData.state.trim()) {
+        errors.state = "State is required.";
+      }
+
+      if (!formData.district || !formData.district.trim()) {
+        errors.district = "District is required.";
+      }
+
+      if (!formData.pincode || !/^\d{6}$/.test(formData.pincode.trim())) {
+        errors.pincode = "Please enter a valid 6-digit pincode.";
+      }
     }
 
-    if (formData.joining_date && formData.joining_date > todayStr) {
-      toast.error("Joining date cannot be in the future. Please select today or a past date.");
+    if (formData.phone && formData.phone.trim() && !/^\d{10}$/.test(formData.phone.trim())) {
+      errors.phone = "Phone number must be 10 digits.";
+    }
+
+    if (formData.emergency_contact_phone && formData.emergency_contact_phone.trim() && !/^\d{10}$/.test(formData.emergency_contact_phone.trim())) {
+      errors.emergency_contact_phone = "Emergency contact must be 10 digits.";
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      toast.error("Please fix the highlighted field errors.");
       return;
     }
 
     setIsSaving(true);
     try {
       if (isEditMode) {
-        const { username, email, password, confirm_password, state, district, pincode, created_at, ...updateData } = formData;
-        if (updateData.joining_date) {
-          updateData.joining_date = new Date(updateData.joining_date).toISOString();
-        } else {
-          delete updateData.joining_date;
-        }
+        const { username, email, password, confirm_password, state, district, pincode, created_at, joining_date, ...updateData } = formData;
         if (updateData.photo) {
           updateData.photo = updateData.photo.split('?')[0];
         }
         await updateWorker(id, updateData, department);
         toast.success("Worker updated successfully");
       } else {
-        const payload = { ...formData };
-        if (payload.joining_date) {
-          payload.joining_date = new Date(payload.joining_date).toISOString();
-        } else {
-          delete payload.joining_date;
-        }
+        const payload = { 
+          ...formData,
+          joining_date: new Date().toISOString()
+        };
         if (payload.photo) {
           payload.photo = payload.photo.split('?')[0];
         }
-        await createWorker(payload, department);
+        const res = await createWorker(payload, department);
+        if (res?.data?.success === false) {
+          toast.error(res.data.message || "Failed to register worker");
+          return;
+        }
         toast.success("Worker registered successfully");
       }
       navigate(`/${department}/workers`);
     } catch (err) {
-      toast.error(err.response?.data?.detail || (isEditMode ? "Failed to update" : "Failed to register"));
+      const detail = err.response?.data?.detail;
+      if (typeof detail === 'string') {
+        const lower = detail.toLowerCase();
+        if (lower.includes('username')) {
+          setFieldErrors(prev => ({ ...prev, username: detail }));
+        } else if (lower.includes('email')) {
+          setFieldErrors(prev => ({ ...prev, email: detail }));
+        } else if (lower.includes('pincode')) {
+          setFieldErrors(prev => ({ ...prev, pincode: detail }));
+        } else if (lower.includes('password')) {
+          setFieldErrors(prev => ({ ...prev, password: detail }));
+        } else {
+          toast.error(detail);
+        }
+      } else if (Array.isArray(detail)) {
+        const backendErrors = {};
+        detail.forEach(errItem => {
+          const fieldName = errItem.loc?.[errItem.loc.length - 1];
+          if (fieldName) {
+            backendErrors[fieldName] = errItem.msg;
+          }
+        });
+        setFieldErrors(backendErrors);
+        toast.error("Please resolve the invalid fields.");
+      } else {
+        toast.error(isEditMode ? "Failed to update worker" : "Failed to register worker");
+      }
     } finally {
       setIsSaving(false);
     }
@@ -158,6 +215,14 @@ export default function WorkerForm({ department }) {
     default: 'bg-slate-700 hover:bg-slate-800 focus:ring-slate-500'
   };
   const primaryBtnClass = buttonClasses[department] || buttonClasses.default;
+
+  const getInputClass = (fieldName) => {
+    return `w-full px-4 py-2 border rounded-lg focus:ring-2 outline-none transition-colors ${
+      fieldErrors[fieldName]
+        ? 'border-rose-500 focus:ring-rose-500 bg-rose-50/20 text-rose-900'
+        : 'border-slate-300 focus:ring-blue-500 text-slate-800'
+    }`;
+  };
 
   if (isLoading) {
     return (
@@ -197,19 +262,58 @@ export default function WorkerForm({ department }) {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Username *</label>
-                <input required name="username" value={formData.username} onChange={handleChange} className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
+                <input 
+                  name="username" 
+                  value={formData.username} 
+                  onChange={handleChange} 
+                  className={getInputClass('username')} 
+                  placeholder="Enter username"
+                />
+                {fieldErrors.username && (
+                  <p className="text-xs font-semibold text-rose-500 mt-1 block">{fieldErrors.username}</p>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Email *</label>
-                <input type="email" required name="email" value={formData.email} onChange={handleChange} className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
+                <input 
+                  type="email" 
+                  name="email" 
+                  value={formData.email} 
+                  onChange={handleChange} 
+                  className={getInputClass('email')} 
+                  placeholder="e.g. worker@fixmycity.org"
+                />
+                {fieldErrors.email && (
+                  <p className="text-xs font-semibold text-rose-500 mt-1 block">{fieldErrors.email}</p>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Password *</label>
-                <input type="password" required name="password" value={formData.password} onChange={handleChange} className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
+                <input 
+                  type="password" 
+                  name="password" 
+                  value={formData.password} 
+                  onChange={handleChange} 
+                  className={getInputClass('password')} 
+                  placeholder="At least 8 characters"
+                />
+                {fieldErrors.password && (
+                  <p className="text-xs font-semibold text-rose-500 mt-1 block">{fieldErrors.password}</p>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Confirm Password *</label>
-                <input type="password" required name="confirm_password" value={formData.confirm_password} onChange={handleChange} className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
+                <input 
+                  type="password" 
+                  name="confirm_password" 
+                  value={formData.confirm_password} 
+                  onChange={handleChange} 
+                  className={getInputClass('confirm_password')} 
+                  placeholder="Re-enter password"
+                />
+                {fieldErrors.confirm_password && (
+                  <p className="text-xs font-semibold text-rose-500 mt-1 block">{fieldErrors.confirm_password}</p>
+                )}
               </div>
             </div>
           </div>
@@ -255,19 +359,31 @@ export default function WorkerForm({ department }) {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">First Name</label>
-              <input name="first_name" value={formData.first_name} onChange={handleChange} className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
+              <input name="first_name" value={formData.first_name} onChange={handleChange} className={getInputClass('first_name')} placeholder="e.g. Ramees" />
+              {fieldErrors.first_name && (
+                <p className="text-xs font-semibold text-rose-500 mt-1 block">{fieldErrors.first_name}</p>
+              )}
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Last Name</label>
-              <input name="last_name" value={formData.last_name} onChange={handleChange} className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
+              <input name="last_name" value={formData.last_name} onChange={handleChange} className={getInputClass('last_name')} placeholder="e.g. Khan" />
+              {fieldErrors.last_name && (
+                <p className="text-xs font-semibold text-rose-500 mt-1 block">{fieldErrors.last_name}</p>
+              )}
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Phone Number</label>
-              <input name="phone" value={formData.phone} onChange={handleChange} className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
+              <input name="phone" value={formData.phone} onChange={handleChange} className={getInputClass('phone')} placeholder="10-digit mobile number" />
+              {fieldErrors.phone && (
+                <p className="text-xs font-semibold text-rose-500 mt-1 block">{fieldErrors.phone}</p>
+              )}
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Emergency Contact</label>
-              <input name="emergency_contact_phone" value={formData.emergency_contact_phone} onChange={handleChange} className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
+              <input name="emergency_contact_phone" value={formData.emergency_contact_phone} onChange={handleChange} className={getInputClass('emergency_contact_phone')} placeholder="10-digit mobile number" />
+              {fieldErrors.emergency_contact_phone && (
+                <p className="text-xs font-semibold text-rose-500 mt-1 block">{fieldErrors.emergency_contact_phone}</p>
+              )}
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Gender</label>
@@ -288,21 +404,30 @@ export default function WorkerForm({ department }) {
               <>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">State *</label>
-                  <input required name="state" value={formData.state} onChange={handleChange} className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
+                  <input name="state" value={formData.state} onChange={handleChange} className={getInputClass('state')} placeholder="e.g. Kerala" />
+                  {fieldErrors.state && (
+                    <p className="text-xs font-semibold text-rose-500 mt-1 block">{fieldErrors.state}</p>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">District *</label>
-                  <input required name="district" value={formData.district} onChange={handleChange} className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
+                  <input name="district" value={formData.district} onChange={handleChange} className={getInputClass('district')} placeholder="e.g. Malappuram" />
+                  {fieldErrors.district && (
+                    <p className="text-xs font-semibold text-rose-500 mt-1 block">{fieldErrors.district}</p>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Pincode *</label>
-                  <input required name="pincode" value={formData.pincode} onChange={handleChange} className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
+                  <input name="pincode" value={formData.pincode} onChange={handleChange} className={getInputClass('pincode')} placeholder="6-digit pincode" />
+                  {fieldErrors.pincode && (
+                    <p className="text-xs font-semibold text-rose-500 mt-1 block">{fieldErrors.pincode}</p>
+                  )}
                 </div>
               </>
             )}
             <div className="md:col-span-3">
               <label className="block text-sm font-medium text-slate-700 mb-1">Assigned Place / Zone</label>
-              <input name="place" value={formData.place} onChange={handleChange} className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
+              <input name="place" value={formData.place} onChange={handleChange} className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" placeholder="e.g. Manjeri Junction Zone" />
             </div>
           </div>
 
