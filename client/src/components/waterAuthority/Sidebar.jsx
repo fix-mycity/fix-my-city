@@ -1,6 +1,7 @@
 import React from 'react';
 import { sidebarItems } from '../../utils/waterMockData';
 import { Link } from 'react-router-dom';
+import DepartmentSwitcher from '../shared/DepartmentSwitcher';
 
 export default function Sidebar({ 
   isCollapsed, 
@@ -40,6 +41,12 @@ export default function Sidebar({
         </div>
       </div>
 
+      {!isCollapsed && (
+        <div className="px-4 py-3 border-b border-slate-700/50">
+          <DepartmentSwitcher />
+        </div>
+      )}
+
       <nav className="water-sidebar-nav">
         <ul className="water-sidebar-menu">
           {sidebarItems.map((item) => (
@@ -72,31 +79,6 @@ export default function Sidebar({
           ))}
         </ul>
       </nav>
-
-      <div className="water-sidebar-footer">
-        <div className="water-sidebar-user-block">
-          <img src={user.avatar} alt="User Profile" className="water-sidebar-avatar" />
-          <div className="water-sidebar-user-info">
-            <span className="water-sidebar-username">{user.username}</span>
-            <span className="water-sidebar-user-role">{user.role}</span>
-          </div>
-        </div>
-        <div className="water-sidebar-actions-row">
-          <button className="water-sidebar-footer-btn" title="View Profile">
-            <span className="material-symbols-outlined">account_circle</span>
-          </button>
-          <button className="water-sidebar-footer-btn" title="Settings">
-            <span className="material-symbols-outlined">settings</span>
-          </button>
-          <button 
-            className="water-sidebar-footer-btn logout-btn" 
-            onClick={onLogout}
-            title="Log Out"
-          >
-            <span className="material-symbols-outlined">logout</span>
-          </button>
-        </div>
-      </div>
     </aside>
   );
 }

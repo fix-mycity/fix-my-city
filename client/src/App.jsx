@@ -49,6 +49,11 @@ import SuperAdminDashboard from './pages/superAdmin/SuperAdminDashboard';
 import UserRolePermissionManagement from './pages/superAdmin/UserRolePermissionManagement';
 import MasterComplaintsReroute from './pages/superAdmin/MasterComplaintsReroute';
 
+// Emergency Management Module
+import EmergencyLayout from './layout/EmergencyLayout';
+import EmergencyDashboard from './pages/emergency/EmergencyDashboard';
+import EmergencyComplaints from './pages/emergency/EmergencyComplaints';
+
 export default function App() {
   const dispatch = useDispatch();
   const [authChecked, setAuthChecked] = useState(false);
@@ -379,6 +384,99 @@ export default function App() {
               <SuperAdminLayout>
                 <MasterComplaintsReroute />
               </SuperAdminLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Emergency Department Module */}
+        <Route
+          path="/emergency/dashboard"
+          element={
+            <ProtectedRoute
+              allowedRoles={['Department_Admin', 'Super_Admin', 'Admin']}
+              requiredPermissions={['dept:emergency']}
+            >
+              <EmergencyLayout>
+                <EmergencyDashboard />
+              </EmergencyLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/emergency/complaints"
+          element={
+            <ProtectedRoute
+              allowedRoles={['Department_Admin', 'Super_Admin', 'Admin']}
+              requiredPermissions={['dept:emergency']}
+            >
+              <EmergencyLayout>
+                <EmergencyComplaints />
+              </EmergencyLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/emergency/workers"
+          element={
+            <ProtectedRoute
+              allowedRoles={['Department_Admin', 'Super_Admin', 'Admin']}
+              requiredPermissions={['dept:emergency']}
+            >
+              <EmergencyLayout>
+                <WorkerList department="emergency" />
+              </EmergencyLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/emergency/workers/new"
+          element={
+            <ProtectedRoute
+              allowedRoles={['Department_Admin', 'Super_Admin', 'Admin']}
+              requiredPermissions={['dept:emergency']}
+            >
+              <EmergencyLayout>
+                <WorkerForm department="emergency" />
+              </EmergencyLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/emergency/workers/:id/edit"
+          element={
+            <ProtectedRoute
+              allowedRoles={['Department_Admin', 'Super_Admin', 'Admin']}
+              requiredPermissions={['dept:emergency']}
+            >
+              <EmergencyLayout>
+                <WorkerForm department="emergency" />
+              </EmergencyLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/emergency/broadcasts"
+          element={
+            <ProtectedRoute
+              allowedRoles={['Department_Admin', 'Super_Admin', 'Admin']}
+              requiredPermissions={['dept:emergency']}
+            >
+              <EmergencyLayout>
+                <EmergencyDashboard />
+              </EmergencyLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/emergency"
+          element={
+            <ProtectedRoute
+              allowedRoles={['Department_Admin', 'Super_Admin', 'Admin']}
+              requiredPermissions={['dept:emergency']}
+            >
+              <EmergencyLayout>
+                <EmergencyDashboard />
+              </EmergencyLayout>
             </ProtectedRoute>
           }
         />

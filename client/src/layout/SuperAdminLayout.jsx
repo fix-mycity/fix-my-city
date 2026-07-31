@@ -5,6 +5,8 @@ import { logoutUser } from '../features/auth/authThunks';
 import { toast } from 'react-hot-toast';
 import { Menu, X, ShieldAlert, LayoutDashboard, Users, ArrowRightLeft, LogOut, Settings } from 'lucide-react';
 
+import DepartmentSwitcher from '../components/shared/DepartmentSwitcher';
+
 export default function SuperAdminLayout({ children }) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const location = useLocation();
@@ -53,6 +55,10 @@ export default function SuperAdminLayout({ children }) {
           >
             <X className="w-6 h-6" />
           </button>
+        </div>
+
+        <div className="px-6 py-3 border-b border-slate-800">
+          <DepartmentSwitcher />
         </div>
 
         {/* Sidebar Nav Links */}
