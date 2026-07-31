@@ -28,19 +28,21 @@ export default function WorkerList({ department }) {
       if (searchQuery) params.search = searchQuery;
 
       const response = await getWorkers(params);
-      const items = response.data.items || [];
+      const items = response.data?.items || (Array.isArray(response.data) ? response.data : []);
       setWorkers(items);
-      setTotalItems(response.data.total_items || 0);
-      setTotalPages(response.data.total_pages || 1);
+      const totalCount = response.data?.total_items !== undefined ? response.data.total_items : items.length;
+      setTotalItems(totalCount);
+      setTotalPages(response.data?.total_pages || Math.ceil(totalCount / pageSize) || 1);
 
       setStats({
-        total: response.data.total_items || 0,
-        available: items.filter(w => w.availability === 'AVAILABLE' && w.is_active !== false).length,
+        total: totalCount,
+        available: items.filter(w => (w.availability === 'AVAILABLE' || !w.availability) && w.is_active !== false).length,
         busy: items.filter(w => w.availability === 'BUSY' && w.is_active !== false).length,
         onLeave: items.filter(w => w.availability === 'ON_LEAVE' || w.is_active === false).length,
       });
     } catch (err) {
-      toast.error(err.response?.data?.detail || "Could not retrieve field workers list.");
+      console.error("Error fetching workers:", err);
+      toast.error(typeof err.response?.data?.detail === 'string' ? err.response.data.detail : "Could not retrieve field workers list.");
     } finally {
       setIsLoading(false);
     }

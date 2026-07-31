@@ -1,29 +1,53 @@
 import React, { useState } from 'react';
+import { useSelector } from 'react-redux';
+import { useNavigate, useLocation } from 'react-router-dom';
 
-export default function Topbar({ 
-  onMenuToggle, 
+export default function Topbar({
+  onMenuToggle,
   onLogout,
-  onNotificationToggle 
+  onNotificationToggle
 }) {
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
-  
+
   const currentDate = new Date().toLocaleDateString('en-US', {
     weekday: 'short',
     month: 'short',
     day: 'numeric'
   });
 
-  const user = {
-    username: "Jamsheed K.",
-    role: "Water Authority Admin",
-    avatar: "https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&q=80&w=100"
+  const [searchVal, setSearchVal] = useState('');
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const handleSearchSubmit = (e) => {
+    e.preventDefault();
+    if (!searchVal.trim()) return;
+
+    let targetPath = '/water/complaints';
+    if (location.pathname.includes('/worker')) {
+      targetPath = '/worker/tasks';
+    } else if (location.pathname.includes('/water/workers')) {
+      targetPath = '/water/workers';
+    } else if (location.pathname.includes('/water/assignments')) {
+      targetPath = '/water/assignments';
+    }
+
+    navigate(`${targetPath}?search=${encodeURIComponent(searchVal.trim())}`);
+  };
+
+  const { user: reduxUser } = useSelector((state) => state.auth);
+
+  const displayUser = {
+    username: reduxUser?.username || "Jamsheed K.",
+    role: reduxUser?.role === "Department_Admin" ? "Water Authority Admin" : (reduxUser?.role || "Water Authority Admin"),
+    avatar: reduxUser?.avatar_url || "https://www.shutterstock.com/shutterstock/photos/2436095397/display_1500/stock-vector-user-glyph-vector-icon-isolated-user-stock-vector-icon-for-web-mobile-app-and-ui-design-2436095397.jpg"
   };
 
   return (
     <header className="water-topbar">
       <div className="water-topbar-left">
-        <button 
-          className="water-mobile-toggle" 
+        <button
+          className="water-mobile-toggle"
           onClick={onMenuToggle}
           aria-label="Toggle Navigation Menu"
         >
@@ -33,10 +57,15 @@ export default function Topbar({
           <span className="water-topbar-dept">Municipality Services</span>
           <span className="water-topbar-logo-lbl">Fix My City</span>
         </div>
-        <div className="water-topbar-search">
+        <form onSubmit={handleSearchSubmit} className="water-topbar-search">
           <span className="water-topbar-search-icon material-symbols-outlined">search</span>
-          <input type="text" placeholder="Search complaints, pipe IDs, workers..." />
-        </div>
+          <input
+            type="text"
+            placeholder="Search complaints, pipe IDs, workers..."
+            value={searchVal}
+            onChange={(e) => setSearchVal(e.target.value)}
+          />
+        </form>
       </div>
 
       <div className="water-topbar-right">
@@ -45,8 +74,8 @@ export default function Topbar({
           <span>{currentDate}</span>
         </div>
 
-        <button 
-          className="water-topbar-badge-btn" 
+        <button
+          className="water-topbar-badge-btn"
           onClick={onNotificationToggle}
           title="Toggle Notifications"
         >
@@ -54,17 +83,17 @@ export default function Topbar({
           <span className="water-topbar-badge"></span>
         </button>
 
-        <div 
+        <div
           className="water-topbar-profile"
           onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
         >
-          <img src={user.avatar} alt="Profile Avatar" />
+          <img src={displayUser.avatar} alt="Profile Avatar" />
           <div className="water-topbar-profile-info">
-            <span className="water-topbar-username">{user.username}</span>
-            <span className="water-topbar-userrole">{user.role}</span>
+            <span className="water-topbar-username">{displayUser.username}</span>
+            <span className="water-topbar-userrole">{displayUser.role}</span>
           </div>
           <span className="material-symbols-outlined">arrow_drop_down</span>
-          
+
           {profileDropdownOpen && (
             <div className="water-profile-dropdown">
               <button className="water-profile-dropdown-item">
@@ -79,7 +108,7 @@ export default function Topbar({
                 <span className="material-symbols-outlined">help</span>
                 Help Center
               </button>
-              <button 
+              <button
                 className="water-profile-dropdown-item logout"
                 onClick={onLogout}
               >

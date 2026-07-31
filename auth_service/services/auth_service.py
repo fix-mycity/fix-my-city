@@ -1,4 +1,5 @@
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from datetime import datetime, timezone
 from models.user_model import User
 from models.login_history_model import LoginHistory
@@ -15,8 +16,9 @@ from services.jwt_service import (
 
 
 def register_user(db: Session, user: RegisterSchema):
+    clean_email = user.email.strip().lower()
     existing_user = db.query(User).filter(
-        User.email == user.email
+        func.lower(User.email) == clean_email
     ).first()
 
     if existing_user:
@@ -40,7 +42,7 @@ def register_user(db: Session, user: RegisterSchema):
 
     new_user = User(
         username=user.username,
-        email=user.email,
+        email=clean_email,
         state=user.state,
         district=user.district,
         pincode=user.pincode,
@@ -65,7 +67,8 @@ def register_user(db: Session, user: RegisterSchema):
     }
 
 def register_worker(db: Session, worker: RegisterWorkerSchema):
-    existing_user = db.query(User).filter(User.email == worker.email).first()
+    clean_email = worker.email.strip().lower()
+    existing_user = db.query(User).filter(func.lower(User.email) == clean_email).first()
     if existing_user:
         return {"success": False, "message": "Email already registered."}
 
@@ -79,7 +82,7 @@ def register_worker(db: Session, worker: RegisterWorkerSchema):
 
     new_worker = User(
         username=worker.username,
-        email=worker.email,
+        email=clean_email,
         state=worker.state,
         district=worker.district,
         pincode=worker.pincode,
@@ -106,8 +109,9 @@ def register_worker(db: Session, worker: RegisterWorkerSchema):
 
 
 def login_user(db: Session, credentials: LoginSchema, ip_address: str, device: str) -> dict:
-    # 1. Fetch user by email
-    user = db.query(User).filter(User.email == credentials.email).first()
+    # 1. Fetch user by email (case-insensitive)
+    clean_email = credentials.email.strip().lower() if credentials.email else ""
+    user = db.query(User).filter(func.lower(User.email) == clean_email).first()
     if not user:
         return {
             "success": False,

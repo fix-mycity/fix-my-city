@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 
 import ComplaintTable from '../../components/waterAuthority/ComplaintTable';
@@ -29,8 +29,10 @@ export default function ComplaintManagement() {
   const [totalPages, setTotalPages] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
 
+  const [searchParams] = useSearchParams();
+  
   // Filter, Search, and Sort state
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState(searchParams.get('search') || '');
   const [filters, setFilters] = useState({
     status: '',
     priority: '',
@@ -94,6 +96,10 @@ export default function ComplaintManagement() {
       setIsLoading(false);
     }
   };
+
+  useEffect(() => {
+    setSearchQuery(searchParams.get('search') || '');
+  }, [searchParams]);
 
   useEffect(() => {
     fetchSummary();

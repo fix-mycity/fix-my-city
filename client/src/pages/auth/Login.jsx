@@ -109,7 +109,7 @@ export default function Login() {
 
     try {
       const result = await dispatch(loginUser({
-        email: formData.email,
+        email: formData.email.trim().toLowerCase(),
         password: formData.password
       })).unwrap();
       toast.success('Logged in successfully!');

@@ -73,7 +73,8 @@ export default function ProfilePage() {
         setLocations(locationsRes.data);
       } catch (err) {
         console.error("Error loading profile data:", err);
-        toast.error("Failed to load profile data.");
+        const detail = err.response?.data?.detail;
+        toast.error(typeof detail === 'string' ? detail : "Failed to load profile data.");
       } finally {
         setLoading(false);
       }
@@ -206,14 +207,15 @@ export default function ProfilePage() {
     }
 
     setUploadingAvatar(true);
-    const uploadToast = toast.loading("Uploading avatar to S3...");
+    const uploadToast = toast.loading("Uploading avatar...");
     try {
       const res = await uploadAvatarApi(file);
       setProfile((prev) => ({ ...prev, avatar_url: res.data.avatar_url }));
       toast.success("Avatar uploaded successfully!", { id: uploadToast });
     } catch (err) {
       console.error(err);
-      toast.error("Failed to upload avatar.", { id: uploadToast });
+      const detail = err.response?.data?.detail;
+      toast.error(typeof detail === 'string' ? detail : "Failed to upload avatar.", { id: uploadToast });
     } finally {
       setUploadingAvatar(false);
     }

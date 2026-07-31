@@ -36,7 +36,7 @@ def create_worker(db: Session, manager_id: int, department: str, schema: WorkerC
         with urllib.request.urlopen(req) as response:
             res_data = json.loads(response.read().decode())
             data_obj = res_data.get("data") or {}
-            user_id = data_obj.get("id") or (isinstance(data_obj.get("user"), dict) and data_obj.get("user", {}).get("id"))
+            user_id = data_obj.get("id") or (isinstance(data_obj.get("user"), dict) and data_obj.get("user", {}).get("id")) or res_data.get("user_id")
 
             if user_id:
                 profile_schema = WorkerUpdateSchema(**schema.model_dump(exclude_unset=True))

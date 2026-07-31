@@ -5,13 +5,17 @@ from typing import Optional
 
 def classify_department(title: str, description: str) -> str:
     text = (title + " " + description).lower()
-    if any(keyword in text for keyword in ["garbage", "waste", "trash", "dump", "litter", "recycle", "sewage", "drain", "bin", "bins", "sanitation", "clean", "smell", "odor", "rubbish", "junk", "dumpster", "sweeping", "overflowing bin", "wandoor"]):
+    if any(keyword in text for keyword in ["garbage", "waste", "trash", "dump", "litter", "recycle", "sewage", "bin", "bins", "sanitation", "clean", "smell", "odor", "rubbish", "junk", "dumpster", "sweeping", "overflowing bin", "wandoor"]):
         return ComplaintDepartment.WASTE.value
-    if any(keyword in text for keyword in ["water", "pipe", "pipeline", "leak", "kwa", "kerala water authority", "drainage", "tap", "hydration", "plumbing", "water supply", "water overflow", "sewer overflow"]):
+    if any(keyword in text for keyword in ["water", "pipe", "pipeline", "leak", "kwa", "kerala water authority", "drainage", "drain", "tap", "hydration", "plumbing", "water supply", "water overflow", "sewer overflow", "overflow"]):
         return ComplaintDepartment.WATER.value
     if any(keyword in text for keyword in ["traffic", "road", "parking", "signal", "accident", "congestion", "vehicle", "street light"]):
         return ComplaintDepartment.TRAFFIC.value
     return ComplaintDepartment.GENERAL.value
+
+import random
+from modules.water_management.model import WaterComplaint
+from modules.users.service import get_or_create_profile
 
 def create_complaint(db: Session, user_id: int, data: ComplaintCreate) -> Complaint:
     dept = None

@@ -7,22 +7,54 @@ import QuickActions from '../../components/waterAuthority/QuickActions';
 import NotificationPanel from '../../components/waterAuthority/NotificationPanel';
 import LoadingSkeleton from '../../components/waterAuthority/LoadingSkeleton';
 
+import { getDashboardSummary, getComplaints } from '../../services/waterComplaintService';
+import { getWorkers } from '../../services/workerService';
+import { getNotifications } from '../../services/notificationService';
+import { toast } from 'react-hot-toast';
+
 export default function Dashboard() {
   const [isLoading, setIsLoading] = useState(true);
+  const [summary, setSummary] = useState(null);
+  const [complaints, setComplaints] = useState([]);
+  const [workers, setWorkers] = useState([]);
+  const [notifications, setNotifications] = useState([]);
 
-  // Initial loading simulation
-  useEffect(() => {
-    const timer = setTimeout(() => {
+  const loadDashboardData = async () => {
+    setIsLoading(true);
+    try {
+      const [sumRes, compRes, workRes, notifRes] = await Promise.allSettled([
+        getDashboardSummary(),
+        getComplaints({ page_size: 100 }),
+        getWorkers({ page_size: 100 }),
+        getNotifications({ page_size: 10 })
+      ]);
+
+      if (sumRes.status === 'fulfilled') {
+        setSummary(sumRes.value.data);
+      }
+      if (compRes.status === 'fulfilled') {
+        setComplaints(compRes.value.data.items || compRes.value.data || []);
+      }
+      if (workRes.status === 'fulfilled') {
+        setWorkers(workRes.value.data.items || workRes.value.data || []);
+      }
+      if (notifRes.status === 'fulfilled') {
+        setNotifications(notifRes.value.data.items || notifRes.value.data || []);
+      }
+    } catch (err) {
+      console.error("Dashboard fetch error:", err);
+      toast.error("Failed to refresh live dashboard metrics.");
+    } finally {
       setIsLoading(false);
-    }, 800);
-    return () => clearTimeout(timer);
+    }
+  };
+
+  useEffect(() => {
+    loadDashboardData();
   }, []);
 
   const handleRefresh = () => {
-    setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
-    }, 1000);
+    loadDashboardData();
   };
 
   return (
@@ -32,30 +64,31 @@ export default function Dashboard() {
       ) : (
         <>
           {/* Welcome Header */}
-          <PageHeader 
-            title="Welcome Back, Jamsheed" 
-            subtitle="Water Authority Dashboard" 
+          <PageHeader
+            title="Water Authority Dashboard"
+            subtitle="Live Operational Monitoring & Citizen Complaints"
             onActionClick={handleRefresh}
-            actionLabel="Sync Sensors"
+            actionLabel="Sync Live Data"
             isLoading={isLoading}
           />
 
           {/* Quick Stats Grid */}
-          <DashboardCards />
+          <DashboardCards summary={summary} complaints={complaints} workers={workers} />
 
           {/* Quick Actions Panel */}
           <QuickActions />
 
           {/* Operational Charts */}
-          <DashboardCharts />
+          <DashboardCharts summary={summary} complaints={complaints} workers={workers} />
 
           {/* Bottom Grid with Activities and Bulletins */}
           <div className="water-bottom-grid">
-            <RecentActivities />
-            <NotificationPanel />
+            <RecentActivities complaints={complaints} />
+            <NotificationPanel notifications={notifications} />
           </div>
         </>
       )}
     </div>
   );
 }
+

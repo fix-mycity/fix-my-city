@@ -3,18 +3,17 @@
 export const sidebarItems = [
   { id: 'dashboard', label: 'Dashboard', icon: 'dashboard', path: '/water/dashboard' },
   { id: 'complaints', label: 'Complaint Management', icon: 'assignment', path: '/water/complaints' },
-  { id: 'assignments', label: 'Work Assignments', icon: 'assignment_turned_in', path: '#assignments' },
+  { id: 'assignments', label: 'Work Assignments', icon: 'assignment_turned_in', path: '/water/assignments' },
   { id: 'workers', label: 'Field Workers', icon: 'engineering', path: '/water/workers' },
-  { id: 'supply', label: 'Water Supply', icon: 'water_drop', path: '#supply' },
-  { id: 'pipelines', label: 'Pipeline Management', icon: 'schema', path: '#pipelines' },
-  { id: 'tanks', label: 'Water Tank Management', icon: 'propane_tank', path: '#tanks' },
-  { id: 'quality', label: 'Water Quality', icon: 'biotech', path: '#quality' },
-  { id: 'maintenance', label: 'Maintenance', icon: 'build', path: '#maintenance' },
-  { id: 'emergency', label: 'Emergency Shutdown', icon: 'dangerous', path: '#emergency' },
-  { id: 'notifications', label: 'Notifications', icon: 'notifications_active', path: '#notifications' },
-  { id: 'reports', label: 'Reports', icon: 'assessment', path: '#reports' },
-  { id: 'citizens', label: 'Citizen Management', icon: 'people', path: '#citizens' },
-  { id: 'settings', label: 'Settings', icon: 'settings', path: '#settings' }
+  { id: 'supply', label: 'Water Supply', icon: 'water_drop', path: '/water/supply' },
+  { id: 'pipelines', label: 'Pipeline Management', icon: 'schema', path: '/water/pipelines' },
+  { id: 'tanks', label: 'Water Tank Management', icon: 'propane_tank', path: '/water/tanks' },
+  { id: 'quality', label: 'Water Quality', icon: 'biotech', path: '/water/quality' },
+  { id: 'maintenance', label: 'Maintenance', icon: 'build', path: '/water/maintenance' },
+  { id: 'emergency', label: 'Emergency Shutdown', icon: 'dangerous', path: '/water/emergency' },
+  { id: 'notifications', label: 'Notifications', icon: 'notifications_active', path: '/water/notifications' },
+  { id: 'reports', label: 'Reports', icon: 'assessment', path: '/water/reports' },
+  { id: 'citizens', label: 'Citizen Management', icon: 'people', path: '/water/citizens' }
 ];
 
 export const statsData = [

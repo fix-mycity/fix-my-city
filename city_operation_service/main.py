@@ -23,7 +23,6 @@ try:
         conn.execute(text("ALTER TABLE complaints ADD COLUMN IF NOT EXISTS resolution_image VARCHAR(500);"))
         conn.execute(text("ALTER TABLE complaints ADD COLUMN IF NOT EXISTS resolved_at TIMESTAMP WITH TIME ZONE;"))
         conn.execute(text("ALTER TABLE water_complaints ADD COLUMN IF NOT EXISTS central_complaint_id INTEGER;"))
-        
         # Waste management schema migrations
         conn.execute(text("ALTER TABLE waste_collection_schedules ADD COLUMN IF NOT EXISTS start_point VARCHAR(200);"))
         conn.execute(text("ALTER TABLE waste_collection_schedules ADD COLUMN IF NOT EXISTS end_point VARCHAR(200);"))
