@@ -39,6 +39,8 @@ const Dashboard = () => {
             deptPermissions = ['dept:water'];
           } else if (permissions.some((p) => p.startsWith('traffic:'))) {
             deptPermissions = ['dept:traffic'];
+          } else if (permissions.some((p) => p.startsWith('general:'))) {
+            deptPermissions = ['dept:general'];
           }
         }
 
@@ -51,6 +53,8 @@ const Dashboard = () => {
             navigate('/traffic/dashboard', { replace: true });
           } else if (perm === 'dept:waste') {
             navigate('/waste/dashboard', { replace: true });
+          } else if (perm === 'dept:general') {
+            navigate('/general/dashboard', { replace: true });
           }
         } else if (deptPermissions.length >= 2) {
           navigate('/admin/portal', { replace: true });

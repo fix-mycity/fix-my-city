@@ -41,6 +41,7 @@ const formatPermissionName = (permName) => {
     'dept:traffic': 'Traffic Department Access',
     'dept:water': 'Water Department Access',
     'dept:waste': 'Waste Department Access',
+    'dept:general': 'General Department Access',
   };
 
   if (map[permName]) return map[permName];

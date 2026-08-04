@@ -89,7 +89,7 @@ export default function WorkerList({ department }) {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-200 pb-5">
         <div>
           <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
-            {department === 'water' ? 'Water Authority ' : department === 'traffic' ? 'Traffic Control ' : ''}
+            {department === 'water' ? 'Water Authority ' : department === 'traffic' ? 'Traffic Control ' : department === 'general' ? 'General Operations ' : ''}
             Worker Operations
           </h1>
           <p className="text-sm text-slate-500 mt-1">Manage field service crews, assignments, and review worker leave applications.</p>

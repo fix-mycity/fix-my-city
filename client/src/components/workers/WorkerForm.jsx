@@ -274,7 +274,7 @@ export default function WorkerForm({ department }) {
             {isEditMode ? 'Edit Field Worker Profile' : 'Register New Field Worker'}
           </h1>
           <p className="text-sm text-slate-500 mt-1">
-            {department === 'water' ? 'Water Authority Department' : department === 'traffic' ? 'Traffic Control Unit' : department === 'waste' ? 'Waste Sanitation Management' : 'City Operations Department'}
+            {department === 'water' ? 'Water Authority Department' : department === 'traffic' ? 'Traffic Control Unit' : department === 'waste' ? 'Waste Sanitation Management' : department === 'general' ? 'General Operations Department' : 'City Operations Department'}
           </p>
         </div>
       </div>

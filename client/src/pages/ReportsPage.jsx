@@ -6,6 +6,27 @@ import Navbar from '../components/Navbar';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import ComplaintDetailsModal from '../components/shared/ComplaintDetailsModal';
+import ComplaintLocation from '../components/shared/ComplaintLocation';
+import { 
+  Search, 
+  MapPin, 
+  Calendar, 
+  Image as ImageIcon, 
+  Camera, 
+  CheckCircle2, 
+  Clock, 
+  XCircle, 
+  ChevronRight, 
+  SlidersHorizontal,
+  Info,
+  Layers,
+  Map,
+  Compass,
+  FileText,
+  User,
+  ShieldCheck,
+  ChevronDown
+} from 'lucide-react';
 
 const isVideoUrl = (url) => {
   if (!url) return false;
@@ -13,9 +34,7 @@ const isVideoUrl = (url) => {
   return cleanUrl.endsWith('.mp4') || cleanUrl.endsWith('.webm') || cleanUrl.endsWith('.ogg') || cleanUrl.endsWith('.mov') || cleanUrl.endsWith('.quicktime') || url.includes('/video');
 };
 
-import ComplaintLocation from '../components/shared/ComplaintLocation';
-
-const ReportsPage = () => {
+export default function ReportsPage() {
   const [complaints, setComplaints] = useState([]);
   const [filteredComplaints, setFilteredComplaints] = useState([]);
   const [selectedReport, setSelectedReport] = useState(null);
@@ -23,10 +42,71 @@ const ReportsPage = () => {
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [searchQuery, setSearchQuery] = useState('');
   const [showDetailsModalMobile, setShowDetailsModalMobile] = useState(false);
+  const [activeTab, setActiveTab] = useState('overview'); // 'overview' | 'media' | 'map'
   const rightMapRef = useRef(null);
 
+  // Load complaints list
+  const loadReports = async () => {
+    try {
+      setLoading(true);
+      const res = await getMyComplaintsApi();
+      const sorted = (res.data || []).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+      setComplaints(sorted);
+      setFilteredComplaints(sorted);
+      if (sorted.length > 0) {
+        setSelectedReport(sorted[0]);
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to load your complaints list.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    if (!selectedReport) return;
+    loadReports();
+  }, []);
+
+  // Filter complaints based on status filter and search query
+  useEffect(() => {
+    let result = complaints;
+
+    if (statusFilter !== 'ALL') {
+      if (statusFilter === 'RESOLVED') {
+        result = result.filter(c => c.status === 'RESOLVED' || c.status === 'CLOSED');
+      } else if (statusFilter === 'IN_PROGRESS') {
+        result = result.filter(c => c.status === 'IN_PROGRESS' || c.status === 'ASSIGNED');
+      } else {
+        result = result.filter(c => c.status === statusFilter);
+      }
+    }
+
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      result = result.filter(c => 
+        (c.title || '').toLowerCase().includes(query) || 
+        (c.description || '').toLowerCase().includes(query) ||
+        (c.department || '').toLowerCase().includes(query)
+      );
+    }
+
+    setFilteredComplaints(result);
+    
+    if (result.length > 0) {
+      const stillVisible = result.some(c => c.id === selectedReport?.id);
+      if (!stillVisible) {
+        setSelectedReport(result[0]);
+        setActiveTab('overview');
+      }
+    } else {
+      setSelectedReport(null);
+    }
+  }, [statusFilter, searchQuery, complaints]);
+
+  // Leaflet map initialization
+  useEffect(() => {
+    if (!selectedReport || activeTab !== 'map') return;
     const lat = Number(selectedReport.location_lat || selectedReport.latitude || 0);
     const lng = Number(selectedReport.location_lng || selectedReport.longitude || 0);
 
@@ -50,147 +130,97 @@ const ReportsPage = () => {
             traffic: '#f59e0b',
             waste: '#ef4444',
             water: '#3b82f6',
-            general: '#64748b'
+            general: '#6366f1'
           }[selectedReport.department] || '#ef4444';
 
           const customIcon = L.divIcon({
             className: 'custom-map-pin',
             html: `<div style="
                background-color: ${pinColor};
-               width: 24px;
-               height: 24px;
+               width: 28px;
+               height: 28px;
                border-radius: 50%;
-               border: 2px solid white;
-               box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+               border: 2.5px solid white;
+               box-shadow: 0 4px 10px rgba(0,0,0,0.2);
                display: flex;
                align-items: center;
                justify-content: center;
                color: white;
              ">
-               <span class="material-symbols-outlined" style="font-size: 14px; font-weight: bold;">location_on</span>
+               <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
              </div>`,
-             iconSize: [24, 24],
-             iconAnchor: [12, 24]
+             iconSize: [28, 28],
+             iconAnchor: [14, 28]
           });
 
           L.marker([lat, lng], { icon: customIcon }).addTo(mapInstance);
           rightMapRef.current = mapInstance;
         }
-      }, 100);
+      }, 50);
     }
-  }, [selectedReport]);
+  }, [selectedReport, activeTab]);
 
-  const loadReports = async () => {
-    try {
-      const res = await getMyComplaintsApi();
-      const sorted = (res.data || []).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-      setComplaints(sorted);
-      setFilteredComplaints(sorted);
-      // Auto-select first report if any exist
-      if (sorted.length > 0) {
-        setSelectedReport(sorted[0]);
-      }
-    } catch (err) {
-      console.error(err);
-      toast.error("Failed to load your complaints list.");
-    } finally {
-      setLoading(false);
+  const handleSelectReport = (report) => {
+    setSelectedReport(report);
+    setActiveTab('overview');
+    if (window.innerWidth < 1024) {
+      setShowDetailsModalMobile(true);
     }
   };
 
-  useEffect(() => {
-    loadReports();
-  }, []);
-
-  // Filter complaints based on status tab and search text
-  useEffect(() => {
-    let result = complaints;
-
-    if (statusFilter !== 'ALL') {
-      if (statusFilter === 'RESOLVED') {
-        result = result.filter(c => c.status === 'RESOLVED' || c.status === 'CLOSED');
-      } else if (statusFilter === 'IN_PROGRESS') {
-        result = result.filter(c => c.status === 'IN_PROGRESS' || c.status === 'ASSIGNED');
-      } else {
-        result = result.filter(c => c.status === statusFilter);
-      }
-    }
-
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase();
-      result = result.filter(c => 
-        c.title.toLowerCase().includes(query) || 
-        c.description.toLowerCase().includes(query) ||
-        c.department.toLowerCase().includes(query)
-      );
-    }
-
-    setFilteredComplaints(result);
-    
-    // Adjust selected report if current one is filtered out
-    if (result.length > 0) {
-      // Keep current selection if it's still in the filtered list
-      const stillVisible = result.some(c => c.id === selectedReport?.id);
-      if (!stillVisible) {
-        setSelectedReport(result[0]);
-      }
-    } else {
-      setSelectedReport(null);
-    }
-  }, [statusFilter, searchQuery, complaints]);
-
-  const getStatusStyle = (status) => {
+  const getStatusConfig = (status) => {
     switch (status) {
       case 'RESOLVED':
       case 'CLOSED':
-        return 'bg-emerald-50 text-emerald-700 border-emerald-100 hover:bg-emerald-100/50';
+        return {
+          bg: 'bg-emerald-50 text-emerald-700 border-emerald-100',
+          badge: 'bg-emerald-600 text-white shadow-emerald-500/20',
+          indicator: 'bg-emerald-500',
+          icon: CheckCircle2
+        };
       case 'IN_PROGRESS':
       case 'ASSIGNED':
-        return 'bg-amber-50 text-amber-700 border-amber-100 hover:bg-amber-100/50';
+        return {
+          bg: 'bg-amber-50 text-amber-700 border-amber-100',
+          badge: 'bg-amber-500 text-white shadow-amber-500/20',
+          indicator: 'bg-amber-500',
+          icon: Clock
+        };
       default:
-        return 'bg-red-50 text-red-700 border-red-100 hover:bg-red-100/50';
+        return {
+          bg: 'bg-rose-50 text-rose-700 border-rose-100',
+          badge: 'bg-rose-500 text-white shadow-rose-500/20',
+          indicator: 'bg-rose-500',
+          icon: XCircle
+        };
     }
   };
 
-  const getStatusBadgeClass = (status) => {
-    switch (status) {
-      case 'RESOLVED':
-      case 'CLOSED':
-        return 'bg-emerald-500 text-white shadow-emerald-500/20';
-      case 'IN_PROGRESS':
-      case 'ASSIGNED':
-        return 'bg-amber-500 text-white shadow-amber-500/20';
-      default:
-        return 'bg-red-500 text-white shadow-red-500/20';
-    }
-  };
-
-  const getDeptIcon = (dept) => {
+  const getDeptConfig = (dept) => {
     switch (dept) {
-      case 'traffic': return 'traffic';
-      case 'waste': return 'delete_sweep';
-      case 'water': return 'water_drop';
-      default: return 'help';
+      case 'traffic': 
+        return { label: 'Traffic Control', bg: 'bg-amber-50 text-amber-700 border-amber-150 border-amber-200/60', icon: Compass };
+      case 'waste': 
+        return { label: 'Waste Management', bg: 'bg-rose-50 text-rose-700 border-rose-200/60', icon: Trash2 };
+      case 'water': 
+        return { label: 'Water Authority', bg: 'bg-blue-50 text-blue-700 border-blue-200/60', icon: Compass };
+      default: 
+        return { label: 'General Operations', bg: 'bg-slate-50 text-slate-700 border-slate-200/60', icon: FileText };
     }
   };
 
-  const getDeptColorClass = (dept) => {
-    switch (dept) {
-      case 'traffic': return 'bg-amber-500/10 text-amber-600';
-      case 'waste': return 'bg-red-500/10 text-red-600';
-      case 'water': return 'bg-blue-500/10 text-blue-600';
-      default: return 'bg-slate-500/10 text-slate-600';
-    }
-  };
+  const Trash2 = (props) => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" {...props}><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
+  );
 
-  const defaultIssuePlaceholder = "https://images.unsplash.com/photo-1599740831664-927e1f1484f2?q=80&w=300&auto=format&fit=crop";
+  const defaultIssuePlaceholder = "https://images.unsplash.com/photo-1599740831664-927e1f1484f2?q=80&w=600&auto=format&fit=crop";
 
   if (loading) {
     return (
       <div className="flex h-screen items-center justify-center bg-slate-50">
-        <div className="flex flex-col items-center gap-2">
-          <span className="material-symbols-outlined animate-spin text-4xl text-blue-600">sync</span>
-          <p className="text-slate-600 font-semibold">Loading reports log...</p>
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="w-10 h-10 animate-spin text-blue-600" />
+          <p className="text-slate-500 font-semibold text-sm">Loading reports log...</p>
         </div>
       </div>
     );
@@ -199,32 +229,29 @@ const ReportsPage = () => {
   return (
     <div className="flex flex-col h-screen bg-slate-50 font-sans antialiased overflow-hidden">
       
-      {/* Top Navigation Navbar */}
       <Navbar />
 
-      {/* Main Workspace split */}
-      <div className="flex-1 flex overflow-hidden p-4 pb-20 lg:p-6 lg:pb-6 max-w-[1600px] mx-auto w-full gap-6">
+      {/* Main Split Layout */}
+      <div className="flex-1 flex overflow-hidden p-4 pb-24 lg:p-6 lg:pb-6 max-w-[1600px] mx-auto w-full gap-6">
         
-        {/* Left Side: Filterable Scroll List */}
-        <div className="w-full lg:w-[420px] flex flex-col h-full bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm shrink-0">
-          {/* Filters Panel */}
-          <div className="p-4 border-b border-slate-200 space-y-3 bg-slate-50/50">
-            {/* Search Input */}
+        {/* Left Sidebar List */}
+        <div className="w-full lg:w-[400px] flex flex-col h-full bg-white rounded-2xl border border-slate-200/80 overflow-hidden shadow-sm shrink-0">
+          
+          {/* Search and Filters Header */}
+          <div className="p-4 border-b border-slate-200/60 space-y-3 bg-slate-50/40">
             <div className="relative">
-              <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-                <span className="material-symbols-outlined text-sm">search</span>
-              </span>
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
               <input 
                 type="text" 
-                className="w-full bg-white border border-slate-200 rounded-lg pl-9 pr-4 py-2 text-slate-900 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all placeholder:text-slate-400"
-                placeholder="Search report title, description..."
+                className="w-full bg-white border border-slate-200 rounded-xl pl-9 pr-4 py-2 text-slate-800 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all placeholder:text-slate-400"
+                placeholder="Search reports by title, keyword..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
             
-            {/* Filter Tabs */}
-            <div className="flex gap-1.5 overflow-x-auto text-[11px] font-bold text-slate-500 select-none pb-0.5">
+            {/* Horizontal Filter Tabs */}
+            <div className="flex gap-1.5 overflow-x-auto text-xs font-bold text-slate-500 select-none pb-1 scrollbar-thin">
               {[
                 { label: 'All', value: 'ALL' },
                 { label: 'Pending', value: 'PENDING' },
@@ -234,10 +261,10 @@ const ReportsPage = () => {
                 <button
                   key={tab.value}
                   onClick={() => setStatusFilter(tab.value)}
-                  className={`px-3 py-1.5 rounded-md border transition-all shrink-0 ${
+                  className={`px-3.5 py-1.5 rounded-lg border transition-all shrink-0 font-extrabold shadow-sm ${
                     statusFilter === tab.value 
-                      ? 'bg-blue-600 text-white border-blue-600 shadow-sm' 
-                      : 'bg-white border-slate-200 hover:bg-slate-100 hover:text-slate-700'
+                      ? 'bg-blue-600 text-white border-blue-600 shadow-blue-600/10' 
+                      : 'bg-white border-slate-200 hover:bg-slate-100 hover:border-slate-300 hover:text-slate-700'
                   }`}
                 >
                   {tab.label}
@@ -246,85 +273,89 @@ const ReportsPage = () => {
             </div>
           </div>
 
-          {/* Scrollable Items Container */}
+          {/* Complaints Scroll Items */}
           <div className="flex-grow overflow-y-auto divide-y divide-slate-100">
             {filteredComplaints.length > 0 ? (
-              filteredComplaints.map((report) => (
-                <button
-                  key={report.id}
-                  onClick={() => {
-                    setSelectedReport(report);
-                    if (window.innerWidth < 1024) {
-                      setShowDetailsModalMobile(true);
-                    }
-                  }}
-                  className={`w-full text-left p-4 flex gap-4 transition-all border-l-4 ${
-                    selectedReport?.id === report.id 
-                      ? 'bg-blue-50/40 border-blue-600 hover:bg-blue-50/50' 
-                      : 'bg-white border-transparent hover:bg-slate-50'
-                  }`}
-                >
-                  {/* Small Image or Video thumbnail */}
-                  <div className="w-16 h-16 rounded-lg shrink-0 border border-slate-200 bg-slate-100 flex items-center justify-center overflow-hidden relative">
-                    {report.image_url ? (
-                      isVideoUrl(report.image_url) ? (
-                        <video 
-                          src={report.image_url} 
-                          muted 
-                          playsInline 
-                          autoPlay 
-                          loop 
-                          className="w-full h-full object-cover"
-                        />
+              filteredComplaints.map((report) => {
+                const isSelected = selectedReport?.id === report.id;
+                const statusConf = getStatusConfig(report.status);
+                const isVideo = isVideoUrl(report.image_url);
+                return (
+                  <button
+                    key={report.id}
+                    onClick={() => handleSelectReport(report)}
+                    className={`w-full text-left p-4 flex gap-4 transition-all border-l-4 ${
+                      isSelected 
+                        ? 'bg-blue-50/40 border-blue-600' 
+                        : 'bg-white border-transparent hover:bg-slate-50/80'
+                    }`}
+                  >
+                    {/* Media Thumbnail */}
+                    <div className="w-16 h-16 rounded-xl shrink-0 border border-slate-200 bg-slate-100 flex items-center justify-center overflow-hidden relative shadow-sm">
+                      {report.image_url ? (
+                        isVideo ? (
+                          <video 
+                            src={report.image_url} 
+                            muted 
+                            playsInline 
+                            autoPlay 
+                            loop 
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <img 
+                            src={report.image_url} 
+                            alt={report.title} 
+                            className="w-full h-full object-cover"
+                          />
+                        )
                       ) : (
-                        <img 
-                          src={report.image_url} 
-                          alt={report.title} 
-                          className="w-full h-full object-cover"
-                        />
-                      )
-                    ) : (
-                      <span className="material-symbols-outlined text-slate-300 text-xl">image</span>
-                    )}
-                  </div>
-                  
-                  {/* Text details */}
-                  <div className="flex-grow overflow-hidden flex flex-col justify-between">
-                    <div>
-                      <div className="flex justify-between items-start gap-2 mb-0.5">
-                        <h4 className="text-xs font-bold text-slate-900 truncate leading-snug">{report.title}</h4>
-                        <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full border shrink-0 ${getStatusStyle(report.status)}`}>
-                          {report.status}
-                        </span>
+                        <ImageIcon className="w-6 h-6 text-slate-300" />
+                      )}
+                    </div>
+                    
+                    {/* Text Details */}
+                    <div className="flex-grow overflow-hidden flex flex-col justify-between h-16 py-0.5">
+                      <div>
+                        <div className="flex justify-between items-start gap-2">
+                          <h4 className={`text-xs font-extrabold truncate leading-tight ${isSelected ? 'text-blue-900' : 'text-slate-900'}`}>{report.title}</h4>
+                          <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full border shrink-0 ${statusConf.bg}`}>
+                            {report.status}
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-slate-500 font-semibold line-clamp-1 leading-snug mt-0.5">{report.description}</p>
                       </div>
-                      <p className="text-[10px] text-slate-500 font-semibold line-clamp-1 leading-snug mb-1">{report.description}</p>
+                      
+                      <div className="flex items-center justify-between text-[9px] text-slate-400 font-bold">
+                        <span className="flex items-center gap-0.5 truncate max-w-[150px]">
+                          <MapPin className="w-3 h-3 text-slate-400" />
+                          <ComplaintLocation lat={report.location_lat} lng={report.location_lng} />
+                        </span>
+                        <span>{new Date(report.created_at).toLocaleDateString()}</span>
+                      </div>
                     </div>
-                    <div className="flex items-center justify-between text-[9px] text-slate-400 font-bold">
-                      <span className="flex items-center gap-0.5 truncate max-w-[160px]">
-                        <span className="material-symbols-outlined text-[10px]">location_on</span>
-                        <ComplaintLocation lat={report.location_lat} lng={report.location_lng} />
-                      </span>
-                      <span>{new Date(report.created_at).toLocaleDateString()}</span>
-                    </div>
-                  </div>
-                </button>
-              ))
+                  </button>
+                );
+              })
             ) : (
-              <div className="text-center py-16 px-4">
-                <span className="material-symbols-outlined text-slate-200 text-4xl">assignment_late</span>
-                <p className="text-slate-400 font-semibold text-xs mt-2">No reports found.</p>
+              <div className="text-center py-20 px-4">
+                <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center mx-auto mb-3 border border-slate-200/50">
+                  <XCircle className="w-6 h-6 text-slate-400" />
+                </div>
+                <h4 className="text-sm font-bold text-slate-800">No reports found</h4>
+                <p className="text-slate-400 font-semibold text-xs mt-0.5">Try altering your search or filters.</p>
               </div>
             )}
           </div>
         </div>
 
-        {/* Right Side: Detailed pane */}
-        <div className="hidden lg:flex flex-col flex-grow h-full bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm relative">
+        {/* Right Details Panel */}
+        <div className="hidden lg:flex flex-col flex-grow h-full bg-white rounded-2xl border border-slate-200/80 overflow-hidden shadow-sm relative">
           {selectedReport ? (
             <div className="flex flex-col h-full overflow-y-auto">
               
-              {/* Cover Image or Video banner */}
-              <div className="relative h-48 bg-slate-900 w-full shrink-0 overflow-hidden flex items-center justify-center">
+              {/* Media Header Banner */}
+              <div className="relative h-56 bg-slate-950 w-full shrink-0 overflow-hidden flex items-center justify-center">
                 {selectedReport.image_url && isVideoUrl(selectedReport.image_url) ? (
                   <video 
                     src={selectedReport.image_url} 
@@ -334,7 +365,7 @@ const ReportsPage = () => {
                 ) : (
                   <>
                     <div 
-                      className="absolute inset-0 bg-cover bg-center opacity-40 blur-sm scale-105" 
+                      className="absolute inset-0 bg-cover bg-center opacity-30 blur-md scale-105" 
                       style={{ backgroundImage: `url('${selectedReport.image_url || defaultIssuePlaceholder}')` }}
                     />
                     <img 
@@ -345,209 +376,247 @@ const ReportsPage = () => {
                   </>
                 )}
                 
-                {/* Department Overlay */}
-                <div className={`absolute top-4 left-4 z-20 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-black shadow-md border border-white/10 ${getDeptColorClass(selectedReport.department)} backdrop-blur-md`}>
-                  <span className="material-symbols-outlined text-sm">{getDeptIcon(selectedReport.department)}</span>
-                  <span className="uppercase tracking-wider">{selectedReport.department}</span>
+                {/* Float Badge */}
+                <div className={`absolute top-4 left-4 z-20 flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black shadow-lg border border-white/20 backdrop-blur-md bg-white/95 text-slate-800`}>
+                  <Layers className="w-3.5 h-3.5 text-blue-600" />
+                  <span className="uppercase tracking-wider">{getDeptConfig(selectedReport.department).label}</span>
                 </div>
               </div>
 
-              {/* Detail body */}
-              <div className="p-6 flex-grow space-y-6">
-                
-                {/* Header Title + status */}
-                <div className="flex justify-between items-start gap-4 border-b border-slate-100 pb-5">
-                  <div>
-                    <h2 className="text-2xl font-black text-slate-900 tracking-tight leading-tight">{selectedReport.title}</h2>
-                    <p className="text-xs text-slate-450 font-semibold mt-1">
-                      Report ID: #{selectedReport.id} • Filed on {new Date(selectedReport.created_at).toLocaleString()}
-                    </p>
-                  </div>
-                  <span className={`${getStatusBadgeClass(selectedReport.status)} text-white text-xs font-black px-4 py-2 rounded-full shadow-lg flex items-center gap-1.5 tracking-wider`}>
-                    <span className="material-symbols-outlined text-sm">
-                      {selectedReport.status === 'RESOLVED' || selectedReport.status === 'CLOSED' ? 'check_circle' : 'pending'}
-                    </span>
+              {/* Title & Stats Summary bar */}
+              <div className="px-6 py-5 border-b border-slate-100 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-slate-50/30">
+                <div>
+                  <h2 className="text-2xl font-black text-slate-900 tracking-tight leading-tight mb-1">{selectedReport.title}</h2>
+                  <p className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider">
+                    Report ID: #{selectedReport.id} • Filed {new Date(selectedReport.created_at).toLocaleString()}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className={`${getStatusConfig(selectedReport.status).badge} text-xs font-black px-4 py-2 rounded-xl shadow-md flex items-center gap-1.5 tracking-wider uppercase`}>
+                    {React.createElement(getStatusConfig(selectedReport.status).icon, { className: 'w-4 h-4' })}
                     {selectedReport.status}
                   </span>
                 </div>
+              </div>
 
-                {/* Description */}
-                <div>
-                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Description</h4>
-                  <p className="text-sm font-medium text-slate-700 bg-slate-50 p-4 rounded-xl border border-slate-100 whitespace-pre-wrap leading-relaxed">
-                    {selectedReport.description}
-                  </p>
-                </div>
+              {/* Tabs Navigation (Overview, Media, Map) */}
+              <div className="px-6 border-b border-slate-100 flex gap-4 text-sm font-bold text-slate-500 bg-white sticky top-0 z-20 select-none">
+                {[
+                  { id: 'overview', label: 'Overview', icon: Info },
+                  { id: 'media', label: 'Media Proofs', icon: Camera },
+                  { id: 'map', label: 'Location Map', icon: Map }
+                ].map(tab => {
+                  const isTabActive = activeTab === tab.id;
+                  return (
+                    <button
+                      key={tab.id}
+                      onClick={() => setActiveTab(tab.id)}
+                      className={`py-3.5 border-b-2 flex items-center gap-1.5 transition-all outline-none font-extrabold ${
+                        isTabActive 
+                          ? 'border-blue-600 text-blue-600' 
+                          : 'border-transparent text-slate-450 hover:text-slate-700'
+                      }`}
+                    >
+                      {React.createElement(tab.icon, { className: `w-4 h-4 ${isTabActive ? 'text-blue-600' : 'text-slate-400'}` })}
+                      {tab.label}
+                    </button>
+                  );
+                })}
+              </div>
 
-                {/* Visual Evidence Comparison */}
-                <div className="space-y-3">
-                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
-                    <span className="material-symbols-outlined text-blue-600 text-base">photo_library</span>
-                    Visual Evidence
-                  </h4>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {/* Before */}
-                    <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 flex flex-col justify-between h-48">
-                      <span className="text-[10px] font-extrabold text-amber-700 uppercase tracking-wider block mb-1">Before Fix (Citizen Upload)</span>
-                      {selectedReport.image_url ? (
-                        <div className="w-full flex-1 rounded-lg overflow-hidden border border-slate-200 relative bg-black">
-                          {isVideoUrl(selectedReport.image_url) ? (
-                            <video src={selectedReport.image_url} controls className="w-full h-full object-cover" />
-                          ) : (
-                            <img src={selectedReport.image_url} alt="Before Fix" className="w-full h-full object-cover" />
-                          )}
-                        </div>
-                      ) : (
-                        <div className="w-full flex-1 rounded-lg border border-dashed border-slate-350 bg-white flex flex-col items-center justify-center text-slate-400 text-xs">
-                          <span className="material-symbols-outlined text-2xl mb-1 text-slate-350">image_not_supported</span>
-                          No before media
-                        </div>
-                      )}
-                    </div>
-
-                    {/* After */}
-                    <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 flex flex-col justify-between h-48">
-                      <span className="text-[10px] font-extrabold text-emerald-700 uppercase tracking-wider block mb-1">After Fix (Worker Proof)</span>
-                      {selectedReport.resolution_image ? (
-                        <div className="w-full flex-1 rounded-lg overflow-hidden border border-slate-200 relative bg-black">
-                          {isVideoUrl(selectedReport.resolution_image) ? (
-                            <video src={selectedReport.resolution_image} controls className="w-full h-full object-cover" />
-                          ) : (
-                            <img src={selectedReport.resolution_image} alt="After Fix" className="w-full h-full object-cover" />
-                          )}
-                        </div>
-                      ) : (
-                        <div className="w-full flex-1 rounded-lg border border-dashed border-slate-300 bg-white flex flex-col items-center justify-center text-slate-400 text-xs">
-                          <span className="material-symbols-outlined text-2xl mb-1 text-slate-350">add_a_photo</span>
-                          {selectedReport.status === 'RESOLVED' || selectedReport.status === 'CLOSED' ? 'No resolution media' : 'Awaiting completion upload'}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Location and Interactive Map Card */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="p-4 bg-slate-50 rounded-xl border border-slate-100 flex flex-col justify-between h-40">
-                    <div>
-                      <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1">Location details</span>
-                      <div className="text-xs font-bold text-slate-850 leading-tight">
-                        <ComplaintLocation lat={selectedReport.location_lat} lng={selectedReport.location_lng} />
-                      </div>
-                      <p className="text-[9px] text-slate-400 font-semibold mt-1">
-                        Coordinates: {selectedReport.location_lat.toFixed(6)}, {selectedReport.location_lng.toFixed(6)}
+              {/* Scrollable Tab Contents */}
+              <div className="p-6 flex-grow">
+                {activeTab === 'overview' && (
+                  <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                    {/* Description Section */}
+                    <div className="space-y-2">
+                      <h4 className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">Description</h4>
+                      <p className="text-sm font-medium text-slate-750 bg-slate-50 p-5 rounded-2xl border border-slate-100 whitespace-pre-wrap leading-relaxed">
+                        {selectedReport.description}
                       </p>
                     </div>
-                    
-                    <a 
-                      href={`https://www.google.com/maps/search/?api=1&query=${selectedReport.location_lat},${selectedReport.location_lng}`}
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="shrink-0 flex items-center justify-center gap-1.5 py-2 bg-white border border-slate-200 text-xs font-bold text-slate-705 rounded-lg hover:bg-slate-100 hover:text-slate-900 transition-all shadow-sm"
-                    >
-                      <span className="material-symbols-outlined text-sm">map</span>
-                      Google Maps
-                    </a>
-                  </div>
 
-                  {/* Interactive Leaflet Map Div */}
-                  <div 
-                    id={`right-pane-map-${selectedReport.id}`} 
-                    className="w-full h-40 rounded-xl border border-slate-205 overflow-hidden shadow-sm relative z-0 bg-slate-100"
-                  />
-                </div>
+                    {/* Timeline section */}
+                    <div className="space-y-4 pt-3 border-t border-slate-100">
+                      <h4 className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">Tracking Timeline</h4>
+                      
+                      <div className="space-y-5 text-xs max-w-lg">
+                        {/* Step 1: Filed */}
+                        <div className="flex gap-4">
+                          <div className="flex flex-col items-center">
+                            <div className="w-6 h-6 rounded-full bg-blue-50 text-blue-600 border border-blue-150 flex items-center justify-center shadow-sm font-bold text-xs shrink-0">
+                              ✓
+                            </div>
+                            <div className="w-[1.5px] bg-slate-200 flex-grow my-1"></div>
+                          </div>
+                          <div className="pt-0.5">
+                            <p className="font-extrabold text-slate-850">Issue Reported</p>
+                            <p className="text-[10px] text-slate-500 mt-0.5 font-medium">
+                              Filed successfully by citizen on {new Date(selectedReport.created_at).toLocaleString()}
+                            </p>
+                          </div>
+                        </div>
 
-                {/* Official Resolution Summary */}
-                {selectedReport.resolution_report && (
-                  <div className="bg-emerald-50/70 p-4 rounded-xl border border-emerald-100 shadow-sm space-y-1">
-                    <span className="text-xs font-bold text-emerald-800 uppercase tracking-wider block flex items-center gap-1">
-                      <span className="material-symbols-outlined text-sm font-bold">check_circle</span>
-                      Official Resolution Notes
-                    </span>
-                    <p className="text-sm font-semibold text-emerald-900 whitespace-pre-wrap leading-relaxed">
-                      {selectedReport.resolution_report}
-                    </p>
+                        {/* Step 2: Assigned */}
+                        <div className="flex gap-4">
+                          <div className="flex flex-col items-center">
+                            <div className={`w-6 h-6 rounded-full flex items-center justify-center shadow-sm font-bold text-xs shrink-0 ${
+                              selectedReport.assigned_worker_id 
+                                ? 'bg-blue-50 text-blue-600 border border-blue-150' 
+                                : 'bg-slate-50 text-slate-400 border border-slate-200'
+                            }`}>
+                              {selectedReport.assigned_worker_id ? '✓' : '2'}
+                            </div>
+                            <div className="w-[1.5px] bg-slate-200 flex-grow my-1"></div>
+                          </div>
+                          <div className="pt-0.5">
+                            <p className="font-extrabold text-slate-850">Worker Assignment</p>
+                            <p className="text-[10px] text-slate-500 mt-0.5 font-medium">
+                              {selectedReport.assigned_worker_id 
+                                ? `Assigned to Municipal Field Worker (ID #${selectedReport.assigned_worker_id})` 
+                                : 'Awaiting admin review and municipal staff dispatch'}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Step 3: Resolved */}
+                        <div className="flex gap-4">
+                          <div className="flex flex-col items-center">
+                            <div className={`w-6 h-6 rounded-full flex items-center justify-center shadow-sm font-bold text-xs shrink-0 ${
+                              selectedReport.status === 'RESOLVED' || selectedReport.status === 'CLOSED'
+                                ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/20' 
+                                : 'bg-slate-50 text-slate-400 border border-slate-200'
+                            }`}>
+                              {selectedReport.status === 'RESOLVED' || selectedReport.status === 'CLOSED' ? '✓' : '3'}
+                            </div>
+                          </div>
+                          <div className="pt-0.5">
+                            <p className="font-extrabold text-slate-850">Resolution Status</p>
+                            <p className="text-[10px] text-slate-500 mt-0.5 font-medium">
+                              {selectedReport.status === 'RESOLVED' || selectedReport.status === 'CLOSED'
+                                ? `Resolved successfully ${selectedReport.resolved_at ? `on ${new Date(selectedReport.resolved_at).toLocaleString()}` : ''}`
+                                : 'Awaiting worker completion upload and final approval'}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 )}
 
-                {/* Department worker & Timeline section */}
-                <div className="border-t border-slate-100 pt-5 space-y-4">
-                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Tracking Timeline</h4>
-                  
-                  <div className="space-y-4 text-xs">
-                    
-                    {/* Step 1: Filed */}
-                    <div className="flex gap-3">
-                      <div className="flex flex-col items-center">
-                        <span className="material-symbols-outlined p-0.5 rounded-full text-[10px] shrink-0 bg-blue-50 text-blue-600 border border-blue-100 font-bold">
-                          done
-                        </span>
-                        <div className="w-[1px] bg-slate-200 flex-grow my-1"></div>
+                {activeTab === 'media' && (
+                  <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {/* Before Media card */}
+                      <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col justify-between h-64 hover:border-blue-200 transition-all">
+                        <div className="flex justify-between items-center mb-3">
+                          <span className="text-[10px] font-black text-amber-700 uppercase tracking-widest bg-amber-50 border border-amber-100 rounded-lg px-2.5 py-1">
+                            Before Fix (Citizen Upload)
+                          </span>
+                        </div>
+                        {selectedReport.image_url ? (
+                          <div className="w-full flex-1 rounded-xl overflow-hidden border border-slate-100 relative bg-black">
+                            {isVideoUrl(selectedReport.image_url) ? (
+                              <video src={selectedReport.image_url} controls className="w-full h-full object-cover" />
+                            ) : (
+                              <img src={selectedReport.image_url} alt="Before Fix" className="w-full h-full object-cover" />
+                            )}
+                          </div>
+                        ) : (
+                          <div className="w-full flex-1 rounded-xl border border-dashed border-slate-200 bg-slate-50/50 flex flex-col items-center justify-center text-slate-400 text-xs font-semibold">
+                            <ImageIcon className="w-8 h-8 mb-1.5 opacity-55 text-slate-350" />
+                            No before media uploaded
+                          </div>
+                        )}
                       </div>
-                      <div className="pt-0.5">
-                        <p className="font-extrabold text-slate-800">Issue Reported</p>
-                        <p className="text-[10px] text-slate-500 mt-0.5">
-                          Filed successfully by citizen on {new Date(selectedReport.created_at).toLocaleString()}
-                        </p>
+
+                      {/* After Media card */}
+                      <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col justify-between h-64 hover:border-emerald-250 hover:border-emerald-200 transition-all">
+                        <div className="flex justify-between items-center mb-3">
+                          <span className="text-[10px] font-black text-emerald-700 uppercase tracking-widest bg-emerald-50 border border-emerald-100 rounded-lg px-2.5 py-1">
+                            After Fix (Worker Proof)
+                          </span>
+                        </div>
+                        {selectedReport.resolution_image ? (
+                          <div className="w-full flex-1 rounded-xl overflow-hidden border border-slate-100 relative bg-black">
+                            {isVideoUrl(selectedReport.resolution_image) ? (
+                              <video src={selectedReport.resolution_image} controls className="w-full h-full object-cover" />
+                            ) : (
+                              <img src={selectedReport.resolution_image} alt="After Fix" className="w-full h-full object-cover" />
+                            )}
+                          </div>
+                        ) : (
+                          <div className="w-full flex-1 rounded-xl border border-dashed border-slate-200 bg-slate-50/50 flex flex-col items-center justify-center text-slate-400 text-xs font-semibold">
+                            <Camera className="w-8 h-8 mb-1.5 opacity-55 text-slate-350" />
+                            {selectedReport.status === 'RESOLVED' || selectedReport.status === 'CLOSED' 
+                              ? 'No resolution media provided' 
+                              : 'Awaiting completion upload'}
+                          </div>
+                        )}
                       </div>
                     </div>
 
-                    {/* Step 2: Assigned */}
-                    <div className="flex gap-3">
-                      <div className="flex flex-col items-center">
-                        <span className={`material-symbols-outlined p-0.5 rounded-full text-[10px] shrink-0 font-bold ${
-                          selectedReport.assigned_worker_id 
-                            ? 'bg-blue-50 text-blue-600 border border-blue-100' 
-                            : 'bg-slate-50 text-slate-400 border border-slate-200'
-                        }`}>
-                          {selectedReport.assigned_worker_id ? 'done' : 'person'}
-                        </span>
-                        <div className="w-[1px] bg-slate-200 flex-grow my-1"></div>
-                      </div>
-                      <div className="pt-0.5">
-                        <p className="font-extrabold text-slate-800">Worker Assignment</p>
-                        <p className="text-[10px] text-slate-500 mt-0.5">
-                          {selectedReport.assigned_worker_id 
-                            ? `Assigned to worker ID #${selectedReport.assigned_worker_id}` 
-                            : 'Awaiting review and worker allocation'}
+                    {/* Official Resolution Summary */}
+                    {selectedReport.resolution_report && (
+                      <div className="bg-emerald-50/50 p-5 rounded-2xl border border-emerald-100 shadow-sm space-y-2 mt-4">
+                        <h4 className="text-[10px] font-black text-emerald-800 uppercase tracking-widest flex items-center gap-1.5">
+                          <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                          Official Resolution Notes
+                        </h4>
+                        <p className="text-sm font-semibold text-emerald-950 whitespace-pre-wrap leading-relaxed">
+                          {selectedReport.resolution_report}
                         </p>
                       </div>
-                    </div>
-
-                    {/* Step 3: Resolved */}
-                    <div className="flex gap-3">
-                      <div className="flex flex-col items-center">
-                        <span className={`material-symbols-outlined p-0.5 rounded-full text-[10px] shrink-0 font-bold ${
-                          selectedReport.status === 'RESOLVED' || selectedReport.status === 'CLOSED'
-                            ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/20' 
-                            : 'bg-slate-50 text-slate-400 border border-slate-200'
-                        }`}>
-                          {selectedReport.status === 'RESOLVED' || selectedReport.status === 'CLOSED' ? 'check' : 'task_alt'}
-                        </span>
-                      </div>
-                      <div className="pt-0.5">
-                        <p className="font-extrabold text-slate-800">Resolution Status</p>
-                        <p className="text-[10px] text-slate-500 mt-0.5">
-                          {selectedReport.status === 'RESOLVED' || selectedReport.status === 'CLOSED'
-                            ? `Resolved successfully ${selectedReport.resolved_at ? `on ${new Date(selectedReport.resolved_at).toLocaleString()}` : ''}`
-                            : 'Pending final review and verification'}
-                        </p>
-                      </div>
-                    </div>
-
+                    )}
                   </div>
-                </div>
+                )}
 
+                {activeTab === 'map' && (
+                  <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      
+                      {/* Location text card */}
+                      <div className="p-5 bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between h-52">
+                        <div className="space-y-2">
+                          <span className="text-[10px] font-black text-slate-450 uppercase tracking-widest block">Location Details</span>
+                          <div className="text-sm font-bold text-slate-800 leading-snug">
+                            <ComplaintLocation lat={selectedReport.location_lat} lng={selectedReport.location_lng} />
+                          </div>
+                          <p className="text-[10px] text-slate-400 font-semibold mt-1">
+                            Coordinates: {Number(selectedReport.location_lat).toFixed(6)}, {Number(selectedReport.location_lng).toFixed(6)}
+                          </p>
+                        </div>
+                        
+                        <a 
+                          href={`https://www.google.com/maps/search/?api=1&query=${selectedReport.location_lat},${selectedReport.location_lng}`}
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="shrink-0 flex items-center justify-center gap-2 py-2.5 bg-slate-50 border border-slate-200 text-xs font-bold text-slate-700 rounded-xl hover:bg-slate-100 hover:text-slate-900 transition-all shadow-sm"
+                        >
+                          <MapPin className="w-4 h-4 text-slate-500" />
+                          Open in Google Maps
+                        </a>
+                      </div>
+
+                      {/* Map Pane Container */}
+                      <div 
+                        id={`right-pane-map-${selectedReport.id}`} 
+                        className="w-full h-52 rounded-2xl border border-slate-200 shadow-sm relative z-0 bg-slate-100 overflow-hidden"
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
 
             </div>
           ) : (
-            <div className="flex flex-col items-center justify-center h-full p-8 text-center">
-              <span className="material-symbols-outlined text-slate-200 text-7xl mb-4 select-none">receipt_long</span>
-              <h3 className="text-xl font-bold text-slate-700">Select a Report</h3>
-              <p className="text-slate-400 max-w-sm font-semibold text-xs mt-1">
-                Click on any report in the left sidebar to view its category, uploaded photo/video, map coordinates, and tracking timeline.
+            <div className="flex flex-col items-center justify-center h-full p-8 text-center bg-slate-50/20">
+              <div className="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center border border-slate-200/50 mb-4">
+                <FileText className="w-8 h-8 text-slate-400" />
+              </div>
+              <h3 className="text-base font-bold text-slate-700">Select a Report</h3>
+              <p className="text-slate-400 max-w-xs font-semibold text-xs mt-1">
+                Select a report from the list to view comprehensive details, timeline tracking, and resolution proof.
               </p>
             </div>
           )}
@@ -564,6 +633,4 @@ const ReportsPage = () => {
 
     </div>
   );
-};
-
-export default ReportsPage;
+}

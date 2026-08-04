@@ -29,6 +29,8 @@ export default function AdminPortal() {
       navigate('/traffic/dashboard');
     } else if (dept === 'waste') {
       toast.error("Waste Management module is currently under construction. Please check back later!");
+    } else if (dept === 'general') {
+      navigate('/general/dashboard');
     }
   };
 
@@ -135,6 +137,30 @@ export default function AdminPortal() {
               <div className="mt-auto pt-4 flex items-center gap-2 text-emerald-600 font-bold text-sm tracking-wide uppercase group-hover:translate-x-2 transition-transform duration-300">
                 Under Development
                 <span className="material-symbols-outlined text-base">construction</span>
+              </div>
+            </div>
+          )}
+
+          {/* General Operations Command Card */}
+          {permissions.includes('dept:general') && (
+            <div
+              onClick={() => handleCardClick('general')}
+              className="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm flex flex-col gap-5 hover:shadow-xl hover:border-indigo-300 transform hover:-translate-y-1 transition-all duration-300 cursor-pointer group"
+            >
+              <div className="p-4 bg-indigo-50 text-indigo-600 rounded-2xl w-fit group-hover:bg-indigo-600 group-hover:text-white transition-colors duration-300">
+                <span className="material-symbols-outlined text-4xl">domain</span>
+              </div>
+              <div>
+                <h3 className="text-xl font-bold text-slate-800 tracking-tight group-hover:text-indigo-600 transition-colors duration-300 mb-2">
+                  General Operations
+                </h3>
+                <p className="text-slate-500 text-sm leading-relaxed">
+                  Manage municipal work orders, track general complaints queue, oversee civic technicians, and verify solutions.
+                </p>
+              </div>
+              <div className="mt-auto pt-4 flex items-center gap-2 text-indigo-600 font-bold text-sm tracking-wide uppercase group-hover:translate-x-2 transition-transform duration-300">
+                Open Console
+                <span className="material-symbols-outlined text-base">arrow_forward</span>
               </div>
             </div>
           )}

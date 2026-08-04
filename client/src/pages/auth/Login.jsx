@@ -142,6 +142,8 @@ export default function Login() {
               navigate('/water/dashboard', { replace: true });
             } else if (perm === 'dept:waste') {
               navigate('/waste/dashboard', { replace: true });
+            } else if (perm === 'dept:general') {
+              navigate('/general/dashboard', { replace: true });
             } else {
               navigate('/admin', { replace: true });
             }

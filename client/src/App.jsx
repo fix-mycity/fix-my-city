@@ -102,6 +102,14 @@ import WasteMaintenanceDetails from './pages/wasteManagement/MaintenanceDetails'
 import WasteNotificationCenter from './pages/wasteManagement/NotificationCenter';
 import WasteReportsAnalytics from './pages/wasteManagement/ReportsAnalytics';
 
+// General Management Module
+import GeneralLayout from './layout/GeneralLayout';
+import GeneralDashboard from './pages/general/GeneralDashboard';
+import GeneralComplaintList from './pages/general/GeneralComplaintList';
+import GeneralWorkerList from './pages/general/GeneralWorkerList';
+import GeneralSuggestions from './pages/general/GeneralSuggestions';
+import GeneralPosts from './pages/general/GeneralPosts';
+
 // Super Admin Module
 import SuperAdminLayout from './layout/SuperAdminLayout';
 import SuperAdminDashboard from './pages/superAdmin/SuperAdminDashboard';
@@ -1071,6 +1079,88 @@ export default function App() {
               <WasteLayout activeTab="reports">
                 <WasteReportsAnalytics />
               </WasteLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        {/* General Department Module */}
+        <Route
+          path="/general/dashboard"
+          element={
+            <ProtectedRoute allowedRoles={['Department_Admin']} requiredPermissions={['dept:general']}>
+              <GeneralLayout>
+                <GeneralDashboard />
+              </GeneralLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/general/complaints"
+          element={
+            <ProtectedRoute allowedRoles={['Department_Admin']} requiredPermissions={['dept:general']}>
+              <GeneralLayout>
+                <GeneralComplaintList />
+              </GeneralLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/general/workers"
+          element={
+            <ProtectedRoute allowedRoles={['Department_Admin']} requiredPermissions={['dept:general']}>
+              <GeneralLayout>
+                <GeneralWorkerList />
+              </GeneralLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/general/workers/new"
+          element={
+            <ProtectedRoute allowedRoles={['Department_Admin']} requiredPermissions={['dept:general']}>
+              <GeneralLayout>
+                <WorkerForm department="general" />
+              </GeneralLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/general/workers/:id"
+          element={
+            <ProtectedRoute allowedRoles={['Department_Admin']} requiredPermissions={['dept:general']}>
+              <GeneralLayout>
+                <WorkerProfile department="general" />
+              </GeneralLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/general/workers/:id/edit"
+          element={
+            <ProtectedRoute allowedRoles={['Department_Admin']} requiredPermissions={['dept:general']}>
+              <GeneralLayout>
+                <WorkerForm department="general" />
+              </GeneralLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/general/suggestions"
+          element={
+            <ProtectedRoute allowedRoles={['Department_Admin']} requiredPermissions={['dept:general']}>
+              <GeneralLayout>
+                <GeneralSuggestions />
+              </GeneralLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/general/posts"
+          element={
+            <ProtectedRoute allowedRoles={['Department_Admin']} requiredPermissions={['dept:general']}>
+              <GeneralLayout>
+                <GeneralPosts />
+              </GeneralLayout>
             </ProtectedRoute>
           }
         />
