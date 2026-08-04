@@ -41,6 +41,8 @@ const Dashboard = () => {
           navigate('/traffic/dashboard', { replace: true });
         } else if (perm === 'dept:waste') {
           navigate('/waste/dashboard', { replace: true });
+        } else if (perm === 'dept:general') {
+          navigate('/general/dashboard', { replace: true });
         }
       } else if (deptPermissions.length >= 2) {
         navigate('/admin/portal', { replace: true });

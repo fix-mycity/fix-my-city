@@ -245,7 +245,7 @@ export default function WorkerForm({ department }) {
             {isEditMode ? 'Edit Worker Profile' : 'Register New Worker'}
           </h1>
           <p className="text-sm text-slate-500 mt-1">
-            {department === 'water' ? 'Water Authority' : department === 'traffic' ? 'Traffic Control' : ''} Department
+            {department === 'water' ? 'Water Authority' : department === 'traffic' ? 'Traffic Control' : department === 'general' ? 'General Operations' : ''} Department
           </p>
         </div>
       </div>

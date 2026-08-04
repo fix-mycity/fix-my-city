@@ -16,7 +16,8 @@ from modules.workers.schema import (
     WorkerTaskResolution
 )
 from typing import Optional
-from core.s3 import upload_file_to_s3
+from core.s3 import upload_file_to_s3, generate_presigned_url
+
 
 router = APIRouter(prefix="/workers", tags=["Worker Management"])
 
@@ -170,7 +171,8 @@ def upload_worker_photo(
     """Admin: Upload a worker profile photo to S3 and get the URL."""
     try:
         file_url = upload_file_to_s3(file.file, folder="worker-profiles", filename=file.filename)
-        return {"success": True, "url": file_url}
+        presigned_url = generate_presigned_url(file_url)
+        return {"success": True, "url": presigned_url}
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

@@ -49,7 +49,8 @@ def seed_permissions(db: Session):
         {"permission_name": "worker:read", "description": "Can view workers"},
         {"permission_name": "dept:traffic", "description": "Traffic Department Access"},
         {"permission_name": "dept:waste", "description": "Waste Department Access"},
-        {"permission_name": "dept:water", "description": "Water Department Access"}
+        {"permission_name": "dept:water", "description": "Water Department Access"},
+        {"permission_name": "dept:general", "description": "General Department Access"}
     ]
     
     for p in default_permissions:
