@@ -86,6 +86,24 @@ services:
       - ./city_operation_service:/app/city_operation_service
     command: python -m celery -A core.celery_app worker --loglevel=info
 
+  ai-service:
+    build:
+      context: .
+      dockerfile: ai_service/Dockerfile
+    container_name: ai_service
+    restart: always
+    env_file:
+      - ./ai_service/.env
+    expose:
+      - "8003"
+    environment:
+      DATABASE_URL: postgresql://fixmycity:fixmycity_pass@postgres:5432/fixmycity_db
+    depends_on:
+      - postgres
+    volumes:
+      - ./ai_service:/app/ai_service
+    command: uvicorn main:app --host 0.0.0.0 --port 8003 --reload
+
   nginx:
     build:
       context: ./nginx
@@ -97,6 +115,7 @@ services:
     depends_on:
       - auth-service
       - city-operation-service
+      - ai-service
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
 
