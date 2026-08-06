@@ -1,15 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { getFeedPostsApi, createPostApi, deletePostApi } from '../../api/feedApi';
+import { getFeedPostsApi, createPostApi, deletePostApi } from '../../api/feedApi.js';
 import { toast } from 'react-hot-toast';
-import { 
-  Megaphone, 
-  Search, 
-  Calendar, 
-  Loader2, 
-  ArrowUpDown, 
-  Plus, 
-  Trash2, 
-  X, 
+import {
+  Megaphone,
+  Search,
+  Calendar,
+  Loader2,
+  ArrowUpDown,
+  Plus,
+  Trash2,
+  X,
   Image as ImageIcon,
   MapPin,
   MessageSquare,
@@ -98,7 +98,7 @@ export default function GeneralPosts() {
 
     setIsSubmitting(true);
     const creationToast = toast.loading('Publishing announcement...');
-    
+
     const submissionData = new FormData();
     submissionData.append('title', newPostData.title.trim());
     submissionData.append('content', newPostData.content.trim());
@@ -113,7 +113,7 @@ export default function GeneralPosts() {
     try {
       await createPostApi(submissionData);
       toast.success('Announcement published successfully!', { id: creationToast });
-      
+
       // Reset form and close modal
       setNewPostData({
         title: '',
@@ -124,7 +124,7 @@ export default function GeneralPosts() {
       setSelectedFile(null);
       setImagePreview('');
       setIsModalOpen(false);
-      
+
       // Refresh list
       fetchPosts();
     } catch (err) {
@@ -153,11 +153,11 @@ export default function GeneralPosts() {
   const filteredPosts = posts.filter(post => {
     const query = searchQuery.toLowerCase();
     const matchesSearch = (post.title || '').toLowerCase().includes(query) ||
-                          (post.content || '').toLowerCase().includes(query) ||
-                          (post.location || '').toLowerCase().includes(query);
-    
+      (post.content || '').toLowerCase().includes(query) ||
+      (post.location || '').toLowerCase().includes(query);
+
     const matchesCategory = categoryFilter === 'All' || post.category === categoryFilter;
-    
+
     return matchesSearch && matchesCategory;
   });
 
@@ -299,7 +299,7 @@ export default function GeneralPosts() {
                 className="bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden flex flex-col justify-between"
               >
                 <div className={`h-1.5 w-full absolute top-0 left-0 ${isAnnouncement ? 'bg-indigo-500' : 'bg-slate-400'}`} />
-                
+
                 <div className="p-6 space-y-4">
                   <div className="flex justify-between items-center text-[10px] text-slate-400 font-bold uppercase tracking-wider">
                     <span className={`border rounded-full px-2.5 py-0.5 inline-flex items-center gap-1 font-extrabold ${isAnnouncement ? 'bg-indigo-50 text-indigo-700 border-indigo-100' : 'bg-slate-50 text-slate-700 border-slate-200'}`}>
@@ -319,9 +319,9 @@ export default function GeneralPosts() {
 
                   {post.image_url && (
                     <div className="rounded-xl overflow-hidden max-h-60 border border-slate-100">
-                      <img 
-                        src={post.image_url} 
-                        alt={post.title} 
+                      <img
+                        src={post.image_url}
+                        alt={post.title}
                         className="w-full h-full object-cover"
                       />
                     </div>
@@ -368,7 +368,7 @@ export default function GeneralPosts() {
                 </div>
                 <h3 className="font-extrabold text-slate-800 text-lg">Create Announcement</h3>
               </div>
-              <button 
+              <button
                 onClick={() => {
                   if (!isSubmitting) {
                     setIsModalOpen(false);
@@ -445,13 +445,13 @@ export default function GeneralPosts() {
                 <span className="block text-xs font-extrabold text-slate-500 uppercase tracking-wide flex items-center gap-1">
                   <ImageIcon className="w-3.5 h-3.5" /> Attach Photo (Optional)
                 </span>
-                
+
                 {imagePreview ? (
                   <div className="relative rounded-xl overflow-hidden border border-slate-250 max-h-52 bg-slate-100 flex items-center justify-center">
-                    <img 
-                      src={imagePreview} 
-                      alt="Preview" 
-                      className="max-h-52 w-full object-cover" 
+                    <img
+                      src={imagePreview}
+                      alt="Preview"
+                      className="max-h-52 w-full object-cover"
                     />
                     <button
                       type="button"
@@ -470,10 +470,10 @@ export default function GeneralPosts() {
                     <span className="text-[10px] text-slate-400 mt-1 font-semibold">
                       PNG, JPG, JPEG up to 10MB
                     </span>
-                    <input 
-                      type="file" 
-                      className="hidden" 
-                      accept="image/*" 
+                    <input
+                      type="file"
+                      className="hidden"
+                      accept="image/*"
                       onChange={handleFileChange}
                     />
                   </label>
