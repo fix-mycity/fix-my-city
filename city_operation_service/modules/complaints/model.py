@@ -44,6 +44,12 @@ class Complaint(Base):
     department = Column(String(50), default=ComplaintDepartment.GENERAL.value, nullable=False, index=True)
     status = Column(String(50), default=ComplaintStatus.PENDING.value, nullable=False, index=True)
     
+    ai_issue_type = Column(String(100), nullable=True)
+    ai_confidence = Column(Float, nullable=True)
+    ai_reasoning = Column(Text, nullable=True)
+    ai_image_agreement = Column(String(50), nullable=True)
+    ai_routing_status = Column(String(50), default="PENDING", nullable=True, index=True)
+    
     # Worker Assignment & Resolution
     assigned_worker_id = Column(Integer, nullable=True, index=True)
     resolution_report = Column(Text, nullable=True)

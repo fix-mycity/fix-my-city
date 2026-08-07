@@ -35,6 +35,13 @@ class ComplaintResponse(BaseModel):
     reported_by: int
     created_at: datetime
     updated_at: datetime
+    
+    # AI Tracking Metadata
+    ai_issue_type: Optional[str] = None
+    ai_confidence: Optional[float] = None
+    ai_reasoning: Optional[str] = None
+    ai_image_agreement: Optional[str] = None
+    ai_routing_status: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
 

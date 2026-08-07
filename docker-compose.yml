@@ -102,7 +102,7 @@ services:
       - postgres
     volumes:
       - ./ai_service:/app/ai_service
-    command: uvicorn main:app --host 0.0.0.0 --port 8003 --reload
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8003 --reload
 
   nginx:
     build:
