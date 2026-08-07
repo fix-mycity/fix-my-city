@@ -81,7 +81,7 @@ export default function WorkerForm({ department }) {
     setIsUploading(true);
     try {
       const res = await uploadWorkerPhoto(file);
-      const photoUrl = res.data.photo_url || res.data.file_url;
+      const photoUrl = res.data.url || res.data.photo_url || res.data.file_url;
       if (photoUrl) {
         setFormData(prev => ({ ...prev, photo: photoUrl }));
         toast.success("Photo uploaded successfully!");
@@ -149,7 +149,6 @@ export default function WorkerForm({ department }) {
         toast.success("Field worker updated successfully!");
       } else {
         const payload = { ...formData, department };
-        delete payload.confirm_password;
         await createWorker(payload, department);
         toast.success("Field worker registered successfully!");
       }
