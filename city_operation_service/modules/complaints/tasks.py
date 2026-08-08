@@ -216,7 +216,7 @@ def classify_and_route_complaint_task(self, complaint_id: int):
             # High confidence auto-routing
             logger.info(f"Auto-routing complaint {complaint_id} to department '{mapped_dept}' (Confidence: {confidence_score})")
             complaint.department = mapped_dept
-            complaint.status = "ASSIGNED"
+            complaint.status = "PENDING"
             complaint.ai_routing_status = "SUCCESS"
         else:
             # Low confidence or contradictory agreement, route to general review (PENDING_TRIAGE)
