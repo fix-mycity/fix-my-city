@@ -116,6 +116,11 @@ import SuperAdminDashboard from './pages/superAdmin/SuperAdminDashboard';
 import UserRolePermissionManagement from './pages/superAdmin/UserRolePermissionManagement';
 import MasterComplaintsReroute from './pages/superAdmin/MasterComplaintsReroute';
 
+// Emergency Management Module
+import EmergencyLayout from './layout/EmergencyLayout';
+import EmergencyDashboard from './pages/emergency/EmergencyDashboard';
+import EmergencyComplaints from './pages/emergency/EmergencyComplaints';
+
 export default function App() {
   const dispatch = useDispatch();
   const [authChecked, setAuthChecked] = useState(false);
@@ -909,6 +914,17 @@ export default function App() {
               <WasteLayout activeTab="dashboard">
                 <WasteDashboard />
               </WasteLayout>
+        {/* Emergency Department Module */}
+        <Route
+          path="/emergency/dashboard"
+          element={
+            <ProtectedRoute
+              allowedRoles={['Department_Admin', 'Super_Admin', 'Admin']}
+              requiredPermissions={['dept:emergency']}
+            >
+              <EmergencyLayout>
+                <EmergencyDashboard />
+              </EmergencyLayout>
             </ProtectedRoute>
           }
         />
@@ -919,6 +935,15 @@ export default function App() {
               <WasteLayout activeTab="dashboard">
                 <WasteDashboard />
               </WasteLayout>
+          path="/emergency/complaints"
+          element={
+            <ProtectedRoute
+              allowedRoles={['Department_Admin', 'Super_Admin', 'Admin']}
+              requiredPermissions={['dept:emergency']}
+            >
+              <EmergencyLayout>
+                <EmergencyComplaints />
+              </EmergencyLayout>
             </ProtectedRoute>
           }
         />
@@ -929,6 +954,15 @@ export default function App() {
               <WasteLayout activeTab="complaints">
                 <WasteComplaintManagement />
               </WasteLayout>
+          path="/emergency/workers"
+          element={
+            <ProtectedRoute
+              allowedRoles={['Department_Admin', 'Super_Admin', 'Admin']}
+              requiredPermissions={['dept:emergency']}
+            >
+              <EmergencyLayout>
+                <WorkerList department="emergency" />
+              </EmergencyLayout>
             </ProtectedRoute>
           }
         />
@@ -939,6 +973,15 @@ export default function App() {
               <WasteLayout activeTab="complaints">
                 <WasteComplaintDetails />
               </WasteLayout>
+          path="/emergency/workers/new"
+          element={
+            <ProtectedRoute
+              allowedRoles={['Department_Admin', 'Super_Admin', 'Admin']}
+              requiredPermissions={['dept:emergency']}
+            >
+              <EmergencyLayout>
+                <WorkerForm department="emergency" />
+              </EmergencyLayout>
             </ProtectedRoute>
           }
         />
@@ -949,6 +992,15 @@ export default function App() {
               <WasteLayout activeTab="bins">
                 <WasteBinManagement />
               </WasteLayout>
+          path="/emergency/workers/:id/edit"
+          element={
+            <ProtectedRoute
+              allowedRoles={['Department_Admin', 'Super_Admin', 'Admin']}
+              requiredPermissions={['dept:emergency']}
+            >
+              <EmergencyLayout>
+                <WorkerForm department="emergency" />
+              </EmergencyLayout>
             </ProtectedRoute>
           }
         />
@@ -959,6 +1011,15 @@ export default function App() {
               <WasteLayout activeTab="bins">
                 <WasteBinDetails />
               </WasteLayout>
+          path="/emergency/broadcasts"
+          element={
+            <ProtectedRoute
+              allowedRoles={['Department_Admin', 'Super_Admin', 'Admin']}
+              requiredPermissions={['dept:emergency']}
+            >
+              <EmergencyLayout>
+                <EmergencyDashboard />
+              </EmergencyLayout>
             </ProtectedRoute>
           }
         />
@@ -1161,6 +1222,15 @@ export default function App() {
               <GeneralLayout>
                 <GeneralPosts />
               </GeneralLayout>
+          path="/admin/emergency"
+          element={
+            <ProtectedRoute
+              allowedRoles={['Department_Admin', 'Super_Admin', 'Admin']}
+              requiredPermissions={['dept:emergency']}
+            >
+              <EmergencyLayout>
+                <EmergencyDashboard />
+              </EmergencyLayout>
             </ProtectedRoute>
           }
         />

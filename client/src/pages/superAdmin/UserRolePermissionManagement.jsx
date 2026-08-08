@@ -42,6 +42,11 @@ const formatPermissionName = (permName) => {
     'dept:water': 'Water Department Access',
     'dept:waste': 'Waste Department Access',
     'dept:general': 'General Department Access',
+    'emergency:read': 'Emergency Radar View',
+    'emergency:write': 'Emergency Incident Management',
+    'emergency:dispatch': 'Taskforce Rapid Dispatch',
+    'emergency:broadcast': 'Public Emergency Advisories',
+    'dept:emergency': 'Emergency Department Access',
   };
 
   if (map[permName]) return map[permName];
@@ -324,11 +329,11 @@ export default function UserRolePermissionManagement() {
 
       {/* PRODUCTION-READY PERMISSION MODAL DRAWER */}
       {selectedUserForPerms && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-          <div className="bg-white border border-slate-200 rounded-2xl max-w-xl w-full p-6 space-y-6 shadow-2xl relative">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm overflow-y-auto custom-scrollbar">
+          <div className="bg-white border border-slate-200 rounded-2xl max-w-xl w-full p-6 space-y-4 shadow-2xl relative max-h-[85vh] flex flex-col my-auto">
             
             {/* Modal Header */}
-            <div className="flex justify-between items-center border-b border-slate-100 pb-4">
+            <div className="flex justify-between items-center border-b border-slate-100 pb-4 shrink-0">
               <div>
                 <h3 className="text-lg font-black text-slate-900 flex items-center gap-2">
                   <Key className="w-5 h-5 text-purple-600" />
@@ -347,8 +352,8 @@ export default function UserRolePermissionManagement() {
             </div>
 
             {/* Modal Permissions Checkbox List */}
-            <div className="space-y-3 max-h-[55vh] overflow-y-auto pr-2">
-              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">
+            <div className="space-y-3 flex-1 overflow-y-auto custom-scrollbar pr-2 min-h-0">
+              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block sticky top-0 bg-white py-1 z-10">
                 Select Permissions to Grant:
               </span>
 
@@ -383,7 +388,7 @@ export default function UserRolePermissionManagement() {
             </div>
 
             {/* Modal Actions */}
-            <div className="flex items-center justify-end gap-3 border-t border-slate-100 pt-4">
+            <div className="flex items-center justify-end gap-3 border-t border-slate-100 pt-4 shrink-0">
               <button
                 onClick={() => setSelectedUserForPerms(null)}
                 className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition-colors"

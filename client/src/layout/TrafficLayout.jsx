@@ -4,6 +4,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { logoutUser } from '../features/auth/authThunks';
 import { toast } from 'react-hot-toast';
 import { Menu, X } from 'lucide-react';
+import DepartmentSwitcher from '../components/shared/DepartmentSwitcher';
 
 const TrafficLayout = ({ children }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -48,6 +49,10 @@ const TrafficLayout = ({ children }) => {
           >
             <X className="w-6 h-6" />
           </button>
+        </div>
+
+        <div className="px-6 py-3 border-y border-slate-800">
+          <DepartmentSwitcher />
         </div>
         
         <nav className="flex-1 px-4 space-y-2 mt-4 text-sm font-medium">
