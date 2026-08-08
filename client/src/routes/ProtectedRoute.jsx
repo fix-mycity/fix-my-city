@@ -22,14 +22,25 @@ export default function ProtectedRoute({ children, allowedRoles, requiredPermiss
     }
   }
 
-  // Permission-based authorization check
+  // Permission-based authorization check (supporting strings and object schemas)
   if (requiredPermissions && user) {
-    if (user.role !== 'Super_Admin' && user.role !== 'Admin') {
-      const userPermissions = user.permissions || [];
-      const hasRequired = requiredPermissions.every((p) => userPermissions.includes(p) || userPermissions.includes('admin:all'));
-      if (!hasRequired && userPermissions.length > 0) {
-        return <Navigate to="/dashboard" replace />;
+    const rawPerms = user.permissions || [];
+    const userPermissions = rawPerms.map(p => (typeof p === 'string' ? p : p.permission_name));
+    
+    const hasRequired = requiredPermissions.every((reqPerm) => {
+      if (userPermissions.includes(reqPerm) || userPermissions.includes('admin:all')) {
+        return true;
       }
+      // If reqPerm is e.g. 'dept:water', check if user has 'water:read' or 'water:write'
+      if (reqPerm.startsWith('dept:')) {
+        const deptKey = reqPerm.replace('dept:', '');
+        return userPermissions.some(up => up.startsWith(deptKey));
+      }
+      return false;
+    });
+
+    if (!hasRequired) {
+      return <Navigate to="/dashboard" replace />;
     }
   }
 
