@@ -238,26 +238,27 @@ def classify_and_route_complaint_task(self, complaint_id: int):
         logger.error(f"Error classifying complaint {complaint_id}: {exc}", exc_info=True)
         db.rollback()
         
-        try:
-            logger.info(f"Retrying AI classification task for complaint {complaint_id} (retry {self.request.retries + 1}/{self.max_retries})")
-            raise self.retry(exc=exc)
-        except Exception as retry_exc:
-            if isinstance(retry_exc, MaxRetriesExceededError):
-                logger.error(f"Max retries exceeded for classifying complaint {complaint_id}. Falling back to manual review.")
-                
-                # Mark as failed and leave in general queue for manual triage
-                db_fail = SessionLocal()
-                try:
-                    c = db_fail.query(Complaint).filter(Complaint.id == complaint_id).first()
-                    if c:
-                        c.ai_routing_status = "FAILED"
-                        c.department = "general"
-                        c.status = "PENDING"
-                        db_fail.commit()
-                finally:
-                    db_fail.close()
+        if self.request.retries >= self.max_retries:
+            logger.error(f"Max retries exceeded for classifying complaint {complaint_id}. Falling back to manual review.")
+            
+            # Mark as failed and leave in general queue for manual triage
+            db_fail = SessionLocal()
+            try:
+                c = db_fail.query(Complaint).filter(Complaint.id == complaint_id).first()
+                if c:
+                    c.ai_routing_status = "FAILED"
+                    c.department = "general"
+                    c.status = "PENDING"
+                    db_fail.commit()
+            finally:
+                db_fail.close()
+            raise exc
+        else:
+            try:
+                logger.info(f"Retrying AI classification task for complaint {complaint_id} (retry {self.request.retries + 1}/{self.max_retries})")
+                raise self.retry(exc=exc)
+            except Exception as retry_exc:
                 raise retry_exc
-            raise retry_exc
 
     finally:
         db.close()

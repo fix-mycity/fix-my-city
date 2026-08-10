@@ -63,7 +63,7 @@ def _call_gemini_api(title: str, description: str, image_bytes: bytes) -> Gemini
 
     # Initialize model inside thread/call to ensure fresh setup if settings change
     model = genai.GenerativeModel(
-        model_name="gemini-1.5-flash",
+        model_name="gemini-3.5-flash",
         generation_config={
             "response_mime_type": "application/json",
             "response_schema": GeminiClassificationOutput,
@@ -111,7 +111,6 @@ async def analyze_complaint(title: str, description: str, image_bytes: bytes) ->
     # Check if the key is empty or is a placeholder/mock key
     is_placeholder = (
         not settings.GEMINI_API_KEY
-        or settings.GEMINI_API_KEY.startswith("AQ.")
         or "fake" in settings.GEMINI_API_KEY.lower()
         or "placeholder" in settings.GEMINI_API_KEY.lower()
     )
