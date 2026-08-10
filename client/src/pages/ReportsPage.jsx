@@ -633,6 +633,4 @@ export default function ReportsPage() {
 
     </div>
   );
-};
-
-export default ReportsPage;
+}
