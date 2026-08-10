@@ -24,12 +24,14 @@ export const getPendingPostsApi = () => {
 };
 
 // Create a new post (announcement)
-export const createPostApi = (formData) => {
-  return axiosInstance.post("/city/feed/posts", formData, {
+export const createPostApi = (data) => {
+  const isFormData = data instanceof FormData;
+  const config = isFormData ? {
     headers: {
       "Content-Type": "multipart/form-data",
     },
-  });
+  } : {};
+  return axiosInstance.post("/city/feed/posts", data, config);
 };
 
 export const approvePostApi = (postId) => {

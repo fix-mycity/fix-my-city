@@ -4,6 +4,8 @@ export const createSuggestionApi = (data) => {
   return axiosInstance.post("/city/feed/suggestions/", data);
 };
 
+export const submitSuggestionApi = createSuggestionApi;
+
 export const getMySuggestionsApi = () => {
   return axiosInstance.get("/city/feed/suggestions/me");
 };
