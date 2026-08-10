@@ -247,7 +247,9 @@ def test_api_read_all_complaints(client, db_session):
     response = client.get("/complaints/")
     assert response.status_code == 200
     data = response.json()
+    assert "items" in data
     assert len(data["items"]) == 2
+    assert data["total_items"] == 2
 
 
 def test_api_read_complaint_by_id(client, db_session):

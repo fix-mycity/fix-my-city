@@ -72,3 +72,20 @@ class ComplaintMediaStatusResponse(BaseModel):
         if v:
             return generate_presigned_url(v)
         return v
+
+class FeedbackCreate(BaseModel):
+    complaint_id: int
+    rating: int
+    comment: Optional[str] = None
+
+class FeedbackResponse(BaseModel):
+    id: int
+    complaint_id: int
+    citizen_id: int
+    citizen_name: str
+    rating: int
+    comment: Optional[str]
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+

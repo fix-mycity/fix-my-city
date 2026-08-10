@@ -64,3 +64,14 @@ class Complaint(Base):
     # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+class Feedback(Base):
+    __tablename__ = "feedback"
+
+    id = Column(Integer, primary_key=True, index=True)
+    complaint_id = Column(Integer, unique=True, nullable=False, index=True)
+    citizen_id = Column(Integer, nullable=False, index=True)
+    citizen_name = Column(String(150), nullable=False)
+    rating = Column(Integer, nullable=False)
+    comment = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())

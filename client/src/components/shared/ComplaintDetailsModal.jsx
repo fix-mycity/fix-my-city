@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useSelector } from 'react-redux';
 import ComplaintLocation from './ComplaintLocation';
 import { downloadTaskPdfReport } from '../../services/workerService';
 import { toast } from 'react-hot-toast';
+import { getFeedbackForComplaintApi, createFeedbackApi } from '../../api/feedbackApi';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
@@ -12,8 +14,17 @@ const isVideoUrl = (url) => {
 };
 
 export default function ComplaintDetailsModal({ complaint, onClose, workerName = null, showImages = true }) {
+  const { user } = useSelector((state) => state.auth);
   const [downloadingPdf, setDownloadingPdf] = useState(false);
   const [lightboxMedia, setLightboxMedia] = useState(null); // { url, isVideo }
+
+  // Feedback states
+  const [feedback, setFeedback] = useState(null);
+  const [loadingFeedback, setLoadingFeedback] = useState(false);
+  const [submittingFeedback, setSubmittingFeedback] = useState(false);
+  const [feedbackRating, setFeedbackRating] = useState(5);
+  const [feedbackComment, setFeedbackComment] = useState('');
+
   const mapRef = useRef(null);
 
   useEffect(() => {
@@ -29,9 +40,9 @@ export default function ComplaintDetailsModal({ complaint, onClose, workerName =
             zoomControl: false,
             attributionControl: false
           }).setView([lat, lng], 14);
-          
+
           L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(mapInstance);
-          
+
           const pinColor = {
             traffic: '#f59e0b',
             waste: '#ef4444',
@@ -55,8 +66,8 @@ export default function ComplaintDetailsModal({ complaint, onClose, workerName =
              ">
                <span class="material-symbols-outlined" style="font-size: 14px; font-weight: bold;">location_on</span>
              </div>`,
-             iconSize: [24, 24],
-             iconAnchor: [12, 24]
+            iconSize: [24, 24],
+            iconAnchor: [12, 24]
           });
 
           L.marker([lat, lng], { icon: customIcon }).addTo(mapInstance);
@@ -72,6 +83,42 @@ export default function ComplaintDetailsModal({ complaint, onClose, workerName =
       }
     };
   }, [complaint]);
+  useEffect(() => {
+    if (!complaint) return;
+    const loadFeedback = async () => {
+      if (complaint.status === 'RESOLVED' || complaint.status === 'CLOSED') {
+        setLoadingFeedback(true);
+        try {
+          const res = await getFeedbackForComplaintApi(complaint.id);
+          setFeedback(res.data || null);
+        } catch (err) {
+          console.error(err);
+        } finally {
+          setLoadingFeedback(false);
+        }
+      }
+    };
+    loadFeedback();
+  }, [complaint]);
+
+  const handleFeedbackSubmit = async (e) => {
+    e.preventDefault();
+    setSubmittingFeedback(true);
+    try {
+      const res = await createFeedbackApi({
+        complaint_id: complaint.id,
+        rating: feedbackRating,
+        comment: feedbackComment.trim()
+      });
+      setFeedback(res.data);
+      toast.success("Feedback submitted successfully!");
+    } catch (err) {
+      console.error(err);
+      toast.error(err.response?.data?.detail || "Failed to submit feedback.");
+    } finally {
+      setSubmittingFeedback(false);
+    }
+  };
 
   if (!complaint) return null;
 
@@ -131,11 +178,11 @@ export default function ComplaintDetailsModal({ complaint, onClose, workerName =
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fadeIn" onClick={onClose}>
-      <div 
+      <div
         className="bg-white rounded-3xl max-w-3xl w-full max-h-[92vh] overflow-hidden shadow-2xl border border-slate-100 flex flex-col transition-all scale-100 transform duration-300"
         onClick={(e) => e.stopPropagation()}
       >
-        
+
         {/* Header Section */}
         <div className="p-6 border-b border-slate-100 bg-slate-50/50 flex justify-between items-start sticky top-0 z-10 backdrop-blur-md">
           <div className="space-y-1.5">
@@ -152,7 +199,7 @@ export default function ComplaintDetailsModal({ complaint, onClose, workerName =
             <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight leading-tight">{complaint.title}</h2>
           </div>
 
-          <button 
+          <button
             onClick={onClose}
             className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-200 rounded-full transition-all shrink-0"
           >
@@ -162,7 +209,7 @@ export default function ComplaintDetailsModal({ complaint, onClose, workerName =
 
         {/* Modal Scrollable Body */}
         <div className="p-6 space-y-6 flex-grow overflow-y-auto">
-          
+
           {/* Incident Description */}
           <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200/60 shadow-inner">
             <span className="text-xs font-bold text-slate-450 uppercase tracking-wider block mb-1">Issue Description</span>
@@ -178,12 +225,12 @@ export default function ComplaintDetailsModal({ complaint, onClose, workerName =
               </h3>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                
+
                 {/* Before Fix Frame */}
                 <div className="bg-slate-50 p-4 rounded-2xl border border-slate-250/60 flex flex-col justify-between h-56">
                   <span className="text-[11px] font-extrabold text-amber-800 uppercase tracking-wider block mb-2">Original Upload (Citizen)</span>
                   {beforeImg ? (
-                    <div 
+                    <div
                       onClick={() => setLightboxMedia({ url: beforeImg, isVideo: isVideoUrl(beforeImg) })}
                       className="w-full flex-1 rounded-xl overflow-hidden border border-slate-200 cursor-pointer relative group bg-black"
                     >
@@ -211,7 +258,7 @@ export default function ComplaintDetailsModal({ complaint, onClose, workerName =
                 <div className="bg-slate-50 p-4 rounded-2xl border border-slate-250/60 flex flex-col justify-between h-56">
                   <span className="text-[11px] font-extrabold text-emerald-800 uppercase tracking-wider block mb-2">Resolution Proof (Worker)</span>
                   {afterImg ? (
-                    <div 
+                    <div
                       onClick={() => setLightboxMedia({ url: afterImg, isVideo: isVideoUrl(afterImg) })}
                       className="w-full flex-1 rounded-xl overflow-hidden border border-slate-200 cursor-pointer relative group bg-black"
                     >
@@ -240,7 +287,7 @@ export default function ComplaintDetailsModal({ complaint, onClose, workerName =
 
           {/* Location and Map Section */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-            
+
             {/* Coordinates & Details */}
             <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200/60 flex flex-col justify-between h-48">
               <div>
@@ -255,9 +302,9 @@ export default function ComplaintDetailsModal({ complaint, onClose, workerName =
               </div>
 
               {lat !== 0 && (
-                <a 
-                  href={`https://www.google.com/maps/search/?api=1&query=${lat},${lng}`} 
-                  target="_blank" 
+                <a
+                  href={`https://www.google.com/maps/search/?api=1&query=${lat},${lng}`}
+                  target="_blank"
                   rel="noopener noreferrer"
                   className="w-full flex items-center justify-center gap-1.5 py-2.5 bg-white border border-slate-200 text-xs font-bold text-slate-700 rounded-xl hover:bg-slate-100 hover:text-slate-900 transition-all shadow-sm shrink-0"
                 >
@@ -268,8 +315,8 @@ export default function ComplaintDetailsModal({ complaint, onClose, workerName =
             </div>
 
             {/* Interactive Leaflet Mini-Map */}
-            <div 
-              id={`modal-map-${complaint.id}`} 
+            <div
+              id={`modal-map-${complaint.id}`}
               className="w-full h-48 rounded-2xl border border-slate-200 overflow-hidden shadow-sm relative z-0 bg-slate-100"
             />
           </div>
@@ -287,12 +334,90 @@ export default function ComplaintDetailsModal({ complaint, onClose, workerName =
             </div>
           )}
 
+          {/* Citizen Feedback Section */}
+          {isResolved && (
+            <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200/60 shadow-sm space-y-4">
+              <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1">
+                <span className="material-symbols-outlined text-indigo-650 text-indigo-650 text-indigo-605 text-indigo-600 text-sm font-bold">rate_review</span>
+                Resolution Feedback
+              </h4>
+
+              {loadingFeedback ? (
+                <div className="text-center py-2 text-slate-500 font-semibold text-xs">Loading feedback...</div>
+              ) : feedback ? (
+                // Display submitted feedback
+                <div className="space-y-2">
+                  <div className="flex items-center gap-1">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <span
+                        key={star}
+                        className={`material-symbols-outlined text-sm ${star <= feedback.rating ? 'text-amber-500 fill-current' : 'text-slate-200'
+                          }`}
+                      >
+                        star
+                      </span>
+                    ))}
+                  </div>
+                  {feedback.comment && (
+                    <p className="text-sm font-medium text-slate-700 italic">
+                      "{feedback.comment}"
+                    </p>
+                  )}
+                  <p className="text-[10px] text-slate-400 font-bold">Submitted by {feedback.citizen_name} on {new Date(feedback.created_at).toLocaleDateString()}</p>
+                </div>
+              ) : Number(user?.id) === Number(complaint.reported_by || complaint.citizen_id) ? (
+                // Render feedback form (only for the citizen who reported it)
+                <form onSubmit={handleFeedbackSubmit} className="space-y-3">
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1">Rate the resolution</label>
+                    <div className="flex items-center gap-2">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <button
+                          key={star}
+                          type="button"
+                          onClick={() => setFeedbackRating(star)}
+                          className="text-amber-500 focus:outline-none hover:scale-110 transition-transform"
+                        >
+                          <span className={`material-symbols-outlined text-2xl ${star <= feedbackRating ? 'fill-current text-amber-500' : 'text-slate-300'
+                            }`}>
+                            star
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1">Comments (Optional)</label>
+                    <textarea
+                      className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-slate-900 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all h-20 resize-none font-semibold"
+                      placeholder="Share your experience or rating comments..."
+                      value={feedbackComment}
+                      onChange={(e) => setFeedbackComment(e.target.value)}
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={submittingFeedback}
+                    className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-4 py-2 rounded-xl text-xs transition-all shadow-md flex items-center gap-2"
+                  >
+                    {submittingFeedback && <span className="material-symbols-outlined animate-spin text-[14px]">sync</span>}
+                    Submit Feedback
+                  </button>
+                </form>
+              ) : (
+                <p className="text-xs text-slate-450 italic">No feedback submitted for this resolution yet.</p>
+              )}
+            </div>
+          )}
+
           {/* Department Tracking Timeline */}
           <div className="border-t border-slate-100 pt-5 space-y-4">
             <h4 className="text-xs font-bold text-slate-450 uppercase tracking-wider">Tracking Timeline</h4>
-            
+
             <div className="space-y-4 text-xs">
-              
+
               {/* Step 1: Filed */}
               <div className="flex gap-3">
                 <div className="flex flex-col items-center">
@@ -312,11 +437,10 @@ export default function ComplaintDetailsModal({ complaint, onClose, workerName =
               {/* Step 2: Assigned */}
               <div className="flex gap-3">
                 <div className="flex flex-col items-center">
-                  <span className={`material-symbols-outlined p-1 rounded-full text-xs shrink-0 font-bold ${
-                    complaint.assigned_worker_id 
-                      ? 'bg-blue-50 text-blue-600 border border-blue-100' 
-                      : 'bg-slate-50 text-slate-400 border border-slate-200'
-                  }`}>
+                  <span className={`material-symbols-outlined p-1 rounded-full text-xs shrink-0 font-bold ${complaint.assigned_worker_id
+                    ? 'bg-blue-50 text-blue-600 border border-blue-100'
+                    : 'bg-slate-50 text-slate-400 border border-slate-200'
+                    }`}>
                     {complaint.assigned_worker_id ? 'done' : 'person'}
                   </span>
                   <div className="w-[1px] bg-slate-200 flex-grow my-1"></div>
@@ -324,8 +448,8 @@ export default function ComplaintDetailsModal({ complaint, onClose, workerName =
                 <div className="pt-0.5">
                   <p className="font-extrabold text-slate-800">Worker Assignment</p>
                   <p className="text-[10px] text-slate-500 mt-0.5">
-                    {complaint.assigned_worker_id 
-                      ? `Assigned to worker ID #${complaint.assigned_worker_id} ${workerName ? `(${workerName})` : ''}` 
+                    {complaint.assigned_worker_id
+                      ? `Assigned to worker ID #${complaint.assigned_worker_id} ${workerName ? `(${workerName})` : ''}`
                       : 'Awaiting review and worker allocation from department admin'}
                   </p>
                 </div>
@@ -334,19 +458,18 @@ export default function ComplaintDetailsModal({ complaint, onClose, workerName =
               {/* Step 3: Resolved */}
               <div className="flex gap-3">
                 <div className="flex flex-col items-center">
-                  <span className={`material-symbols-outlined p-1 rounded-full text-xs shrink-0 font-bold ${
-                    isResolved
-                      ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/20' 
-                      : 'bg-slate-50 text-slate-400 border border-slate-200'
-                  }`}>
+                  <span className={`material-symbols-outlined p-1 rounded-full text-xs shrink-0 font-bold ${isResolved
+                    ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/20'
+                    : 'bg-slate-50 text-slate-400 border border-slate-200'
+                    }`}>
                     {isResolved ? 'check' : 'task_alt'}
                   </span>
                 </div>
                 <div className="pt-0.5">
                   <p className="font-extrabold text-slate-800">Resolution Status</p>
                   <p className="text-[10px] text-slate-500 mt-0.5">
-                    {isResolved 
-                      ? `Resolved successfully ${complaint.resolved_at ? `on ${new Date(complaint.resolved_at).toLocaleString()}` : ''}` 
+                    {isResolved
+                      ? `Resolved successfully ${complaint.resolved_at ? `on ${new Date(complaint.resolved_at).toLocaleString()}` : ''}`
                       : 'Pending final review and field verification'}
                   </p>
                 </div>
@@ -388,7 +511,7 @@ export default function ComplaintDetailsModal({ complaint, onClose, workerName =
       {lightboxMedia && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-955/90 backdrop-blur-md" onClick={() => setLightboxMedia(null)}>
           <div className="relative max-w-4xl max-h-[90vh] overflow-hidden rounded-3xl bg-black p-2 border border-slate-800 shadow-2xl" onClick={e => e.stopPropagation()}>
-            <button 
+            <button
               onClick={() => setLightboxMedia(null)}
               className="absolute top-4 right-4 bg-slate-900/80 hover:bg-slate-850 text-white p-2 rounded-full z-20 flex items-center justify-center transition-colors"
             >
