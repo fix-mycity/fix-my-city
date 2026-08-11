@@ -7,7 +7,7 @@ export default function AddWorkerModal({ isOpen, onClose, onSuccess }) {
     name: '',
     phone: '',
     email: '',
-    role: 'COLLECTOR',
+    role: 'Cleaner',
     ward: 'Ward 4',
     area: 'Connaught Place',
     shift: 'MORNING'
@@ -94,9 +94,9 @@ export default function AddWorkerModal({ isOpen, onClose, onSuccess }) {
                   value={formData.role}
                   onChange={(e) => setFormData({ ...formData, role: e.target.value })}
                 >
-                  <option value="COLLECTOR">Collector</option>
-                  <option value="DRIVER">Driver</option>
-                  <option value="SUPERVISOR">Supervisor</option>
+                  <option value="Cleaner">Cleaner (Collector)</option>
+                  <option value="Driver">Driver</option>
+                  <option value="Supervisor">Supervisor</option>
                 </select>
               </div>
 

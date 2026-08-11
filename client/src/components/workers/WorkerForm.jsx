@@ -7,6 +7,9 @@ export default function WorkerForm({ department }) {
   const navigate = useNavigate();
   const { id } = useParams();
   const isEditMode = Boolean(id);
+  const isEmergency = department === 'emergency';
+
+  const todayStr = new Date().toISOString().split('T')[0];
 
   const [isLoading, setIsLoading] = useState(isEditMode);
   const [isSaving, setIsSaving] = useState(false);
@@ -14,22 +17,22 @@ export default function WorkerForm({ department }) {
   const [fieldErrors, setFieldErrors] = useState({});
 
   const [formData, setFormData] = useState({
-    username: '',
     email: '',
     password: '',
     confirm_password: '',
-    state: '',
-    district: '',
-    pincode: '',
     first_name: '',
     last_name: '',
     phone: '',
     photo: '',
     gender: 'Male',
+    state: 'Kerala',
+    district: '',
+    pincode: '',
     designation: '',
     skill: '',
     experience: 0,
     place: '',
+    joining_date: todayStr,
     emergency_contact_phone: '',
     availability: 'AVAILABLE',
     employment_status: 'ACTIVE'
@@ -46,9 +49,19 @@ export default function WorkerForm({ department }) {
       const response = await getWorkerById(id, department);
       const data = response.data;
 
+      let formattedJoiningDate = todayStr;
+      if (data.joining_date) {
+        try {
+          formattedJoiningDate = new Date(data.joining_date).toISOString().split('T')[0];
+        } catch (e) {
+          formattedJoiningDate = todayStr;
+        }
+      }
+
       setFormData(prev => ({
         ...prev,
         ...data,
+        joining_date: formattedJoiningDate,
         password: '',
         confirm_password: ''
       }));
@@ -61,12 +74,8 @@ export default function WorkerForm({ department }) {
   };
 
   const handleChange = (e) => {
-    const { name, value, type } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: type === 'number' ? Number(value) : value
-    }));
-
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
     if (fieldErrors[name]) {
       setFieldErrors(prev => ({ ...prev, [name]: null }));
     }
@@ -74,81 +83,77 @@ export default function WorkerForm({ department }) {
 
   const handlePhotoUpload = async (e) => {
     const file = e.target.files[0];
-    if (file) {
-      if (file.size > 2 * 1024 * 1024) {
-        toast.error('File size must be less than 2MB');
-        return;
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("File size must be under 5MB.");
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      const res = await uploadWorkerPhoto(file);
+      const photoUrl = res.data.url || res.data.photo_url || res.data.file_url;
+      if (photoUrl) {
+        setFormData(prev => ({ ...prev, photo: photoUrl }));
+        toast.success("Photo uploaded successfully!");
       }
-      
-      try {
-        setIsUploading(true);
-        const response = await uploadWorkerPhoto(file);
-        if (response.data.success) {
-          setFormData(prev => ({ ...prev, photo: response.data.url }));
-          toast.success('Photo uploaded successfully');
-        }
-      } catch (error) {
-        toast.error('Failed to upload photo to S3');
-        console.error(error);
-      } finally {
-        setIsUploading(false);
+    } catch (error) {
+      const detail = error.response?.data?.detail;
+      toast.error(typeof detail === 'string' ? detail : 'Failed to upload photo');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const validateForm = () => {
+    const errors = {};
+    if (!formData.first_name.trim()) errors.first_name = "First name is required.";
+    if (!formData.last_name.trim()) errors.last_name = "Last name is required.";
+    if (!formData.phone.trim()) {
+      errors.phone = "Phone number is required.";
+    } else if (!/^\d{10}$/.test(formData.phone.trim())) {
+      errors.phone = "Enter a valid 10-digit mobile number.";
+    }
+
+    if (formData.emergency_contact_phone && !/^\d{10}$/.test(formData.emergency_contact_phone.trim())) {
+      errors.emergency_contact_phone = "Enter a valid 10-digit mobile number.";
+    }
+
+    if (!isEditMode) {
+      if (!formData.username.trim()) errors.username = "Username is required.";
+      if (!formData.email.trim()) {
+        errors.email = "Email is required.";
+      } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) {
+        errors.email = "Enter a valid email address.";
+      }
+
+      if (!formData.password) {
+        errors.password = "Password is required.";
+      } else if (formData.password.length < 8) {
+        errors.password = "Password must be at least 8 characters.";
+      }
+
+      if (formData.password !== formData.confirm_password) {
+        errors.confirm_password = "Passwords do not match.";
+      }
+
+      if (!formData.state.trim()) errors.state = "State is required.";
+      if (!formData.district.trim()) errors.district = "District is required.";
+      if (!formData.pincode.trim()) {
+        errors.pincode = "Pincode is required.";
+      } else if (!/^\d{6}$/.test(formData.pincode.trim())) {
+        errors.pincode = "Enter a valid 6-digit pincode.";
       }
     }
+
+    setFieldErrors(errors);
+    return Object.keys(errors).length === 0;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setFieldErrors({});
-
-    const errors = {};
-
-    if (!isEditMode) {
-      if (!formData.username || formData.username.trim().length < 3) {
-        errors.username = "Username must be at least 3 characters.";
-      } else if (formData.username.trim().length > 50) {
-        errors.username = "Username must be 50 characters or less.";
-      }
-
-      if (!formData.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) {
-        errors.email = "Please enter a valid email address.";
-      }
-
-      if (!formData.password || formData.password.length < 8) {
-        errors.password = "Password must be at least 8 characters.";
-      }
-
-      if (!formData.confirm_password) {
-        errors.confirm_password = "Please confirm your password.";
-      } else if (formData.password !== formData.confirm_password) {
-        errors.confirm_password = "Passwords do not match.";
-      }
-
-      if (!formData.state || !formData.state.trim()) {
-        errors.state = "State is required.";
-      }
-
-      if (!formData.district || !formData.district.trim()) {
-        errors.district = "District is required.";
-      }
-
-      if (!formData.pincode || !/^\d{6}$/.test(formData.pincode.trim())) {
-        errors.pincode = "Please enter a valid 6-digit pincode.";
-      }
-    }
-
-    if (formData.phone && formData.phone.trim() && !/^\d{10}$/.test(formData.phone.trim())) {
-      errors.phone = "Phone number must be 10 digits.";
-    }
-
-    if (formData.emergency_contact_phone && formData.emergency_contact_phone.trim() && !/^\d{10}$/.test(formData.emergency_contact_phone.trim())) {
-      errors.emergency_contact_phone = "Emergency contact must be 10 digits.";
-    }
-
-    if (Object.keys(errors).length > 0) {
-      setFieldErrors(errors);
-      toast.error("Please fix the highlighted field errors.");
-      return;
-    }
+    if (!validateForm()) return;
 
     setIsSaving(true);
     try {
@@ -158,11 +163,24 @@ export default function WorkerForm({ department }) {
           updateData.photo = updateData.photo.split('?')[0];
         }
         await updateWorker(id, updateData, department);
-        toast.success("Worker updated successfully");
+        toast.success("Worker profile updated successfully");
       } else {
+        // Auto-generate clean username if missing
+        let cleanUsername = formData.username;
+        if (!cleanUsername) {
+          cleanUsername = formData.email ? formData.email.split('@')[0].replace(/[^a-zA-Z0-9_]/g, '') : '';
+          if (cleanUsername.length < 3) {
+            const fn = (formData.first_name || 'worker').toLowerCase().replace(/[^a-zA-Z0-9]/g, '');
+            const ln = (formData.last_name || 'user').toLowerCase().replace(/[^a-zA-Z0-9]/g, '');
+            cleanUsername = `${fn}_${ln}_${Math.floor(100 + Math.random() * 900)}`;
+          }
+        }
+
         const payload = { 
           ...formData,
-          joining_date: new Date().toISOString()
+          username: cleanUsername,
+          place: formData.place || formData.district || 'Municipal Zone',
+          joining_date: formData.joining_date ? new Date(formData.joining_date).toISOString() : new Date().toISOString()
         };
         if (payload.photo) {
           payload.photo = payload.photo.split('?')[0];
@@ -172,10 +190,11 @@ export default function WorkerForm({ department }) {
           toast.error(res.data.message || "Failed to register worker");
           return;
         }
-        toast.success("Worker registered successfully");
+        toast.success("Worker registered successfully!");
       }
       navigate(`/${department}/workers`);
     } catch (err) {
+      console.error("Registration error:", err);
       const detail = err.response?.data?.detail;
       if (typeof detail === 'string') {
         const lower = detail.toLowerCase();
@@ -199,7 +218,7 @@ export default function WorkerForm({ department }) {
           }
         });
         setFieldErrors(backendErrors);
-        toast.error("Please resolve the invalid fields.");
+        toast.error("Please resolve invalid fields.");
       } else {
         toast.error(isEditMode ? "Failed to update worker" : "Failed to register worker");
       }
@@ -209,19 +228,38 @@ export default function WorkerForm({ department }) {
   };
 
   const buttonClasses = {
-    water: 'bg-blue-600 hover:bg-blue-700 focus:ring-blue-500',
-    traffic: 'bg-amber-600 hover:bg-amber-700 focus:ring-amber-500',
-    waste: 'bg-emerald-600 hover:bg-emerald-700 focus:ring-emerald-500',
-    default: 'bg-slate-700 hover:bg-slate-800 focus:ring-slate-500'
+    water: 'bg-blue-600 hover:bg-blue-700 focus:ring-blue-500 text-white',
+    traffic: 'bg-amber-600 hover:bg-amber-700 focus:ring-amber-500 text-white',
+    waste: 'bg-emerald-600 hover:bg-emerald-700 focus:ring-emerald-500 text-white',
+    emergency: 'bg-rose-600 hover:bg-rose-500 text-white font-extrabold shadow-lg shadow-rose-900/50',
+    default: 'bg-slate-700 hover:bg-slate-800 focus:ring-slate-500 text-white'
   };
   const primaryBtnClass = buttonClasses[department] || buttonClasses.default;
 
+  const labelClass = `block text-xs font-semibold uppercase tracking-wide mb-1.5 ${
+    isEmergency ? 'text-slate-300' : 'text-slate-700'
+  }`;
+
   const getInputClass = (fieldName) => {
-    return `w-full px-4 py-2 border rounded-lg focus:ring-2 outline-none transition-colors ${
+    const base = "w-full px-4 py-2.5 text-sm border rounded-xl focus:ring-2 outline-none transition-all";
+    if (isEmergency) {
+      return `${base} bg-slate-800 placeholder-slate-500 border-slate-700 focus:ring-rose-500 text-white`;
+    }
+    const ringFocus = department === 'waste' ? 'focus:ring-emerald-500 focus:border-emerald-500' : 'focus:ring-blue-500 focus:border-blue-500';
+    return `${base} bg-white placeholder-slate-400 ${ringFocus} ${
       fieldErrors[fieldName]
-        ? 'border-rose-500 focus:ring-rose-500 bg-rose-50/20 text-rose-900'
-        : 'border-slate-300 focus:ring-blue-500 text-slate-800'
+        ? 'border-rose-500 focus:ring-rose-500 text-rose-900'
+        : 'border-slate-300 text-slate-800'
     }`;
+  };
+
+  const getSelectClass = () => {
+    const base = "w-full px-4 py-2.5 text-sm border rounded-xl focus:ring-2 outline-none transition-all";
+    if (isEmergency) {
+      return `${base} bg-slate-800 text-white border-slate-700 focus:ring-rose-500`;
+    }
+    const ringFocus = department === 'waste' ? 'focus:ring-emerald-500' : 'focus:ring-blue-500';
+    return `${base} bg-white text-slate-800 border-slate-300 ${ringFocus}`;
   };
 
   if (isLoading) {
@@ -233,212 +271,262 @@ export default function WorkerForm({ department }) {
   }
 
   return (
-    <div className="max-w-4xl mx-auto p-4 md:p-6 lg:p-8">
+    <div className="max-w-4xl mx-auto p-4 md:p-6 lg:p-8 font-sans">
       <div className="flex items-center gap-4 mb-8">
-        <button 
+        <button
+          type="button"
           onClick={() => navigate(`/${department}/workers`)}
-          className="w-10 h-10 flex items-center justify-center rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors"
+          className={`w-10 h-10 flex items-center justify-center rounded-full transition-colors ${
+            isEmergency ? 'bg-slate-800 hover:bg-slate-700 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'
+          }`}
         >
           <span className="material-symbols-outlined">arrow_back</span>
         </button>
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
-            {isEditMode ? 'Edit Worker Profile' : 'Register New Worker'}
+          <h1 className={`text-2xl font-black tracking-tight ${isEmergency ? 'text-white' : 'text-slate-900'}`}>
+            {isEditMode ? 'Edit Worker Profile' : 'Register New Field Worker'}
           </h1>
-          <p className="text-sm text-slate-500 mt-1">
-            {department === 'water' ? 'Water Authority Department' : department === 'traffic' ? 'Traffic Control Unit' : department === 'waste' ? 'Waste Sanitation Management' : 'City Operations Department'}
+          <p className={`text-sm mt-1 ${isEmergency ? 'text-slate-400' : 'text-slate-500'}`}>
+            {department === 'water' ? 'Water Authority' : department === 'traffic' ? 'Traffic Control' : department === 'waste' ? 'Waste Sanitation Management' : department === 'emergency' ? 'Emergency Department' : 'General Operations'} Operations
           </p>
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-        {/* Core Credentials Section */}
-        {!isEditMode && (
-          <div className="p-6 md:p-8 border-b border-slate-200 bg-slate-50/50">
-            <h2 className="text-lg font-semibold text-slate-800 mb-4 flex items-center gap-2">
-              <span className="material-symbols-outlined text-slate-400">shield_person</span>
-              Login Credentials
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Username *</label>
-                <input 
-                  name="username" 
-                  value={formData.username} 
-                  onChange={handleChange} 
-                  className={getInputClass('username')} 
-                  placeholder="Enter username"
-                />
-                {fieldErrors.username && (
-                  <p className="text-xs font-semibold text-rose-500 mt-1 block">{fieldErrors.username}</p>
-                )}
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Email *</label>
-                <input 
-                  type="email" 
-                  name="email" 
-                  value={formData.email} 
-                  onChange={handleChange} 
-                  className={getInputClass('email')} 
-                  placeholder="e.g. worker@fixmycity.org"
-                />
-                {fieldErrors.email && (
-                  <p className="text-xs font-semibold text-rose-500 mt-1 block">{fieldErrors.email}</p>
-                )}
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Password *</label>
-                <input 
-                  type="password" 
-                  name="password" 
-                  value={formData.password} 
-                  onChange={handleChange} 
-                  className={getInputClass('password')} 
-                  placeholder="At least 8 characters"
-                />
-                {fieldErrors.password && (
-                  <p className="text-xs font-semibold text-rose-500 mt-1 block">{fieldErrors.password}</p>
-                )}
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Confirm Password *</label>
-                <input 
-                  type="password" 
-                  name="confirm_password" 
-                  value={formData.confirm_password} 
-                  onChange={handleChange} 
-                  className={getInputClass('confirm_password')} 
-                  placeholder="Re-enter password"
-                />
-                {fieldErrors.confirm_password && (
-                  <p className="text-xs font-semibold text-rose-500 mt-1 block">{fieldErrors.confirm_password}</p>
-                )}
-              </div>
+      <form onSubmit={handleSubmit} className={`rounded-2xl border overflow-hidden transition-all ${
+        isEmergency 
+          ? 'bg-slate-900 border-slate-800 shadow-2xl text-slate-100' 
+          : 'bg-white border-slate-200 shadow-sm text-slate-800'
+      }`}>
+        
+        {/* Profile Photo Header */}
+        <div className={`p-6 md:p-8 border-b flex flex-col sm:flex-row items-center gap-6 ${
+          isEmergency ? 'border-slate-800 bg-slate-950/40' : 'border-slate-100 bg-slate-50/50'
+        }`}>
+          <div className="relative shrink-0">
+            <div className={`w-24 h-24 rounded-full overflow-hidden border-4 shadow-md flex items-center justify-center ${
+              isEmergency ? 'border-slate-800 bg-slate-800' : 'border-white bg-slate-100'
+            }`}>
+              {isUploading ? (
+                <div className={`animate-pulse flex items-center justify-center w-full h-full ${isEmergency ? 'bg-slate-700' : 'bg-slate-200'}`}>
+                  <span className="material-symbols-outlined text-slate-400 animate-spin">sync</span>
+                </div>
+              ) : formData.photo ? (
+                <img src={formData.photo} alt="Profile" className="w-full h-full object-cover" />
+              ) : (
+                <span className="material-symbols-outlined text-slate-400 text-5xl">person</span>
+              )}
             </div>
+            <label className={`absolute bottom-0 right-0 w-8 h-8 rounded-full flex items-center justify-center shadow-lg transition-colors border-2 cursor-pointer disabled:opacity-50 ${
+              isEmergency ? 'bg-rose-600 hover:bg-rose-500 text-white border-slate-900' : 'bg-blue-600 hover:bg-blue-700 text-white border-white'
+            }`}>
+              <span className="material-symbols-outlined text-[1rem]">photo_camera</span>
+              <input
+                type="file"
+                className="hidden"
+                accept="image/*"
+                onChange={handlePhotoUpload}
+                disabled={isUploading}
+              />
+            </label>
           </div>
-        )}
+          <div className="text-center sm:text-left">
+            <h3 className={`text-base font-semibold ${isEmergency ? 'text-white' : 'text-slate-800'}`}>Profile Photo</h3>
+            <p className={`text-xs mt-1 ${isEmergency ? 'text-slate-400' : 'text-slate-500'}`}>Upload a professional field officer photo (JPEG, PNG • Max 2MB).</p>
+          </div>
+        </div>
 
-        {/* Profile Info Section */}
-        <div className="p-6 md:p-8">
-          <h2 className="text-lg font-semibold text-slate-800 mb-4 flex items-center gap-2">
-            <span className="material-symbols-outlined text-slate-400">badge</span>
-            Personal Information
+        {/* Section 1: Personal Details */}
+        <div className={`p-6 md:p-8 border-b ${isEmergency ? 'border-slate-800' : 'border-slate-100'}`}>
+          <h2 className={`text-md font-bold uppercase tracking-wider mb-5 flex items-center gap-2 ${
+            isEmergency ? 'text-rose-500' : 'text-slate-900'
+          }`}>
+            <span className={`material-symbols-outlined ${isEmergency ? 'text-rose-500' : 'text-blue-600'}`}>badge</span>
+            Personal Details
           </h2>
 
-          <div className="flex flex-col sm:flex-row items-center gap-6 mb-8">
-            <div className="relative">
-              <div className="w-24 h-24 rounded-full overflow-hidden bg-slate-100 border-4 border-white shadow-sm flex items-center justify-center">
-                {isUploading ? (
-                  <div className="animate-pulse flex items-center justify-center w-full h-full bg-slate-200">
-                    <span className="material-symbols-outlined text-slate-400">sync</span>
-                  </div>
-                ) : formData.photo ? (
-                  <img src={formData.photo} alt="Profile" className="w-full h-full object-cover" />
-                ) : (
-                  <span className="material-symbols-outlined text-slate-300 text-4xl">person</span>
-                )}
-              </div>
-              <label className="absolute bottom-0 right-0 w-8 h-8 bg-blue-500 text-white rounded-full flex items-center justify-center shadow-lg hover:bg-blue-600 transition-colors border-2 border-white cursor-pointer disabled:opacity-50">
-                <span className="material-symbols-outlined text-[1rem]">photo_camera</span>
-                <input 
-                  type="file" 
-                  className="hidden" 
-                  accept="image/*" 
-                  onChange={handlePhotoUpload} 
-                  disabled={isUploading}
-                />
-              </label>
-            </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <h3 className="text-sm font-semibold text-slate-800">Profile Photo</h3>
-              <p className="text-xs text-slate-500">Upload a professional photo (Max 2MB).</p>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">First Name</label>
-              <input name="first_name" value={formData.first_name} onChange={handleChange} className={getInputClass('first_name')} placeholder="e.g. Ramees" />
+              <label className={labelClass}>First Name *</label>
+              <input 
+                required 
+                type="text" 
+                name="first_name" 
+                placeholder="e.g. Abhinav" 
+                value={formData.first_name} 
+                onChange={handleChange} 
+                className={getInputClass('first_name')} 
+              />
               {fieldErrors.first_name && (
                 <p className="text-xs font-semibold text-rose-500 mt-1 block">{fieldErrors.first_name}</p>
               )}
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Last Name</label>
-              <input name="last_name" value={formData.last_name} onChange={handleChange} className={getInputClass('last_name')} placeholder="e.g. Khan" />
+              <label className={labelClass}>Last Name *</label>
+              <input 
+                required 
+                type="text" 
+                name="last_name" 
+                placeholder="e.g. Kumar" 
+                value={formData.last_name} 
+                onChange={handleChange} 
+                className={getInputClass('last_name')} 
+              />
               {fieldErrors.last_name && (
                 <p className="text-xs font-semibold text-rose-500 mt-1 block">{fieldErrors.last_name}</p>
               )}
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Phone Number</label>
-              <input name="phone" value={formData.phone} onChange={handleChange} className={getInputClass('phone')} placeholder="10-digit mobile number" />
+              <label className={labelClass}>Email Address *</label>
+              <input 
+                required 
+                type="email" 
+                name="email" 
+                disabled={isEditMode}
+                placeholder="e.g. officer@fixmycity.gov" 
+                value={formData.email} 
+                onChange={handleChange} 
+                className={`${getInputClass('email')} disabled:opacity-50`} 
+              />
+              {fieldErrors.email && (
+                <p className="text-xs font-semibold text-rose-500 mt-1 block">{fieldErrors.email}</p>
+              )}
+            </div>
+            <div>
+              <label className={labelClass}>Phone Number *</label>
+              <input 
+                required 
+                type="tel" 
+                name="phone" 
+                placeholder="e.g. 9846012345" 
+                value={formData.phone} 
+                onChange={handleChange} 
+                className={getInputClass('phone')} 
+              />
               {fieldErrors.phone && (
                 <p className="text-xs font-semibold text-rose-500 mt-1 block">{fieldErrors.phone}</p>
               )}
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Emergency Contact</label>
-              <input name="emergency_contact_phone" value={formData.emergency_contact_phone} onChange={handleChange} className={getInputClass('emergency_contact_phone')} placeholder="10-digit mobile number" />
-              {fieldErrors.emergency_contact_phone && (
-                <p className="text-xs font-semibold text-rose-500 mt-1 block">{fieldErrors.emergency_contact_phone}</p>
-              )}
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Gender</label>
-              <select name="gender" value={formData.gender} onChange={handleChange} className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white">
+              <label className={labelClass}>Gender</label>
+              <select 
+                name="gender" 
+                value={formData.gender} 
+                onChange={handleChange} 
+                className={getSelectClass()}
+              >
                 <option value="Male">Male</option>
                 <option value="Female">Female</option>
                 <option value="Other">Other</option>
               </select>
             </div>
+            <div>
+              <label className={labelClass}>Emergency Contact Phone</label>
+              <input 
+                type="tel" 
+                name="emergency_contact_phone" 
+                placeholder="e.g. 9846998877" 
+                value={formData.emergency_contact_phone} 
+                onChange={handleChange} 
+                className={getInputClass('emergency_contact_phone')} 
+              />
+              {fieldErrors.emergency_contact_phone && (
+                <p className="text-xs font-semibold text-rose-500 mt-1 block">{fieldErrors.emergency_contact_phone}</p>
+              )}
+            </div>
           </div>
+        </div>
 
-          <h2 className="text-lg font-semibold text-slate-800 mb-4 flex items-center gap-2">
-            <span className="material-symbols-outlined text-slate-400">location_on</span>
+        {/* Section 2: Location Details */}
+        <div className={`p-6 md:p-8 border-b ${isEmergency ? 'border-slate-800' : 'border-slate-100'}`}>
+          <h2 className={`text-md font-bold uppercase tracking-wider mb-5 flex items-center gap-2 ${
+            isEmergency ? 'text-rose-500' : 'text-slate-900'
+          }`}>
+            <span className={`material-symbols-outlined ${isEmergency ? 'text-rose-500' : 'text-blue-600'}`}>location_on</span>
             Location Details
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            {!isEditMode && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {!isEditMode ? (
               <>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">State *</label>
-                  <input name="state" value={formData.state} onChange={handleChange} className={getInputClass('state')} placeholder="e.g. Kerala" />
+                  <label className={labelClass}>State *</label>
+                  <input 
+                    required 
+                    name="state" 
+                    placeholder="Kerala" 
+                    value={formData.state} 
+                    onChange={handleChange} 
+                    className={getInputClass('state')} 
+                  />
                   {fieldErrors.state && (
                     <p className="text-xs font-semibold text-rose-500 mt-1 block">{fieldErrors.state}</p>
                   )}
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">District *</label>
-                  <input name="district" value={formData.district} onChange={handleChange} className={getInputClass('district')} placeholder="e.g. Malappuram" />
+                  <label className={labelClass}>District *</label>
+                  <input 
+                    required 
+                    name="district" 
+                    placeholder="e.g. Malappuram" 
+                    value={formData.district} 
+                    onChange={handleChange} 
+                    className={getInputClass('district')} 
+                  />
                   {fieldErrors.district && (
                     <p className="text-xs font-semibold text-rose-500 mt-1 block">{fieldErrors.district}</p>
                   )}
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Pincode *</label>
-                  <input name="pincode" value={formData.pincode} onChange={handleChange} className={getInputClass('pincode')} placeholder="6-digit pincode" />
+                  <label className={labelClass}>Pincode *</label>
+                  <input 
+                    required 
+                    name="pincode" 
+                    placeholder="e.g. 676505" 
+                    value={formData.pincode} 
+                    onChange={handleChange} 
+                    className={getInputClass('pincode')} 
+                  />
                   {fieldErrors.pincode && (
                     <p className="text-xs font-semibold text-rose-500 mt-1 block">{fieldErrors.pincode}</p>
                   )}
                 </div>
               </>
+            ) : (
+              <div className="md:col-span-3">
+                <label className={labelClass}>Assigned District / Zone</label>
+                <input 
+                  name="district" 
+                  placeholder="e.g. Malappuram" 
+                  value={formData.district} 
+                  onChange={handleChange} 
+                  className={getInputClass('district')} 
+                />
+              </div>
             )}
             <div className="md:col-span-3">
-              <label className="block text-sm font-medium text-slate-700 mb-1">Assigned Place / Zone</label>
-              <input name="place" value={formData.place} onChange={handleChange} className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" placeholder="e.g. Manjeri Junction Zone" />
+              <label className={labelClass}>Assigned Place / Zone</label>
+              <input 
+                name="place" 
+                value={formData.place} 
+                onChange={handleChange} 
+                className={getInputClass('place')} 
+                placeholder="e.g. Manjeri Junction Zone" 
+              />
             </div>
           </div>
+        </div>
 
-          <h2 className="text-lg font-semibold text-slate-800 mb-4 flex items-center gap-2">
-            <span className="material-symbols-outlined text-slate-400">work</span>
-            Employment Details
+        {/* Section 3: Professional & Employment Details */}
+        <div className={`p-6 md:p-8 border-b ${isEmergency ? 'border-slate-800' : 'border-slate-100'}`}>
+          <h2 className={`text-md font-bold uppercase tracking-wider mb-5 flex items-center gap-2 ${
+            isEmergency ? 'text-rose-500' : 'text-slate-900'
+          }`}>
+            <span className={`material-symbols-outlined ${isEmergency ? 'text-rose-500' : 'text-blue-600'}`}>work</span>
+            Employment & Skill Details
           </h2>
           {department === 'waste' ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wide mb-1.5">Role / Designation *</label>
+                <label className={labelClass}>Role / Designation *</label>
                 <select 
                   name="role" 
                   value={formData.role || 'Collector'} 
@@ -446,7 +534,7 @@ export default function WorkerForm({ department }) {
                     handleChange(e);
                     setFormData(prev => ({ ...prev, designation: e.target.value, role: e.target.value }));
                   }} 
-                  className="w-full px-4 py-2.5 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none bg-white transition-all"
+                  className={getSelectClass()}
                 >
                   <option value="Collector">Collector (Sanitation Cleaner)</option>
                   <option value="Driver">Driver (Truck / Compactor Driver)</option>
@@ -456,109 +544,66 @@ export default function WorkerForm({ department }) {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wide mb-1.5">Shift *</label>
-                <select 
-                  name="shift" 
-                  value={formData.shift || 'Morning Shift'} 
-                  onChange={handleChange} 
-                  className="w-full px-4 py-2.5 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none bg-white transition-all"
-                >
-                  <option value="Morning Shift">Morning Shift (06:00 AM - 02:00 PM)</option>
-                  <option value="Evening Shift">Evening Shift (02:00 PM - 10:00 PM)</option>
-                  <option value="Night Shift">Night Shift (10:00 PM - 06:00 AM)</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wide mb-1.5">Assigned Ward *</label>
-                <select 
-                  name="ward" 
-                  value={formData.ward || 'Ward 4'} 
-                  onChange={handleChange} 
-                  className="w-full px-4 py-2.5 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none bg-white transition-all"
-                >
-                  <option value="Ward 1">Ward 1 - Old City</option>
-                  <option value="Ward 2">Ward 2 - Civil Lines</option>
-                  <option value="Ward 4">Ward 4 - Connaught Place</option>
-                  <option value="Ward 7">Ward 7 - Vasant Kunj</option>
-                  <option value="Ward 9">Ward 9 - Green Park</option>
-                  <option value="Ward 12">Ward 12 - Okhla Phase 3</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wide mb-1.5">Area *</label>
-                <input 
-                  required 
-                  name="area" 
-                  placeholder="e.g. Connaught Place" 
-                  value={formData.area || 'Connaught Place'} 
-                  onChange={handleChange} 
-                  className="w-full px-4 py-2.5 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none transition-all" 
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wide mb-1.5">Primary Skill</label>
+                <label className={labelClass}>Primary Skill</label>
                 <input 
                   name="skill" 
                   placeholder="e.g. Waste Collection, Compactor Driving" 
                   value={formData.skill || ''} 
                   onChange={handleChange} 
-                  className="w-full px-4 py-2.5 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none transition-all" 
+                  className={getInputClass('skill')} 
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wide mb-1.5">Experience (Years)</label>
+                <label className={labelClass}>Experience (Years)</label>
                 <input 
                   type="number" 
                   min="0" 
                   name="experience" 
                   value={formData.experience || 0} 
                   onChange={handleChange} 
-                  className="w-full px-4 py-2.5 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none transition-all" 
+                  className={getInputClass('experience')} 
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wide mb-1.5">Joining Date</label>
+                <label className={labelClass}>Joining Date</label>
                 <input
                   type="date"
                   max={todayStr}
                   name="joining_date"
                   value={formData.joining_date || ''}
                   onChange={handleChange}
-                  className="w-full px-4 py-2.5 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none transition-all bg-white"
+                  className={getInputClass('joining_date')}
                 />
               </div>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wide mb-1.5">Designation *</label>
+                <label className={labelClass}>Designation *</label>
                 <input 
                   required 
                   name="designation" 
-                  placeholder="e.g. Senior Technician" 
+                  placeholder={isEmergency ? "e.g. Fireman / Emergency Dispatcher" : "e.g. Senior Technician"} 
                   value={formData.designation} 
                   onChange={handleChange} 
-                  className="w-full px-4 py-2.5 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all" 
+                  className={getInputClass('designation')} 
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wide mb-1.5">Primary Skill *</label>
+                <label className={labelClass}>Primary Skill *</label>
                 <input 
                   required 
                   name="skill" 
-                  placeholder="e.g. Pipeline Repair, Diver" 
+                  placeholder={isEmergency ? "e.g. Medical Rescue / Hazardous Waste Cleanup" : "e.g. Pipeline Repair, Diver"} 
                   value={formData.skill} 
                   onChange={handleChange} 
-                  className="w-full px-4 py-2.5 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all" 
+                  className={getInputClass('skill')} 
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wide mb-1.5">Experience (Years) *</label>
+                <label className={labelClass}>Experience (Years) *</label>
                 <input 
                   required 
                   type="number" 
@@ -566,63 +611,142 @@ export default function WorkerForm({ department }) {
                   name="experience" 
                   value={formData.experience} 
                   onChange={handleChange} 
-                  className="w-full px-4 py-2.5 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all" 
+                  className={getInputClass('experience')} 
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wide mb-1.5">Joining Date</label>
+                <label className={labelClass}>Joining Date</label>
                 <input
                   type="date"
                   max={todayStr}
                   name="joining_date"
                   value={formData.joining_date || ''}
                   onChange={handleChange}
-                  className="w-full px-4 py-2.5 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all bg-white"
+                  className={getInputClass('joining_date')}
                 />
               </div>
             </div>
           )}
-            {isEditMode && (
-              <>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Availability</label>
-                  <select name="availability" value={formData.availability} onChange={handleChange} className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white">
-                    <option value="AVAILABLE">Available</option>
-                    <option value="BUSY">Busy</option>
-                    <option value="ON_LEAVE">On Leave</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Employment Status</label>
-                  <select name="employment_status" value={formData.employment_status} onChange={handleChange} className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white">
-                    <option value="ACTIVE">Active</option>
-                    <option value="INACTIVE">Inactive</option>
-                    <option value="SUSPENDED">Suspended</option>
-                  </select>
-                </div>
-              </>
-            )}
+
+          {isEditMode && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+              <div>
+                <label className={labelClass}>Availability Status</label>
+                <select 
+                  name="availability" 
+                  value={formData.availability} 
+                  onChange={handleChange} 
+                  className={getSelectClass()}
+                >
+                  <option value="AVAILABLE">Available</option>
+                  <option value="ON_BREAK">On Break</option>
+                  <option value="BUSY">Busy</option>
+                  <option value="ON_LEAVE">On Leave</option>
+                </select>
+              </div>
+              <div>
+                <label className={labelClass}>Employment Status</label>
+                <select 
+                  name="employment_status" 
+                  value={formData.employment_status} 
+                  onChange={handleChange} 
+                  className={getSelectClass()}
+                >
+                  <option value="ACTIVE">Active</option>
+                  <option value="INACTIVE">Inactive</option>
+                  <option value="SUSPENDED">Suspended</option>
+                </select>
+              </div>
+            </div>
+          )}
         </div>
 
+        {/* Section 4: Security Credentials */}
+        {!isEditMode && (
+          <div className={`p-6 md:p-8 ${isEmergency ? 'bg-slate-950/20' : 'bg-slate-50/50'}`}>
+            <h2 className={`text-md font-bold uppercase tracking-wider mb-5 flex items-center gap-2 ${
+              isEmergency ? 'text-rose-500' : 'text-slate-900'
+            }`}>
+              <span className={`material-symbols-outlined ${isEmergency ? 'text-rose-500' : 'text-blue-600'}`}>lock</span>
+              Account Credentials
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className={labelClass}>Username *</label>
+                <input 
+                  required 
+                  type="text" 
+                  name="username" 
+                  placeholder="Enter a username"
+                  value={formData.username || ''} 
+                  onChange={handleChange} 
+                  className={getInputClass('username')} 
+                />
+                {fieldErrors.username && (
+                  <p className="text-xs font-semibold text-rose-500 mt-1 block">{fieldErrors.username}</p>
+                )}
+              </div>
+              <div>
+                {/* empty block just to align password fields on next line */}
+              </div>
+              <div>
+                <label className={labelClass}>Password *</label>
+                <input 
+                  required 
+                  type="password" 
+                  name="password" 
+                  placeholder="Minimum 8 characters"
+                  value={formData.password} 
+                  onChange={handleChange} 
+                  className={getInputClass('password')} 
+                />
+                {fieldErrors.password && (
+                  <p className="text-xs font-semibold text-rose-500 mt-1 block">{fieldErrors.password}</p>
+                )}
+              </div>
+              <div>
+                <label className={labelClass}>Confirm Password *</label>
+                <input 
+                  required 
+                  type="password" 
+                  name="confirm_password" 
+                  placeholder="Re-enter password"
+                  value={formData.confirm_password} 
+                  onChange={handleChange} 
+                  className={getInputClass('confirm_password')} 
+                />
+                {fieldErrors.confirm_password && (
+                  <p className="text-xs font-semibold text-rose-500 mt-1 block">{fieldErrors.confirm_password}</p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Action Footer */}
-        <div className="p-6 border-t border-slate-200 bg-slate-50 flex items-center justify-end gap-4">
-          <button 
-            type="button" 
+        <div className={`p-6 border-t flex items-center justify-end gap-4 ${
+          isEmergency ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200'
+        }`}>
+          <button
+            type="button"
             onClick={() => navigate(`/${department}/workers`)}
-            className="px-6 py-2.5 rounded-lg font-medium text-slate-600 hover:bg-slate-200 transition-colors"
+            className={`px-6 py-2.5 rounded-xl font-bold text-xs transition-colors uppercase tracking-wider ${
+              isEmergency ? 'text-slate-400 hover:bg-slate-800' : 'text-slate-600 hover:bg-slate-200'
+            }`}
           >
             Cancel
           </button>
-          <button 
-            type="submit" 
+          <button
+            type="submit"
             disabled={isSaving}
-            className={`px-6 py-2.5 rounded-lg font-medium text-white ${primaryBtnClass} transition-colors shadow-sm disabled:opacity-70 flex items-center gap-2`}
+            className={`px-8 py-3 rounded-xl font-bold text-xs text-white ${primaryBtnClass} transition-all shadow-sm disabled:opacity-70 flex items-center gap-2 uppercase tracking-wider`}
           >
             {isSaving && <span className="material-symbols-outlined animate-spin text-sm">sync</span>}
-            {isSaving ? 'Saving...' : (isEditMode ? 'Save Changes' : 'Register Worker')}
+            {isSaving ? 'Saving...' : (isEditMode ? 'Save Changes' : 'Register Field Worker')}
           </button>
         </div>
+
       </form>
     </div>
   );

@@ -25,7 +25,7 @@ export function UpdateFillLevelModal({ isOpen, onClose, bin, onSuccess }) {
         fill_level_percentage: parseFloat(level),
         status: customStatus || undefined
       });
-      toast.success(`Smart Bin ${bin.bin_code} fill level updated to ${level}%!`);
+      toast.success(`Bin ${bin.bin_code} fill level updated to ${level}%!`);
       onSuccess();
       onClose();
     } catch (err) {
@@ -40,7 +40,7 @@ export function UpdateFillLevelModal({ isOpen, onClose, bin, onSuccess }) {
     <div className="waste-modal-overlay">
       <div className="waste-modal-container">
         <div className="waste-modal-header">
-          <h3 className="waste-modal-title">Update Smart Bin Sensor Fill Level</h3>
+          <h3 className="waste-modal-title">Update Bin Fill Level</h3>
           <button onClick={onClose} className="waste-modal-close">
             <span className="material-symbols-outlined">close</span>
           </button>
@@ -58,7 +58,7 @@ export function UpdateFillLevelModal({ isOpen, onClose, bin, onSuccess }) {
             </div>
 
             <div className="waste-form-group">
-              <label className="waste-form-label">Sensor Fill Level Percentage ({level}%)</label>
+              <label className="waste-form-label">Fill Level Percentage ({level}%)</label>
               <input
                 type="range"
                 min="0"
@@ -99,7 +99,7 @@ export function UpdateFillLevelModal({ isOpen, onClose, bin, onSuccess }) {
               Cancel
             </button>
             <button type="submit" disabled={submitting} className="waste-btn waste-btn-primary">
-              {submitting ? 'Updating...' : 'Save Sensor Reading'}
+              {submitting ? 'Updating...' : 'Save Fill Level'}
             </button>
           </div>
         </form>

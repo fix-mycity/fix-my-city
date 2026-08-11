@@ -20,14 +20,6 @@ export default function Topbar({ onMenuToggle, onLogout, onNotificationToggle })
       </div>
 
       <div className="waste-topbar-right">
-        <button 
-          onClick={onNotificationToggle}
-          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0.4rem', borderRadius: '8px', color: '#64748b', display: 'flex', alignItems: 'center' }}
-          title="Notifications"
-        >
-          <span className="material-symbols-outlined">notifications</span>
-        </button>
-
         <div className="waste-user-profile">
           <div className="waste-user-avatar">{initial}</div>
           <div className="waste-user-info">

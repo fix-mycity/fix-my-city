@@ -28,19 +28,21 @@ export default function WorkerList({ department }) {
       if (searchQuery) params.search = searchQuery;
 
       const response = await getWorkers(params);
-      const items = response.data.items || [];
+      const items = response.data?.items || (Array.isArray(response.data) ? response.data : []);
       setWorkers(items);
-      setTotalItems(response.data.total_items || 0);
-      setTotalPages(response.data.total_pages || 1);
+      const totalCount = response.data?.total_items !== undefined ? response.data.total_items : items.length;
+      setTotalItems(totalCount);
+      setTotalPages(response.data?.total_pages || Math.ceil(totalCount / pageSize) || 1);
 
       setStats({
-        total: response.data.total_items || 0,
-        available: items.filter(w => w.availability === 'AVAILABLE' && w.is_active !== false).length,
+        total: totalCount,
+        available: items.filter(w => (w.availability === 'AVAILABLE' || !w.availability) && w.is_active !== false).length,
         busy: items.filter(w => w.availability === 'BUSY' && w.is_active !== false).length,
         onLeave: items.filter(w => w.availability === 'ON_LEAVE' || w.is_active === false).length,
       });
     } catch (err) {
-      toast.error(err.response?.data?.detail || "Could not retrieve field workers list.");
+      console.error("Error fetching workers:", err);
+      toast.error(typeof err.response?.data?.detail === 'string' ? err.response.data.detail : "Could not retrieve field workers list.");
     } finally {
       setIsLoading(false);
     }
@@ -77,6 +79,7 @@ export default function WorkerList({ department }) {
   const buttonClasses = {
     water: 'bg-blue-600 hover:bg-blue-700',
     traffic: 'bg-amber-600 hover:bg-amber-700',
+    waste: 'bg-emerald-600 hover:bg-emerald-700',
     default: 'bg-slate-600 hover:bg-slate-700'
   };
   const primaryBtnClass = buttonClasses[department] || buttonClasses.default;
@@ -87,7 +90,7 @@ export default function WorkerList({ department }) {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-200 pb-5">
         <div>
           <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
-            {department === 'water' ? 'Water Authority ' : department === 'traffic' ? 'Traffic Control ' : ''}
+            {department === 'water' ? 'Water Authority ' : department === 'traffic' ? 'Traffic Control ' : department === 'general' ? 'General Operations ' : department === 'waste' ? 'Sanitation ' : ''}
             Worker Operations
           </h1>
           <p className="text-sm text-slate-500 mt-1">Manage field service crews, assignments, and review worker leave applications.</p>

@@ -109,17 +109,27 @@ export default function WorkerManagement() {
   };
 
   // KPI Calculations
-  const activeWorkers = workers.filter(w => w.status === 'Active' || w.status === 'ACTIVE').length;
-  const driversCount = workers.filter(w => w.role === 'Driver' || w.role === 'DRIVER').length;
-  const cleanersCount = workers.filter(w => w.role === 'Cleaner' || w.role === 'COLLECTOR').length;
+  const activeWorkers = workers.filter(w => {
+    const s = (w.status || '').toUpperCase();
+    return s === 'ACTIVE';
+  }).length;
+  const driversCount = workers.filter(w => {
+    const r = (w.role || '').toUpperCase();
+    return r === 'DRIVER';
+  }).length;
+  const cleanersCount = workers.filter(w => {
+    const r = (w.role || '').toUpperCase();
+    return r === 'CLEANER' || r === 'COLLECTOR' || r === 'COLLECTORS';
+  }).length;
 
   return (
     <div className="waste-worker-management-page">
       <PageHeader
         title="Sanitation Workers Roster"
         subtitle="Manage field sanitation cleaners, truck drivers, supervisors, inspectors, shifts & ward assignments"
-        onActionClick={() => navigate('/waste/workers/create')}
+        onActionClick={() => setIsAddOpen(true)}
         actionLabel="Register Field Worker"
+        actionIcon="person_add"
       />
 
       {/* KPI Bar */}

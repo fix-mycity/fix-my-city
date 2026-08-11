@@ -9,7 +9,7 @@ export default function WorkerProfile({ department: propDepartment }) {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const department = propDepartment || (location.pathname.includes('/traffic') ? 'traffic' : 'water');
+  const department = propDepartment || (location.pathname.includes('/traffic') ? 'traffic' : location.pathname.includes('/general') ? 'general' : location.pathname.includes('/waste') ? 'waste' : 'water');
 
   const [worker, setWorker] = useState(null);
   const [isLoading, setIsLoading] = useState(true);

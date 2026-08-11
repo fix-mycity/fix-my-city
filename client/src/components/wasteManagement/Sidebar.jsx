@@ -16,12 +16,9 @@ export default function Sidebar({
     { id: 'dashboard', label: 'Dashboard', icon: 'dashboard', path: '/waste' },
     { id: 'complaints', label: 'Complaints', icon: 'report_problem', path: '/waste/complaints' },
     { id: 'bins', label: 'Waste Bins', icon: 'delete', path: '/waste/bins' },
-    { id: 'vehicles', label: 'Vehicles Fleet', icon: 'local_shipping', path: '/waste/vehicles' },
-    { id: 'schedules', label: 'Collection Routes', icon: 'route', path: '/waste/schedules' },
     { id: 'workers', label: 'Sanitation Workers', icon: 'group', path: '/waste/workers' },
-    { id: 'maintenance', label: 'Asset Maintenance', icon: 'build', path: '/waste/maintenance' },
-    { id: 'notifications', label: 'Notifications', icon: 'notifications', path: '/waste/notifications' },
-    { id: 'reports', label: 'Reports & Analytics', icon: 'analytics', path: '/waste/reports' }
+    { id: 'suggestions', label: 'Suggestions', icon: 'lightbulb', path: '/waste/suggestions' },
+    { id: 'posts', label: 'Announcements', icon: 'megaphone', path: '/waste/posts' }
   ];
 
   const handleNavClick = (item) => {
