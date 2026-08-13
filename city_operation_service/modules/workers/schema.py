@@ -26,6 +26,9 @@ class WorkerCreateSchema(BaseModel):
     experience: Optional[int] = None
     joining_date: Optional[datetime] = None
     emergency_contact_phone: Optional[str] = None
+    shift: Optional[str] = None
+    ward: Optional[str] = None
+    area: Optional[str] = None
 
 class WorkerUpdateSchema(BaseModel):
     first_name: Optional[str] = None
@@ -43,6 +46,9 @@ class WorkerUpdateSchema(BaseModel):
     emergency_contact_phone: Optional[str] = None
     availability: Optional[str] = None
     employment_status: Optional[str] = None
+    shift: Optional[str] = None
+    ward: Optional[str] = None
+    area: Optional[str] = None
 
 class WorkerResponse(BaseModel):
     id: int

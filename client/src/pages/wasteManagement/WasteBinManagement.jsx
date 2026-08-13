@@ -115,10 +115,10 @@ export default function WasteBinManagement() {
   return (
     <div className="waste-bin-management-page">
       <PageHeader
-        title="Smart Waste Bin Management"
-        subtitle="Real-time fill level telemetry, IoT sensors, QR codes & collection routes"
+        title="Waste Bin Management"
+        subtitle="Track and update waste bin fill levels, location coordinates, and categories."
         onActionClick={() => setIsAddOpen(true)}
-        actionLabel="Add Smart Bin"
+        actionLabel="Add Waste Bin"
       />
 
       {/* Summary KPI Bar */}
@@ -193,8 +193,6 @@ export default function WasteBinManagement() {
           totalPages={totalPages}
           onPageChange={(newPage) => setPage(newPage)}
           onUpdateFillLevel={handleOpenFillLevel}
-          onAssignRoute={handleOpenAssignRoute}
-          onShowQr={handleShowQr}
           onDeleteBin={handleDelete}
         />
       )}
@@ -211,19 +209,6 @@ export default function WasteBinManagement() {
         onClose={() => setIsFillModalOpen(false)}
         bin={selectedBin}
         onSuccess={fetchBins}
-      />
-
-      <AssignBinRouteModal
-        isOpen={isRouteModalOpen}
-        onClose={() => setIsRouteModalOpen(false)}
-        bin={selectedBin}
-        onSuccess={fetchBins}
-      />
-
-      <BinQrModal
-        isOpen={isQrModalOpen}
-        onClose={() => setIsQrModalOpen(false)}
-        bin={selectedBin}
       />
     </div>
   );

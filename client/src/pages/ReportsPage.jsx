@@ -7,16 +7,16 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import ComplaintDetailsModal from '../components/shared/ComplaintDetailsModal';
 import ComplaintLocation from '../components/shared/ComplaintLocation';
-import { 
-  Search, 
-  MapPin, 
-  Calendar, 
-  Image as ImageIcon, 
-  Camera, 
-  CheckCircle2, 
-  Clock, 
-  XCircle, 
-  ChevronRight, 
+import {
+  Search,
+  MapPin,
+  Calendar,
+  Image as ImageIcon,
+  Camera,
+  CheckCircle2,
+  Clock,
+  XCircle,
+  ChevronRight,
   SlidersHorizontal,
   Info,
   Layers,
@@ -25,7 +25,8 @@ import {
   FileText,
   User,
   ShieldCheck,
-  ChevronDown
+  ChevronDown,
+  Loader2
 } from 'lucide-react';
 
 const isVideoUrl = (url) => {
@@ -84,15 +85,15 @@ export default function ReportsPage() {
 
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
-      result = result.filter(c => 
-        (c.title || '').toLowerCase().includes(query) || 
+      result = result.filter(c =>
+        (c.title || '').toLowerCase().includes(query) ||
         (c.description || '').toLowerCase().includes(query) ||
         (c.department || '').toLowerCase().includes(query)
       );
     }
 
     setFilteredComplaints(result);
-    
+
     if (result.length > 0) {
       const stillVisible = result.some(c => c.id === selectedReport?.id);
       if (!stillVisible) {
@@ -118,14 +119,14 @@ export default function ReportsPage() {
             rightMapRef.current.remove();
             rightMapRef.current = null;
           }
-          
+
           const mapInstance = L.map(container, {
             zoomControl: false,
             attributionControl: false
           }).setView([lat, lng], 14);
-          
+
           L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(mapInstance);
-          
+
           const pinColor = {
             traffic: '#f59e0b',
             waste: '#ef4444',
@@ -149,8 +150,8 @@ export default function ReportsPage() {
              ">
                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
              </div>`,
-             iconSize: [28, 28],
-             iconAnchor: [14, 28]
+            iconSize: [28, 28],
+            iconAnchor: [14, 28]
           });
 
           L.marker([lat, lng], { icon: customIcon }).addTo(mapInstance);
@@ -198,19 +199,19 @@ export default function ReportsPage() {
 
   const getDeptConfig = (dept) => {
     switch (dept) {
-      case 'traffic': 
+      case 'traffic':
         return { label: 'Traffic Control', bg: 'bg-amber-50 text-amber-700 border-amber-150 border-amber-200/60', icon: Compass };
-      case 'waste': 
+      case 'waste':
         return { label: 'Waste Management', bg: 'bg-rose-50 text-rose-700 border-rose-200/60', icon: Trash2 };
-      case 'water': 
+      case 'water':
         return { label: 'Water Authority', bg: 'bg-blue-50 text-blue-700 border-blue-200/60', icon: Compass };
-      default: 
+      default:
         return { label: 'General Operations', bg: 'bg-slate-50 text-slate-700 border-slate-200/60', icon: FileText };
     }
   };
 
   const Trash2 = (props) => (
-    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" {...props}><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" {...props}><path d="M3 6h18" /><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" /><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" /><line x1="10" x2="10" y1="11" y2="17" /><line x1="14" x2="14" y1="11" y2="17" /></svg>
   );
 
   const defaultIssuePlaceholder = "https://images.unsplash.com/photo-1599740831664-927e1f1484f2?q=80&w=600&auto=format&fit=crop";
@@ -228,28 +229,28 @@ export default function ReportsPage() {
 
   return (
     <div className="flex flex-col h-screen bg-slate-50 font-sans antialiased overflow-hidden">
-      
+
       <Navbar />
 
       {/* Main Split Layout */}
       <div className="flex-1 flex overflow-hidden p-4 pb-24 lg:p-6 lg:pb-6 max-w-[1600px] mx-auto w-full gap-6">
-        
+
         {/* Left Sidebar List */}
         <div className="w-full lg:w-[400px] flex flex-col h-full bg-white rounded-2xl border border-slate-200/80 overflow-hidden shadow-sm shrink-0">
-          
+
           {/* Search and Filters Header */}
           <div className="p-4 border-b border-slate-200/60 space-y-3 bg-slate-50/40">
             <div className="relative">
               <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-              <input 
-                type="text" 
+              <input
+                type="text"
                 className="w-full bg-white border border-slate-200 rounded-xl pl-9 pr-4 py-2 text-slate-800 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all placeholder:text-slate-400"
                 placeholder="Search reports by title, keyword..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
-            
+
             {/* Horizontal Filter Tabs */}
             <div className="flex gap-1.5 overflow-x-auto text-xs font-bold text-slate-500 select-none pb-1 scrollbar-thin">
               {[
@@ -261,11 +262,10 @@ export default function ReportsPage() {
                 <button
                   key={tab.value}
                   onClick={() => setStatusFilter(tab.value)}
-                  className={`px-3.5 py-1.5 rounded-lg border transition-all shrink-0 font-extrabold shadow-sm ${
-                    statusFilter === tab.value 
-                      ? 'bg-blue-600 text-white border-blue-600 shadow-blue-600/10' 
-                      : 'bg-white border-slate-200 hover:bg-slate-100 hover:border-slate-300 hover:text-slate-700'
-                  }`}
+                  className={`px-3.5 py-1.5 rounded-lg border transition-all shrink-0 font-extrabold shadow-sm ${statusFilter === tab.value
+                    ? 'bg-blue-600 text-white border-blue-600 shadow-blue-600/10'
+                    : 'bg-white border-slate-200 hover:bg-slate-100 hover:border-slate-300 hover:text-slate-700'
+                    }`}
                 >
                   {tab.label}
                 </button>
@@ -284,28 +284,27 @@ export default function ReportsPage() {
                   <button
                     key={report.id}
                     onClick={() => handleSelectReport(report)}
-                    className={`w-full text-left p-4 flex gap-4 transition-all border-l-4 ${
-                      isSelected 
-                        ? 'bg-blue-50/40 border-blue-600' 
-                        : 'bg-white border-transparent hover:bg-slate-50/80'
-                    }`}
+                    className={`w-full text-left p-4 flex gap-4 transition-all border-l-4 ${isSelected
+                      ? 'bg-blue-50/40 border-blue-600'
+                      : 'bg-white border-transparent hover:bg-slate-50/80'
+                      }`}
                   >
                     {/* Media Thumbnail */}
                     <div className="w-16 h-16 rounded-xl shrink-0 border border-slate-200 bg-slate-100 flex items-center justify-center overflow-hidden relative shadow-sm">
                       {report.image_url ? (
                         isVideo ? (
-                          <video 
-                            src={report.image_url} 
-                            muted 
-                            playsInline 
-                            autoPlay 
-                            loop 
+                          <video
+                            src={report.image_url}
+                            muted
+                            playsInline
+                            autoPlay
+                            loop
                             className="w-full h-full object-cover"
                           />
                         ) : (
-                          <img 
-                            src={report.image_url} 
-                            alt={report.title} 
+                          <img
+                            src={report.image_url}
+                            alt={report.title}
                             className="w-full h-full object-cover"
                           />
                         )
@@ -313,7 +312,7 @@ export default function ReportsPage() {
                         <ImageIcon className="w-6 h-6 text-slate-300" />
                       )}
                     </div>
-                    
+
                     {/* Text Details */}
                     <div className="flex-grow overflow-hidden flex flex-col justify-between h-16 py-0.5">
                       <div>
@@ -325,7 +324,7 @@ export default function ReportsPage() {
                         </div>
                         <p className="text-[10px] text-slate-500 font-semibold line-clamp-1 leading-snug mt-0.5">{report.description}</p>
                       </div>
-                      
+
                       <div className="flex items-center justify-between text-[9px] text-slate-400 font-bold">
                         <span className="flex items-center gap-0.5 truncate max-w-[150px]">
                           <MapPin className="w-3 h-3 text-slate-400" />
@@ -353,29 +352,29 @@ export default function ReportsPage() {
         <div className="hidden lg:flex flex-col flex-grow h-full bg-white rounded-2xl border border-slate-200/80 overflow-hidden shadow-sm relative">
           {selectedReport ? (
             <div className="flex flex-col h-full overflow-y-auto">
-              
+
               {/* Media Header Banner */}
               <div className="relative h-56 bg-slate-950 w-full shrink-0 overflow-hidden flex items-center justify-center">
                 {selectedReport.image_url && isVideoUrl(selectedReport.image_url) ? (
-                  <video 
-                    src={selectedReport.image_url} 
-                    controls 
+                  <video
+                    src={selectedReport.image_url}
+                    controls
                     className="h-full object-contain relative z-10 w-full"
                   />
                 ) : (
                   <>
-                    <div 
-                      className="absolute inset-0 bg-cover bg-center opacity-30 blur-md scale-105" 
+                    <div
+                      className="absolute inset-0 bg-cover bg-center opacity-30 blur-md scale-105"
                       style={{ backgroundImage: `url('${selectedReport.image_url || defaultIssuePlaceholder}')` }}
                     />
-                    <img 
-                      src={selectedReport.image_url || defaultIssuePlaceholder} 
+                    <img
+                      src={selectedReport.image_url || defaultIssuePlaceholder}
                       alt={selectedReport.title}
                       className="h-full object-contain relative z-10"
                     />
                   </>
                 )}
-                
+
                 {/* Float Badge */}
                 <div className={`absolute top-4 left-4 z-20 flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black shadow-lg border border-white/20 backdrop-blur-md bg-white/95 text-slate-800`}>
                   <Layers className="w-3.5 h-3.5 text-blue-600" />
@@ -411,11 +410,10 @@ export default function ReportsPage() {
                     <button
                       key={tab.id}
                       onClick={() => setActiveTab(tab.id)}
-                      className={`py-3.5 border-b-2 flex items-center gap-1.5 transition-all outline-none font-extrabold ${
-                        isTabActive 
-                          ? 'border-blue-600 text-blue-600' 
-                          : 'border-transparent text-slate-450 hover:text-slate-700'
-                      }`}
+                      className={`py-3.5 border-b-2 flex items-center gap-1.5 transition-all outline-none font-extrabold ${isTabActive
+                        ? 'border-blue-600 text-blue-600'
+                        : 'border-transparent text-slate-450 hover:text-slate-700'
+                        }`}
                     >
                       {React.createElement(tab.icon, { className: `w-4 h-4 ${isTabActive ? 'text-blue-600' : 'text-slate-400'}` })}
                       {tab.label}
@@ -439,7 +437,7 @@ export default function ReportsPage() {
                     {/* Timeline section */}
                     <div className="space-y-4 pt-3 border-t border-slate-100">
                       <h4 className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">Tracking Timeline</h4>
-                      
+
                       <div className="space-y-5 text-xs max-w-lg">
                         {/* Step 1: Filed */}
                         <div className="flex gap-4">
@@ -460,11 +458,10 @@ export default function ReportsPage() {
                         {/* Step 2: Assigned */}
                         <div className="flex gap-4">
                           <div className="flex flex-col items-center">
-                            <div className={`w-6 h-6 rounded-full flex items-center justify-center shadow-sm font-bold text-xs shrink-0 ${
-                              selectedReport.assigned_worker_id 
-                                ? 'bg-blue-50 text-blue-600 border border-blue-150' 
-                                : 'bg-slate-50 text-slate-400 border border-slate-200'
-                            }`}>
+                            <div className={`w-6 h-6 rounded-full flex items-center justify-center shadow-sm font-bold text-xs shrink-0 ${selectedReport.assigned_worker_id
+                              ? 'bg-blue-50 text-blue-600 border border-blue-150'
+                              : 'bg-slate-50 text-slate-400 border border-slate-200'
+                              }`}>
                               {selectedReport.assigned_worker_id ? '✓' : '2'}
                             </div>
                             <div className="w-[1.5px] bg-slate-200 flex-grow my-1"></div>
@@ -472,8 +469,8 @@ export default function ReportsPage() {
                           <div className="pt-0.5">
                             <p className="font-extrabold text-slate-850">Worker Assignment</p>
                             <p className="text-[10px] text-slate-500 mt-0.5 font-medium">
-                              {selectedReport.assigned_worker_id 
-                                ? `Assigned to Municipal Field Worker (ID #${selectedReport.assigned_worker_id})` 
+                              {selectedReport.assigned_worker_id
+                                ? `Assigned to Municipal Field Worker (ID #${selectedReport.assigned_worker_id})`
                                 : 'Awaiting admin review and municipal staff dispatch'}
                             </p>
                           </div>
@@ -482,11 +479,10 @@ export default function ReportsPage() {
                         {/* Step 3: Resolved */}
                         <div className="flex gap-4">
                           <div className="flex flex-col items-center">
-                            <div className={`w-6 h-6 rounded-full flex items-center justify-center shadow-sm font-bold text-xs shrink-0 ${
-                              selectedReport.status === 'RESOLVED' || selectedReport.status === 'CLOSED'
-                                ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/20' 
-                                : 'bg-slate-50 text-slate-400 border border-slate-200'
-                            }`}>
+                            <div className={`w-6 h-6 rounded-full flex items-center justify-center shadow-sm font-bold text-xs shrink-0 ${selectedReport.status === 'RESOLVED' || selectedReport.status === 'CLOSED'
+                              ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/20'
+                              : 'bg-slate-50 text-slate-400 border border-slate-200'
+                              }`}>
                               {selectedReport.status === 'RESOLVED' || selectedReport.status === 'CLOSED' ? '✓' : '3'}
                             </div>
                           </div>
@@ -548,8 +544,8 @@ export default function ReportsPage() {
                         ) : (
                           <div className="w-full flex-1 rounded-xl border border-dashed border-slate-200 bg-slate-50/50 flex flex-col items-center justify-center text-slate-400 text-xs font-semibold">
                             <Camera className="w-8 h-8 mb-1.5 opacity-55 text-slate-350" />
-                            {selectedReport.status === 'RESOLVED' || selectedReport.status === 'CLOSED' 
-                              ? 'No resolution media provided' 
+                            {selectedReport.status === 'RESOLVED' || selectedReport.status === 'CLOSED'
+                              ? 'No resolution media provided'
                               : 'Awaiting completion upload'}
                           </div>
                         )}
@@ -574,7 +570,7 @@ export default function ReportsPage() {
                 {activeTab === 'map' && (
                   <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      
+
                       {/* Location text card */}
                       <div className="p-5 bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between h-52">
                         <div className="space-y-2">
@@ -586,10 +582,10 @@ export default function ReportsPage() {
                             Coordinates: {Number(selectedReport.location_lat).toFixed(6)}, {Number(selectedReport.location_lng).toFixed(6)}
                           </p>
                         </div>
-                        
-                        <a 
+
+                        <a
                           href={`https://www.google.com/maps/search/?api=1&query=${selectedReport.location_lat},${selectedReport.location_lng}`}
-                          target="_blank" 
+                          target="_blank"
                           rel="noopener noreferrer"
                           className="shrink-0 flex items-center justify-center gap-2 py-2.5 bg-slate-50 border border-slate-200 text-xs font-bold text-slate-700 rounded-xl hover:bg-slate-100 hover:text-slate-900 transition-all shadow-sm"
                         >
@@ -599,8 +595,8 @@ export default function ReportsPage() {
                       </div>
 
                       {/* Map Pane Container */}
-                      <div 
-                        id={`right-pane-map-${selectedReport.id}`} 
+                      <div
+                        id={`right-pane-map-${selectedReport.id}`}
                         className="w-full h-52 rounded-2xl border border-slate-200 shadow-sm relative z-0 bg-slate-100 overflow-hidden"
                       />
                     </div>
@@ -625,9 +621,9 @@ export default function ReportsPage() {
       </div>
 
       {showDetailsModalMobile && selectedReport && (
-        <ComplaintDetailsModal 
-          complaint={selectedReport} 
-          onClose={() => setShowDetailsModalMobile(false)} 
+        <ComplaintDetailsModal
+          complaint={selectedReport}
+          onClose={() => setShowDetailsModalMobile(false)}
         />
       )}
 

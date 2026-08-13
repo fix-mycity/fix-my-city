@@ -41,7 +41,7 @@ export default function AddBinModal({ isOpen, onClose, onSuccess }) {
     <div className="waste-modal-overlay">
       <div className="waste-modal-container">
         <div className="waste-modal-header">
-          <h3 className="waste-modal-title">Add Smart Waste Bin</h3>
+          <h3 className="waste-modal-title">Add Waste Bin</h3>
           <button onClick={onClose} className="waste-modal-close">
             <span className="material-symbols-outlined">close</span>
           </button>

@@ -102,6 +102,8 @@ import WasteMaintenanceManagement from './pages/wasteManagement/MaintenanceManag
 import WasteMaintenanceDetails from './pages/wasteManagement/MaintenanceDetails';
 import WasteNotificationCenter from './pages/wasteManagement/NotificationCenter';
 import WasteReportsAnalytics from './pages/wasteManagement/ReportsAnalytics';
+import WasteSuggestions from './pages/wasteManagement/WasteSuggestions';
+import WastePosts from './pages/wasteManagement/WastePosts';
 
 // General Management Module
 import GeneralLayout from './layout/GeneralLayout';
@@ -1172,6 +1174,36 @@ export default function App() {
             <ProtectedRoute allowedRoles={['Department_Admin', 'Super_Admin', 'Admin']}>
               <WasteLayout activeTab="reports">
                 <WasteReportsAnalytics />
+              </WasteLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/waste/suggestions"
+          element={
+            <ProtectedRoute allowedRoles={['Department_Admin', 'Super_Admin', 'Admin']}>
+              <WasteLayout activeTab="suggestions">
+                <WasteSuggestions />
+              </WasteLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/waste/posts"
+          element={
+            <ProtectedRoute allowedRoles={['Department_Admin', 'Super_Admin', 'Admin']}>
+              <WasteLayout activeTab="posts">
+                <WastePosts />
+              </WasteLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/waste/workers/new"
+          element={
+            <ProtectedRoute allowedRoles={['Department_Admin', 'Super_Admin', 'Admin']}>
+              <WasteLayout activeTab="workers">
+                <WorkerForm department="waste" />
               </WasteLayout>
             </ProtectedRoute>
           }
