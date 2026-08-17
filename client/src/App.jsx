@@ -14,6 +14,7 @@ import TermsOfService from './pages/TermsOfService';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 
 import UserDashboard from './pages/UserDashboard';
+import EmergencyReportPage from './pages/EmergencyReportPage';
 import ProfilePage from './pages/ProfilePage';
 import ReportsPage from './pages/ReportsPage';
 import FeedPage from './pages/FeedPage';
@@ -201,6 +202,15 @@ export default function App() {
           element={
             <ProtectedRoute allowedRoles={['Citizen']}>
               <UserDashboard />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/emergency-sos"
+          element={
+            <ProtectedRoute allowedRoles={['Citizen']}>
+              <EmergencyReportPage />
             </ProtectedRoute>
           }
         />

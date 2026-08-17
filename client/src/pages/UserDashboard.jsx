@@ -1,7 +1,7 @@
 
 import React, { useEffect, useState, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 
 
 import { logoutUser } from '../features/auth/authThunks';
@@ -9,6 +9,7 @@ import { toast } from 'react-hot-toast';
 import { getMyComplaintsApi, createComplaintApi, uploadComplaintImageApi } from '../api/complaintsApi';
 import { getUserProfileApi } from '../api/userProfileApi';
 import { createFeedbackApi, getMyFeedbackApi } from '../api/feedbackApi';
+import { triggerSOS, getActiveEmergencies, getActiveBroadcasts } from '../services/emergencyService';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import Navbar from '../components/Navbar';
@@ -18,6 +19,17 @@ const isVideoUrl = (url) => {
   const cleanUrl = url.toLowerCase().split('?')[0];
   return cleanUrl.endsWith('.mp4') || cleanUrl.endsWith('.webm') || cleanUrl.endsWith('.ogg') || cleanUrl.endsWith('.mov') || cleanUrl.endsWith('.quicktime') || url.includes('/video');
 };
+
+const categories = [
+  { value: 'HEALTH_AMBULANCE', label: 'Ambulance / Medical', icon: 'medical_services', color: 'bg-rose-50 border-rose-200 text-rose-600' },
+  { value: 'FIRE_FORCE', label: 'Fire Force', icon: 'local_fire_department', color: 'bg-amber-50 border-amber-200 text-amber-600' },
+  { value: 'POLICE_EMERGENCY', label: 'Police Security', icon: 'local_police', color: 'bg-blue-50 border-blue-200 text-blue-600' },
+  { value: 'GAS_LEAK', label: 'Gas / Chemical Leak', icon: 'masks', color: 'bg-purple-50 border-purple-200 text-purple-600' },
+  { value: 'TRAFFIC_EMERGENCY', label: 'Traffic / Accident', icon: 'traffic', color: 'bg-orange-50 border-orange-200 text-orange-600' },
+  { value: 'WATER_CRISIS', label: 'Water / Pipeline Burst', icon: 'water_damage', color: 'bg-sky-50 border-sky-200 text-sky-600' },
+  { value: 'WASTE_HAZARD', label: 'Waste Hazard', icon: 'biohazard', color: 'bg-emerald-50 border-emerald-200 text-emerald-600' },
+  { value: 'BLOOD_EMERGENCY', label: 'Blood Request', icon: 'bloodtype', color: 'bg-red-50 border-red-200 text-red-600' }
+];
 
 import ComplaintLocation from '../components/shared/ComplaintLocation';
 import ComplaintDetailsModal from '../components/shared/ComplaintDetailsModal';
@@ -42,6 +54,8 @@ const Dashboard = () => {
             deptPermissions = ['dept:traffic'];
           } else if (permissions.some((p) => p.startsWith('general:'))) {
             deptPermissions = ['dept:general'];
+          } else if (permissions.some((p) => p.startsWith('emergency:'))) {
+            deptPermissions = ['dept:emergency'];
           }
         }
 
@@ -56,6 +70,8 @@ const Dashboard = () => {
             navigate('/waste/dashboard', { replace: true });
           } else if (perm === 'dept:general') {
             navigate('/general/dashboard', { replace: true });
+          } else if (perm === 'dept:emergency') {
+            navigate('/emergency/dashboard', { replace: true });
           }
         } else if (deptPermissions.length >= 2) {
           navigate('/admin/portal', { replace: true });
@@ -75,8 +91,42 @@ const Dashboard = () => {
   const [userProfile, setUserProfile] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Tab State
-  const [activeTab, setActiveTab] = useState('complaints'); // 'complaints' | 'feedback'
+  // Tab State with URL query param sync
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'complaints');
+
+  useEffect(() => {
+    const tabParam = searchParams.get('tab');
+    if (tabParam && ['complaints', 'feedback', 'emergency'].includes(tabParam)) {
+      setActiveTab(tabParam);
+    }
+  }, [searchParams]);
+
+  const handleTabChange = (tabName) => {
+    setActiveTab(tabName);
+    setSearchParams({ tab: tabName });
+  };
+
+  // Emergency States
+  const [emergencies, setEmergencies] = useState([]);
+  const [broadcasts, setBroadcasts] = useState([]);
+  const [emergenciesLoading, setEmergenciesLoading] = useState(false);
+  const [isReportingEmergency, setIsReportingEmergency] = useState(false);
+  const [showMapAdjuster, setShowMapAdjuster] = useState(false);
+  const [emergencyForm, setEmergencyForm] = useState({
+    title: '',
+    description: '',
+    category: 'HEALTH_AMBULANCE',
+    severity: 'HIGH',
+    latitude: '',
+    longitude: '',
+    affected_radius_meters: 500
+  });
+  const [detectedEmergencyLocationText, setDetectedEmergencyLocationText] = useState('');
+  const [detectingEmergencyLocation, setDetectingEmergencyLocation] = useState(false);
+  const [isSearchingEmergencyLocation, setIsSearchingEmergencyLocation] = useState(false);
+  const [emergencyLocationSearchQuery, setEmergencyLocationSearchQuery] = useState('');
+  const [emergencyLocationResults, setEmergencyLocationResults] = useState([]);
 
   // Modal State
   const [showModal, setShowModal] = useState(false);
@@ -114,18 +164,22 @@ const Dashboard = () => {
   const [isSearchingLocation, setIsSearchingLocation] = useState(false);
   const [detectingLocation, setDetectingLocation] = useState(false);
 
-  // Load complaints and profile
+  // Load complaints, profile, and emergency data
   const loadDashboardData = async () => {
     try {
-      const [profileRes, complaintsRes, feedbacksRes] = await Promise.all([
+      const [profileRes, complaintsRes, feedbacksRes, activeEmergenciesRes, activeBroadcastsRes] = await Promise.all([
         getUserProfileApi().catch(() => ({ data: {} })),
         getMyComplaintsApi(),
-        getMyFeedbackApi().catch(() => ({ data: [] }))
+        getMyFeedbackApi().catch(() => ({ data: [] })),
+        getActiveEmergencies().catch(() => ({ data: [] })),
+        getActiveBroadcasts().catch(() => ({ data: [] }))
       ]);
       setUserProfile(profileRes.data || null);
       setProfileAvatar(profileRes.data?.avatar_url || '');
       setComplaints(complaintsRes.data || []);
       setFeedbacks(feedbacksRes.data || []);
+      setEmergencies(activeEmergenciesRes.data || []);
+      setBroadcasts(activeBroadcastsRes.data || []);
     } catch (err) {
       console.error(err);
       toast.error("Failed to load dashboard data.");
@@ -147,8 +201,221 @@ const Dashboard = () => {
     loadDashboardData();
   }, []);
 
+  // Poll emergency data when user is viewing Emergency Tab
+  useEffect(() => {
+    if (activeTab !== 'emergency') return;
+
+    const interval = setInterval(async () => {
+      try {
+        const [emRes, bcRes] = await Promise.all([
+          getActiveEmergencies().catch(() => ({ data: [] })),
+          getActiveBroadcasts().catch(() => ({ data: [] }))
+        ]);
+        setEmergencies(emRes.data || []);
+        setBroadcasts(bcRes.data || []);
+      } catch (err) {
+        console.error("Failed to poll emergency data:", err);
+      }
+    }, 15000);
+
+    return () => clearInterval(interval);
+  }, [activeTab]);
+
+  // Reverse geocode lat/lng to display-friendly address
+  const handleGeocodeEmergencyLocation = async (lat, lng) => {
+    try {
+      const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`);
+      if (res.ok) {
+        const data = await res.json();
+        setDetectedEmergencyLocationText(data.display_name || `Coordinates: ${lat.toFixed(5)}, ${lng.toFixed(5)}`);
+      }
+    } catch (err) {
+      console.error("Geocoding failed:", err);
+    }
+  };
+
+  const handleDetectEmergencyLocation = () => {
+    setDetectingEmergencyLocation(true);
+    if (!navigator.geolocation) {
+      toast.error("Geolocation is not supported by your browser.");
+      setDetectingEmergencyLocation(false);
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+        setEmergencyForm(prev => ({
+          ...prev,
+          latitude: lat,
+          longitude: lng
+        }));
+        handleGeocodeEmergencyLocation(lat, lng);
+        setDetectingEmergencyLocation(false);
+        toast.success("Location retrieved from device!");
+      },
+      (error) => {
+        console.error(error);
+        toast.error("Unable to access high-accuracy device location. Please search manually.");
+        setDetectingEmergencyLocation(false);
+      },
+      { enableHighAccuracy: true, timeout: 8000 }
+    );
+  };
+
+  // Auto-detect GPS location when entering Emergency Tab
+  useEffect(() => {
+    if (activeTab === 'emergency' && !emergencyForm.latitude) {
+      handleDetectEmergencyLocation();
+    }
+  }, [activeTab]);
+
+  const handleSearchEmergencyLocation = async (query) => {
+    if (!query.trim()) return;
+    setIsSearchingEmergencyLocation(true);
+    try {
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5`);
+      if (res.ok) {
+        const data = await res.json();
+        setEmergencyLocationResults(data);
+        if (data.length === 0) {
+          toast.error("No locations found for this query.");
+        }
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to lookup location coordinates.");
+    } finally {
+      setIsSearchingEmergencyLocation(false);
+    }
+  };
+
+  const handleSelectEmergencyLocation = (result) => {
+    const lat = parseFloat(result.lat);
+    const lng = parseFloat(result.lon);
+    setEmergencyForm(prev => ({
+      ...prev,
+      latitude: lat,
+      longitude: lng
+    }));
+    setDetectedEmergencyLocationText(result.display_name);
+    setEmergencyLocationSearchQuery('');
+    setEmergencyLocationResults([]);
+  };
+
+  const handleEmergencySubmit = async (e) => {
+    e.preventDefault();
+    if (!emergencyForm.latitude || !emergencyForm.longitude) {
+      toast.error("Please select a crisis site location.");
+      return;
+    }
+
+    const selectedCategoryObj = categories.find(c => c.value === emergencyForm.category);
+    const categoryLabel = selectedCategoryObj ? selectedCategoryObj.label : emergencyForm.category;
+    const autoTitle = `SOS Alert: ${categoryLabel}`;
+    const descVal = emergencyForm.description.trim() || "Immediate emergency assistance required at target location.";
+
+    setIsReportingEmergency(true);
+    const triggerToast = toast.loading("Alerting local emergency services...");
+    try {
+      await triggerSOS({
+        title: autoTitle,
+        description: descVal,
+        category: emergencyForm.category,
+        severity: 'CRITICAL',
+        latitude: parseFloat(emergencyForm.latitude),
+        longitude: parseFloat(emergencyForm.longitude),
+        affected_radius_meters: 500
+      });
+      toast.success("Emergency SOS Beacon Active! Responders notified.", { id: triggerToast });
+      
+      // Clear inputs
+      setEmergencyForm(prev => ({
+        ...prev,
+        description: '',
+        category: 'HEALTH_AMBULANCE',
+      }));
+      setDetectedEmergencyLocationText('');
+      
+      // Refresh list
+      const emRes = await getActiveEmergencies();
+      setEmergencies(emRes.data || []);
+    } catch (err) {
+      console.error(err);
+      toast.error(err.response?.data?.detail || "Failed to trigger SOS beacon.", { id: triggerToast });
+    } finally {
+      setIsReportingEmergency(false);
+    }
+  };
+
+  // Initialize or update Leaflet map for Emergency SOS location pinning
+  const emergencyMapRef = useRef(null);
+  const emergencyMarkerRef = useRef(null);
+
+  useEffect(() => {
+    if (activeTab !== 'emergency') {
+      if (emergencyMapRef.current) {
+        emergencyMapRef.current.remove();
+        emergencyMapRef.current = null;
+        emergencyMarkerRef.current = null;
+      }
+      return;
+    }
+
+    const mapContainer = document.getElementById('emergency-form-map');
+    if (!mapContainer) {
+      if (emergencyMapRef.current) {
+        emergencyMapRef.current.remove();
+        emergencyMapRef.current = null;
+        emergencyMarkerRef.current = null;
+      }
+      return;
+    }
+
+    const lat = parseFloat(emergencyForm.latitude) || 10.0159;
+    const lng = parseFloat(emergencyForm.longitude) || 76.3419;
+
+    if (!emergencyMapRef.current) {
+      const mapInstance = L.map(mapContainer, {
+        zoomControl: true,
+        attributionControl: false
+      }).setView([lat, lng], 14);
+
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(mapInstance);
+      emergencyMapRef.current = mapInstance;
+
+      const marker = L.marker([lat, lng], { draggable: true }).addTo(mapInstance);
+      emergencyMarkerRef.current = marker;
+
+      marker.on('dragend', (e) => {
+        const position = e.target.getLatLng();
+        setEmergencyForm(prev => ({
+          ...prev,
+          latitude: position.lat,
+          longitude: position.lng
+        }));
+        handleGeocodeEmergencyLocation(position.lat, position.lng);
+      });
+    } else {
+      emergencyMapRef.current.setView([lat, lng]);
+      if (emergencyMarkerRef.current) {
+        emergencyMarkerRef.current.setLatLng([lat, lng]);
+      }
+    }
+  }, [activeTab, showMapAdjuster, emergencyForm.latitude, emergencyForm.longitude]);
+
   useEffect(() => {
     if (loading) return;
+
+    const mapElement = document.getElementById('map');
+    if (!mapElement) {
+      if (mapRef.current) {
+        mapRef.current.remove();
+        mapRef.current = null;
+        markersGroupRef.current = null;
+      }
+      return;
+    }
 
     if (!mapRef.current) {
       let centerLat = 13.0827;
@@ -233,11 +500,8 @@ const Dashboard = () => {
       }
     }
 
-    return () => {
-      // We don't remove the map instance on every updates to preserve pan/zoom state,
-      // but we will do it if map exists when component is fully unmounted.
-    };
-  }, [loading, complaints]);
+    return () => {};
+  }, [loading, complaints, activeTab]);
 
   useEffect(() => {
     return () => {
@@ -716,7 +980,7 @@ const Dashboard = () => {
         {/* Tab Switcher */}
         <div className="flex gap-2 border-b border-slate-200 mb-8 overflow-x-auto whitespace-nowrap scrollbar-none bg-white p-2 rounded-xl shadow-sm border border-slate-200">
           <button
-            onClick={() => setActiveTab('complaints')}
+            onClick={() => handleTabChange('complaints')}
             className={`flex items-center gap-2 py-3 px-6 font-bold text-sm rounded-lg transition-all duration-200 ${
               activeTab === 'complaints'
                 ? 'bg-blue-50 text-blue-700 shadow-sm'
@@ -727,7 +991,7 @@ const Dashboard = () => {
             My Complaints
           </button>
           <button
-            onClick={() => setActiveTab('feedback')}
+            onClick={() => handleTabChange('feedback')}
             className={`flex items-center gap-2 py-3 px-6 font-bold text-sm rounded-lg transition-all duration-200 ${
               activeTab === 'feedback'
                 ? 'bg-indigo-50 text-indigo-700 shadow-sm'
@@ -737,169 +1001,338 @@ const Dashboard = () => {
             <span className="material-symbols-outlined text-[18px]">rate_review</span>
             Feedback
           </button>
+          <button
+            onClick={() => handleTabChange('emergency')}
+            className={`flex items-center gap-2 py-3 px-6 font-bold text-sm rounded-lg transition-all duration-200 ${
+              activeTab === 'emergency'
+                ? 'bg-rose-50 text-rose-700 shadow-sm border border-rose-100'
+                : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50'
+            }`}
+          >
+            <span className="material-symbols-outlined text-[18px] text-rose-600 animate-pulse font-extrabold">sos</span>
+            Emergency SOS
+          </button>
         </div>
 
         {/* Two Column Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          
-          {/* Main List Column */}
-          <div className={`${activeTab === 'complaints' ? 'lg:col-span-8' : 'lg:col-span-12'} space-y-6`}>
-            
-            {/* Complaints Tab panel */}
-            {activeTab === 'complaints' && (
-              <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                <div className="p-5 border-b border-slate-200 flex justify-between items-center bg-slate-50">
-                  <h2 className="text-xl font-bold text-slate-900">My Reports</h2>
-                  <Link to="/reports" className="flex items-center gap-1 text-sm font-bold text-blue-600 hover:text-blue-500 transition-colors">
-                    View All Reports
-                    <span className="material-symbols-outlined text-sm font-bold">arrow_forward</span>
-                  </Link>
-                </div>
-                
-                <div className="divide-y divide-slate-100">
-                  {complaints.length > 0 ? (
-                    complaints.map((report) => (
-                      <div key={report.id} onClick={() => setSelectedComplaintForDetails(report)} className="p-4 sm:p-5 hover:bg-slate-50 transition-colors flex gap-4 sm:gap-5 items-start cursor-pointer">
-                        <div className="w-20 h-20 sm:w-28 sm:h-28 rounded-lg shrink-0 border border-slate-200 bg-slate-100 flex items-center justify-center overflow-hidden relative">
-                          {report.image_url ? (
-                            isVideoUrl(report.image_url) ? (
-                              <video 
-                                src={report.image_url} 
-                                muted 
-                                playsInline 
-                                autoPlay 
-                                loop 
-                                className="w-full h-full object-cover"
-                              />
-                            ) : (
-                              <img 
-                                src={report.image_url} 
-                                alt={report.title} 
-                                className="w-full h-full object-cover"
-                              />
-                            )
-                          ) : (
-                            <span className="material-symbols-outlined text-slate-300 text-2xl sm:text-3xl">image</span>
-                          )}
-                        </div>
-                        <div className="flex-grow flex flex-col justify-between min-h-[80px] sm:min-h-[112px]">
-                          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-1.5 sm:gap-4 mb-2">
-                            <div>
-                              <div className="flex items-center gap-1.5 mb-1">
-                                <span className="material-symbols-outlined text-blue-600 text-sm">{getDeptIcon(report.department)}</span>
-                                <span className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider">{report.department}</span>
-                              </div>
-                              <h3 className="text-base sm:text-lg font-bold text-slate-900 mb-1 leading-tight">{report.title}</h3>
-                              <p className="text-xs sm:text-sm text-slate-600 line-clamp-2 leading-snug">{report.description}</p>
-                            </div>
-                            <span className={`${getStatusStyle(report.status)} text-white text-[10px] sm:text-xs font-bold px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-full shadow-sm whitespace-nowrap self-start sm:self-auto`}>
-                              {report.status}
-                            </span>
-                          </div>
-                          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[10px] sm:text-xs font-medium text-slate-500 mt-auto">
-                            <span className="flex items-center gap-1 min-w-0">
-                              <span className="material-symbols-outlined text-[14px] sm:text-[16px] shrink-0">location_on</span> 
-                              <ComplaintLocation lat={report.location_lat} lng={report.location_lng} />
-                            </span>
-                            <span className="flex items-center gap-1 shrink-0">
-                              <span className="material-symbols-outlined text-[14px] sm:text-[16px]">calendar_today</span> {new Date(report.created_at).toLocaleDateString()}
-                            </span>
-                          </div>
-                        </div>
+        {activeTab === 'emergency' ? (
+          <div className="space-y-6">
+            {/* Critical Public Broadcast Warning Banner */}
+            {broadcasts.filter(b => b.is_active).length > 0 && (
+              <div className="space-y-3">
+                {broadcasts.filter(b => b.is_active).map((bc) => (
+                  <div key={bc.id} className="bg-red-50 border border-red-200 rounded-2xl p-4 flex gap-4 items-start shadow-sm animate-pulse">
+                    <span className="material-symbols-outlined text-red-600 text-3xl shrink-0">campaign</span>
+                    <div className="flex-1">
+                      <h4 className="text-sm font-black text-red-955 tracking-wide uppercase">Critical Public Advisory: {bc.alert_title}</h4>
+                      <p className="text-xs font-bold text-red-800 mt-1 leading-snug">{bc.message}</p>
+                      <div className="flex flex-wrap gap-2.5 mt-2.5">
+                        <span className="text-[9px] font-black bg-red-100/80 border border-red-200 text-red-900 px-2 py-0.5 rounded-md uppercase">Target: {bc.target_zone}</span>
+                        <span className="text-[9px] font-black bg-red-100/80 border border-red-200 text-red-900 px-2 py-0.5 rounded-md uppercase">Severity: {bc.severity}</span>
+                        <span className="text-[9px] font-semibold text-red-500 mt-0.5">{new Date(bc.created_at).toLocaleTimeString()}</span>
                       </div>
-                    ))
-                  ) : (
-                    <div className="text-center py-12 bg-white">
-                      <span className="material-symbols-outlined text-slate-200 text-5xl">assignment_late</span>
-                      <p className="text-slate-400 font-semibold mt-4">You have not reported any issues yet.</p>
-                      <button 
-                        onClick={handleReportNewIssue} 
-                        className="mt-2 text-blue-600 hover:text-blue-500 font-bold text-sm"
-                      >
-                        Report your first issue now &rarr;
-                      </button>
                     </div>
-                  )}
-                </div>
+                  </div>
+                ))}
               </div>
             )}
 
-
-
-            {/* Feedback Tab panel */}
-            {activeTab === 'feedback' && (
-              <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                <div className="p-5 border-b border-slate-200 bg-slate-50">
-                  <h2 className="text-xl font-bold text-slate-900">Complaints Feedback History</h2>
+            {/* My Reported Emergency Beacons List */}
+            <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden max-w-4xl mx-auto">
+              <div className="p-5 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="material-symbols-outlined text-rose-500 text-[20px] font-black">history</span>
+                  <h3 className="text-base font-black text-slate-900">My Reported Beacons</h3>
                 </div>
-                
-                <div className="divide-y divide-slate-100">
-                  {feedbacks.length > 0 ? (
-                    feedbacks.map((feedback) => (
-                      <div key={feedback.id} className="p-5 hover:bg-slate-50 transition-colors flex gap-4 items-start">
-                        <div className="w-12 h-12 rounded-xl shrink-0 bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-650 text-indigo-605 text-indigo-600">
-                          <span className="material-symbols-outlined text-2xl">rate_review</span>
+                <button
+                  onClick={() => navigate('/emergency-sos')}
+                  className="bg-red-650 hover:bg-red-600 text-white font-black text-xs px-4 py-2.5 rounded-xl transition-all shadow-md flex items-center gap-1.5 uppercase tracking-wider scale-[1.02] active:scale-[0.98] duration-200 hover:shadow-red-500/20"
+                >
+                  <span className="material-symbols-outlined text-sm font-black">emergency</span>
+                  Report SOS Emergency
+                </button>
+              </div>
+
+              <div className="divide-y divide-slate-100">
+                {emergencies.filter(em => em.reported_by === user?.id).length > 0 ? (
+                  emergencies.filter(em => em.reported_by === user?.id).map((em) => {
+                    const emCategoryIcons = {
+                      HEALTH_AMBULANCE: 'medical_services',
+                      BLOOD_EMERGENCY: 'bloodtype',
+                      FIRE_FORCE: 'local_fire_department',
+                      POLICE_EMERGENCY: 'local_police',
+                      TRAFFIC_EMERGENCY: 'traffic',
+                      WATER_CRISIS: 'water_damage',
+                      WASTE_HAZARD: 'biohazard',
+                      GAS_LEAK: 'masks'
+                    };
+                    const emCategoryColors = {
+                      HEALTH_AMBULANCE: 'bg-rose-50 text-rose-600 border-rose-100',
+                      BLOOD_EMERGENCY: 'bg-red-50 text-red-600 border-red-100',
+                      FIRE_FORCE: 'bg-amber-50 text-amber-600 border-amber-100',
+                      POLICE_EMERGENCY: 'bg-blue-50 text-blue-600 border-blue-100',
+                      TRAFFIC_EMERGENCY: 'bg-orange-50 text-orange-600 border-orange-100',
+                      WATER_CRISIS: 'bg-sky-50 text-sky-600 border-sky-100',
+                      WASTE_HAZARD: 'bg-emerald-50 text-emerald-600 border-emerald-100',
+                      GAS_LEAK: 'bg-purple-50 text-purple-600 border-purple-100'
+                    };
+                    return (
+                      <div key={em.id} className="p-5 flex flex-col md:flex-row gap-5 items-start">
+                        <div className={`w-12 h-12 rounded-xl shrink-0 flex items-center justify-center border ${emCategoryColors[em.category] || 'bg-slate-50 text-slate-600'}`}>
+                          <span className="material-symbols-outlined text-2xl">{emCategoryIcons[em.category] || 'emergency'}</span>
                         </div>
-                        <div className="flex-grow">
-                          <div className="flex justify-between items-start mb-1.5">
+
+                        <div className="flex-1 space-y-2">
+                          <div className="flex flex-wrap items-center justify-between gap-2.5">
+                            <div>
+                              <h4 className="text-base font-extrabold text-slate-900 leading-tight">{em.title}</h4>
+                              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">Category: {em.category.replace('_', ' ')}</p>
+                            </div>
                             <div className="flex items-center gap-2">
-                              <span className="text-[10px] font-bold text-slate-800 bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded">
-                                Complaint #{feedback.complaint_id}
+                              <span className={`text-[10px] font-black px-2.5 py-0.5 rounded border uppercase ${
+                                em.severity === 'CRITICAL' ? 'bg-red-100 border-red-200 text-red-700 animate-pulse' :
+                                em.severity === 'HIGH' ? 'bg-orange-100 border-orange-200 text-orange-700' :
+                                'bg-yellow-100 border-yellow-200 text-yellow-800'
+                              }`}>
+                                {em.severity}
                               </span>
-                              <div className="flex items-center gap-1">
-                                {[1, 2, 3, 4, 5].map((star) => (
-                                  <span 
-                                    key={star} 
-                                    className={`material-symbols-outlined text-sm ${
-                                      star <= (feedback.rating || 0) ? 'text-amber-500 fill-current' : 'text-slate-200'
-                                    }`}
-                                  >
-                                    star
-                                  </span>
+                              <span className={`text-[10px] font-black px-2.5 py-0.5 rounded border uppercase ${
+                                em.status === 'ACTIVE' ? 'bg-red-50 border-red-100 text-red-600' :
+                                'bg-emerald-50 border-emerald-100 text-emerald-700'
+                              }`}>
+                                {em.status}
+                              </span>
+                            </div>
+                          </div>
+
+                          <p className="text-sm text-slate-600 leading-relaxed font-medium">{em.description}</p>
+
+                          <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[11px] font-semibold text-slate-400">
+                            <span className="flex items-center gap-1">
+                              <span className="material-symbols-outlined text-sm">location_on</span>
+                              GPS: {em.latitude.toFixed(4)}, {em.longitude.toFixed(4)}
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <span className="material-symbols-outlined text-sm">calendar_today</span>
+                              {new Date(em.created_at).toLocaleDateString()} at {new Date(em.created_at).toLocaleTimeString()}
+                            </span>
+                          </div>
+
+                          {/* Taskforce Dispatched Responders Card */}
+                          {em.taskforce && em.taskforce.length > 0 ? (
+                            <div className="bg-rose-50/30 rounded-2xl border border-rose-100/50 p-4 mt-3 space-y-3">
+                              <div className="flex items-center gap-2 border-b border-rose-100/40 pb-2">
+                                <span className="material-symbols-outlined text-rose-600 text-sm animate-bounce">commute</span>
+                                <span className="text-xs font-black text-rose-955">Active Crisis Responders Dispatched</span>
+                              </div>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3.5">
+                                {em.taskforce.map((member) => (
+                                  <div key={member.id} className="bg-white border border-rose-100 rounded-xl p-3 shadow-sm flex items-center gap-2.5">
+                                    <div className="w-8 h-8 rounded-lg bg-rose-50 flex items-center justify-center text-rose-600 shrink-0">
+                                      <span className="material-symbols-outlined text-[18px]">support_agent</span>
+                                    </div>
+                                    <div className="min-w-0">
+                                      <p className="text-[11px] font-bold text-slate-800 leading-snug truncate">{member.worker_name}</p>
+                                      <p className="text-[9px] font-bold text-slate-400 capitalize">{member.department} Department</p>
+                                      <a href={`tel:${member.phone}`} className="text-[10px] font-black text-blue-600 hover:underline mt-0.5 inline-block">{member.phone}</a>
+                                    </div>
+                                  </div>
                                 ))}
                               </div>
+                              <p className="text-[10px] font-bold text-rose-700 italic mt-1.5 flex items-center gap-1">
+                                <span className="material-symbols-outlined text-[13px] animate-pulse">health_and_safety</span>
+                                Responders are tracking your SOS coordinates. Please stay safe at your current location.
+                              </p>
                             </div>
-                            <span className="text-xs font-semibold text-slate-400">{new Date(feedback.created_at).toLocaleDateString()}</span>
-                          </div>
-                          {feedback.comment ? (
-                            <p className="text-sm text-slate-655 text-slate-600 leading-relaxed italic">
-                              "{feedback.comment}"
-                            </p>
-                          ) : (
-                            <p className="text-sm text-slate-400 italic">No comment provided</p>
-                          )}
+                          ) : em.status === 'ACTIVE' ? (
+                            <div className="bg-slate-50 rounded-2xl border border-slate-200 p-4 mt-3 flex items-center gap-2 text-slate-500">
+                              <span className="material-symbols-outlined text-sm animate-pulse">hourglass_top</span>
+                              <span className="text-[11px] font-bold">Waiting for dispatch operator to assign responder crew. Beacons are actively broadcasting.</span>
+                            </div>
+                          ) : null}
                         </div>
                       </div>
-                    ))
-                  ) : (
-                    <div className="text-center py-12 bg-white">
-                      <span className="material-symbols-outlined text-slate-200 text-5xl">rate_review</span>
-                      <p className="text-slate-400 font-semibold mt-4">You have not submitted feedback for any resolved complaints yet.</p>
-                      <p className="text-xs text-slate-500 mt-2 max-w-sm mx-auto font-medium">
-                        To submit feedback, go to "My Complaints", click on any resolved/closed complaint, and complete the rating form.
-                      </p>
-                    </div>
-                  )}
+                    );
+                  })
+                ) : (
+                  <div className="text-center py-16 bg-white flex flex-col items-center justify-center">
+                    <span className="material-symbols-outlined text-slate-200 text-6xl animate-pulse">sensors_off</span>
+                    <p className="text-slate-500 font-black mt-4">No active or previous emergency beacons reported.</p>
+                    <p className="text-slate-400 font-semibold text-xs mt-1 max-w-sm">In case of a life-threatening municipal event, trigger a 1-click SOS broadcast to notify emergency workers.</p>
+                    <button
+                      onClick={() => navigate('/emergency-sos')}
+                      className="mt-6 bg-red-650 hover:bg-red-600 text-white font-black text-xs px-5 py-3 rounded-xl transition-all shadow-lg shadow-red-500/20 flex items-center gap-1.5 uppercase tracking-widest"
+                    >
+                      <span className="material-symbols-outlined text-sm font-black">emergency</span>
+                      Trigger Emergency SOS
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            
+            {/* Main List Column */}
+            <div className={`${activeTab === 'complaints' ? 'lg:col-span-8' : 'lg:col-span-12'} space-y-6`}>
+              
+              {/* Complaints Tab panel */}
+              {activeTab === 'complaints' && (
+                <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                  <div className="p-5 border-b border-slate-200 flex justify-between items-center bg-slate-50">
+                    <h2 className="text-xl font-bold text-slate-900">My Reports</h2>
+                    <Link to="/reports" className="flex items-center gap-1 text-sm font-bold text-blue-600 hover:text-blue-500 transition-colors">
+                      View All Reports
+                      <span className="material-symbols-outlined text-sm font-bold">arrow_forward</span>
+                    </Link>
+                  </div>
+                  
+                  <div className="divide-y divide-slate-100">
+                    {complaints.length > 0 ? (
+                      complaints.map((report) => (
+                        <div key={report.id} onClick={() => setSelectedComplaintForDetails(report)} className="p-4 sm:p-5 hover:bg-slate-50 transition-colors flex gap-4 sm:gap-5 items-start cursor-pointer">
+                          <div className="w-20 h-20 sm:w-28 sm:h-28 rounded-lg shrink-0 border border-slate-200 bg-slate-100 flex items-center justify-center overflow-hidden relative">
+                            {report.image_url ? (
+                              isVideoUrl(report.image_url) ? (
+                                <video 
+                                  src={report.image_url} 
+                                  muted 
+                                  playsInline 
+                                  autoPlay 
+                                  loop 
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                <img 
+                                  src={report.image_url} 
+                                  alt={report.title} 
+                                  className="w-full h-full object-cover"
+                                />
+                              )
+                            ) : (
+                              <span className="material-symbols-outlined text-slate-300 text-2xl sm:text-3xl">image</span>
+                            )}
+                          </div>
+                          <div className="flex-grow flex flex-col justify-between min-h-[80px] sm:min-h-[112px]">
+                            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-1.5 sm:gap-4 mb-2">
+                              <div>
+                                <div className="flex items-center gap-1.5 mb-1">
+                                  <span className="material-symbols-outlined text-blue-600 text-sm">{getDeptIcon(report.department)}</span>
+                                  <span className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider">{report.department}</span>
+                                </div>
+                                <h3 className="text-base sm:text-lg font-bold text-slate-900 mb-1 leading-tight">{report.title}</h3>
+                                <p className="text-xs sm:text-sm text-slate-600 line-clamp-2 leading-snug">{report.description}</p>
+                              </div>
+                              <span className={`${getStatusStyle(report.status)} text-white text-[10px] sm:text-xs font-bold px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-full shadow-sm whitespace-nowrap self-start sm:self-auto`}>
+                                {report.status}
+                              </span>
+                            </div>
+                            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[10px] sm:text-xs font-medium text-slate-500 mt-auto">
+                              <span className="flex items-center gap-1 min-w-0">
+                                <span className="material-symbols-outlined text-[14px] sm:text-[16px] shrink-0">location_on</span> 
+                                <ComplaintLocation lat={report.location_lat} lng={report.location_lng} />
+                              </span>
+                              <span className="flex items-center gap-1 shrink-0">
+                                <span className="material-symbols-outlined text-[14px] sm:text-[16px]">calendar_today</span> {new Date(report.created_at).toLocaleDateString()}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="text-center py-12 bg-white">
+                        <span className="material-symbols-outlined text-slate-200 text-5xl">assignment_late</span>
+                        <p className="text-slate-400 font-semibold mt-4">You have not reported any issues yet.</p>
+                        <button 
+                          onClick={handleReportNewIssue} 
+                          className="mt-2 text-blue-600 hover:text-blue-500 font-bold text-sm"
+                        >
+                          Report your first issue now &rarr;
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+
+
+              {/* Feedback Tab panel */}
+              {activeTab === 'feedback' && (
+                <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                  <div className="p-5 border-b border-slate-200 bg-slate-50">
+                    <h2 className="text-xl font-bold text-slate-900">Complaints Feedback History</h2>
+                  </div>
+                  
+                  <div className="divide-y divide-slate-100">
+                    {feedbacks.length > 0 ? (
+                      feedbacks.map((feedback) => (
+                        <div key={feedback.id} className="p-5 hover:bg-slate-50 transition-colors flex gap-4 items-start">
+                          <div className="w-12 h-12 rounded-xl shrink-0 bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600">
+                            <span className="material-symbols-outlined text-2xl">rate_review</span>
+                          </div>
+                          <div className="flex-grow">
+                            <div className="flex justify-between items-start mb-1.5">
+                              <div className="flex items-center gap-2">
+                                <span className="text-[10px] font-bold text-slate-800 bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded">
+                                  Complaint #{feedback.complaint_id}
+                                </span>
+                                <div className="flex items-center gap-1">
+                                  {[1, 2, 3, 4, 5].map((star) => (
+                                    <span 
+                                      key={star} 
+                                      className={`material-symbols-outlined text-sm ${
+                                        star <= (feedback.rating || 0) ? 'text-amber-500 fill-current' : 'text-slate-200'
+                                      }`}
+                                    >
+                                      star
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                              <span className="text-xs font-semibold text-slate-400">{new Date(feedback.created_at).toLocaleDateString()}</span>
+                            </div>
+                            {feedback.comment ? (
+                              <p className="text-sm text-slate-600 leading-relaxed italic">
+                                "{feedback.comment}"
+                              </p>
+                            ) : (
+                              <p className="text-sm text-slate-400 italic">No comment provided</p>
+                            )}
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="text-center py-12 bg-white">
+                        <span className="material-symbols-outlined text-slate-200 text-5xl">rate_review</span>
+                        <p className="text-slate-400 font-semibold mt-4">You have not submitted feedback for any resolved complaints yet.</p>
+                        <p className="text-xs text-slate-500 mt-2 max-w-sm mx-auto font-medium">
+                          To submit feedback, go to "My Complaints", click on any resolved/closed complaint, and complete the rating form.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+            </div>
+
+            {/* Right Column: Map (only for Complaints) */}
+            {activeTab === 'complaints' && (
+              <div className="lg:col-span-4 space-y-6">
+                {/* Map Widget */}
+                <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col h-[350px]">
+                  <div className="p-5 border-b border-slate-200 bg-slate-50">
+                    <h2 className="text-lg font-bold text-slate-900">Nearby Issues</h2>
+                  </div>
+                  <div id="map" className="flex-grow h-full w-full z-10" style={{ minHeight: '250px' }}></div>
                 </div>
               </div>
             )}
 
           </div>
-
-          {/* Right Column: Map (only for Complaints) */}
-          {activeTab === 'complaints' && (
-            <div className="lg:col-span-4 space-y-6">
-              {/* Map Widget */}
-              <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col h-[350px]">
-                <div className="p-5 border-b border-slate-200 bg-slate-50">
-                  <h2 className="text-lg font-bold text-slate-900">Nearby Issues</h2>
-                </div>
-                <div id="map" className="flex-grow h-full w-full z-10" style={{ minHeight: '250px' }}></div>
-              </div>
-            </div>
-          )}
-
-        </div>
+        )}
       </main>
 
       {/* Report New Issue Modal Overlay */}
@@ -1222,6 +1655,14 @@ const Dashboard = () => {
           onClose={() => setSelectedComplaintForDetails(null)} 
         />
       )}
+
+      <button
+        onClick={() => navigate('/emergency-sos')}
+        className="fixed bottom-20 right-6 sm:bottom-8 sm:right-8 bg-red-600 hover:bg-red-500 text-white w-14 h-14 rounded-full shadow-2xl flex items-center justify-center z-40 transition-all duration-300 hover:scale-110 border-2 border-white animate-pulse"
+        title="Emergency SOS"
+      >
+        <span className="material-symbols-outlined text-[30px] font-black text-white">sos</span>
+      </button>
     </div>
   );
 };

@@ -20,7 +20,7 @@ def get_db():
     finally:
         db.close()
 
-admin_guard = PermissionChecker(["admin:all", "emergency:write", "emergency:dispatch", "dept:emergency"])
+admin_guard = PermissionChecker(["emergency:write"])
 
 @router.post("/sos")
 def trigger_sos_emergency(

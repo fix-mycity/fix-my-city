@@ -30,7 +30,7 @@ export default function AdminPortal() {
     } else if (dept === 'traffic') {
       navigate('/traffic/dashboard');
     } else if (dept === 'emergency') {
-      navigate('/admin/emergency');
+      navigate('/emergency/dashboard');
     } else if (dept === 'super-admin') {
       navigate('/super-admin/dashboard');
     } else if (dept === 'waste') {

@@ -51,6 +51,8 @@ try:
         conn.execute(text("ALTER TABLE waste_bins ADD COLUMN IF NOT EXISTS installation_date DATE;"))
         conn.execute(text("ALTER TABLE waste_bins ADD COLUMN IF NOT EXISTS qr_code_data VARCHAR(255);"))
         conn.execute(text("ALTER TABLE waste_bins ADD COLUMN IF NOT EXISTS last_emptied_at TIMESTAMP WITH TIME ZONE;"))
+        # Delete demo flash flood warning alert
+        conn.execute(text("DELETE FROM emergency_broadcasts WHERE id = 1 OR alert_title LIKE '%FLASH FLOOD%';"))
         conn.commit()
 except Exception as _e:
     print(f"Migration check notice: {_e}")

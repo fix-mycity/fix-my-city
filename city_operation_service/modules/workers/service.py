@@ -365,4 +365,47 @@ def resolve_my_task(db: Session, user_id: int, task_id: int, resolution_report: 
     if not success:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found or not assigned to you")
         
+    # Re-evaluate availability: check if any assigned tasks remain unresolved
+    tasks, _ = WorkerTaskRepository.list_assigned_tasks(db, user_id, profile.department)
+    unresolved_tasks = [t for t in tasks if t.get("status") not in ["RESOLVED", "CLOSED", "COMPLETED", "VERIFIED"]]
+    
+    if len(unresolved_tasks) > 0:
+        profile.availability = "ASSIGNED"
+    else:
+        profile.availability = "AVAILABLE"
+        
+    # Sync status to traffic profile if applicable
+    if profile.department == "traffic":
+        try:
+            from sqlalchemy import text
+            new_avail = "ASSIGNED" if len(unresolved_tasks) > 0 else "AVAILABLE"
+            db.execute(text("UPDATE traffic_worker_profiles SET availability = :avail, status_updated_at = CURRENT_TIMESTAMP WHERE user_id = :wid"), {"avail": new_avail, "wid": user_id})
+        except Exception as e:
+            print(f"Error syncing resolve availability to traffic: {e}")
+            
+    db.commit()
     return {"success": True, "message": "Task marked as resolved"}
+
+def start_my_task(db: Session, user_id: int, task_id: int):
+    profile = WorkerRepository.get_worker_profile(db, user_id)
+    if not profile:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Worker profile not found")
+        
+    from modules.workers.repository import WorkerTaskRepository
+    success = WorkerTaskRepository.start_task(db, user_id, profile.department, task_id)
+    if not success:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found or not assigned to you")
+        
+    # Set status to BUSY
+    profile.availability = "BUSY"
+    
+    # Sync status to traffic profile if applicable
+    if profile.department == "traffic":
+        try:
+            from sqlalchemy import text
+            db.execute(text("UPDATE traffic_worker_profiles SET availability = 'BUSY', status_updated_at = CURRENT_TIMESTAMP WHERE user_id = :wid"), {"wid": user_id})
+        except Exception as e:
+            print(f"Error syncing start availability to traffic: {e}")
+            
+    db.commit()
+    return {"success": True, "message": "Task started and status set to BUSY"}

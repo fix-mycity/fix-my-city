@@ -62,7 +62,15 @@ export default function Navbar() {
           {/* Center: Navigation Links */}
           <nav className="hidden md:flex items-center gap-2 text-sm font-medium">
             {navItems.map((item) => {
-              const isActive = location.pathname === item.path || (item.path === '/dashboard' && location.pathname === '/');
+              const isDashboardTab = item.path.includes('tab=');
+              let isActive = false;
+              if (isDashboardTab) {
+                const searchTab = new URLSearchParams(item.path.split('?')[1]).get('tab');
+                const currentTab = new URLSearchParams(location.search).get('tab');
+                isActive = location.pathname === '/dashboard' && currentTab === searchTab;
+              } else {
+                isActive = (location.pathname === item.path || (item.path === '/dashboard' && location.pathname === '/')) && !location.search.includes('tab=');
+              }
               const isPlaceholder = item.path === '#';
 
               if (isPlaceholder) {
@@ -83,8 +91,12 @@ export default function Navbar() {
                   key={item.label}
                   to={item.path}
                   className={`rounded-lg px-4 py-2 flex items-center gap-2 transition-all duration-200 ${isActive
-                    ? 'bg-blue-600 text-white font-bold shadow-md shadow-blue-600/10'
-                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                    ? item.isEmergency
+                      ? 'bg-rose-600 text-white font-bold shadow-md shadow-rose-600/10'
+                      : 'bg-blue-600 text-white font-bold shadow-md shadow-blue-600/10'
+                    : item.isEmergency
+                      ? 'text-rose-600 border border-rose-200 bg-rose-50/50 hover:bg-rose-100 hover:text-rose-700 font-bold transition-all duration-200 shadow-sm animate-pulse'
+                      : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
                     }`}
                 >
                   <span className="material-symbols-outlined text-[18px]">{item.icon}</span>
@@ -132,7 +144,15 @@ export default function Navbar() {
       {/* Mobile Bottom Navigation */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 h-16 flex items-center justify-around z-50 shadow-[0_-2px_10px_rgba(0,0,0,0.05)]">
         {navItems.map((item) => {
-          const isActive = location.pathname === item.path || (item.path === '/dashboard' && location.pathname === '/');
+          const isDashboardTab = item.path.includes('tab=');
+          let isActive = false;
+          if (isDashboardTab) {
+            const searchTab = new URLSearchParams(item.path.split('?')[1]).get('tab');
+            const currentTab = new URLSearchParams(location.search).get('tab');
+            isActive = location.pathname === '/dashboard' && currentTab === searchTab;
+          } else {
+            isActive = (location.pathname === item.path || (item.path === '/dashboard' && location.pathname === '/')) && !location.search.includes('tab=');
+          }
           const isPlaceholder = item.path === '#';
 
           if (isPlaceholder) {
@@ -153,8 +173,8 @@ export default function Navbar() {
               key={item.label}
               to={item.path}
               className={`flex flex-col items-center justify-center text-[10px] font-bold transition-colors ${isActive
-                ? 'text-blue-600'
-                : 'text-slate-500 hover:text-slate-900'
+                ? item.isEmergency ? 'text-rose-600 font-extrabold' : 'text-blue-600 font-extrabold'
+                : item.isEmergency ? 'text-rose-500 hover:text-rose-700 animate-pulse' : 'text-slate-500 hover:text-slate-900'
                 }`}
             >
               <span className="material-symbols-outlined text-[22px]">{item.icon}</span>

@@ -91,7 +91,7 @@ class EmergencyRepository:
             LEFT JOIN worker_profiles wp ON u.id = wp.user_id
             LEFT JOIN traffic_worker_profiles tp ON u.id = tp.user_id
             WHERE r.role_name = 'Worker' AND u.is_active = true
-            AND (wp.department = 'emergency' OR wp.department IS NULL)
+              AND COALESCE(wp.availability, tp.availability, 'AVAILABLE') = 'AVAILABLE'
         """
         rows = db.execute(text(sql)).fetchall()
         nearby = []
@@ -119,10 +119,25 @@ class EmergencyRepository:
         emergency.status = "CONTAINED"
         
         for wid in schema.worker_ids:
+            # Prevent duplicate assignments to the same emergency
+            exists = db.query(EmergencyTaskforce).filter(
+                EmergencyTaskforce.emergency_id == emergency_id,
+                EmergencyTaskforce.worker_id == wid
+            ).first()
+            if exists:
+                continue
+
+            # Query the worker's actual department from worker_profiles
+            dept_row = db.execute(
+                text("SELECT department FROM worker_profiles WHERE user_id = :wid"),
+                {"wid": wid}
+            ).fetchone()
+            actual_dept = dept_row[0] if (dept_row and dept_row[0]) else schema.department
+
             member = EmergencyTaskforce(
                 emergency_id=emergency_id,
                 worker_id=wid,
-                department=schema.department,
+                department=actual_dept,
                 notes=schema.notes
             )
             db.add(member)
