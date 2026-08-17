@@ -35,6 +35,13 @@ class ComplaintResponse(BaseModel):
     reported_by: int
     created_at: datetime
     updated_at: datetime
+    
+    # AI Tracking Metadata
+    ai_issue_type: Optional[str] = None
+    ai_confidence: Optional[float] = None
+    ai_reasoning: Optional[str] = None
+    ai_image_agreement: Optional[str] = None
+    ai_routing_status: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -65,3 +72,20 @@ class ComplaintMediaStatusResponse(BaseModel):
         if v:
             return generate_presigned_url(v)
         return v
+
+class FeedbackCreate(BaseModel):
+    complaint_id: int
+    rating: int
+    comment: Optional[str] = None
+
+class FeedbackResponse(BaseModel):
+    id: int
+    complaint_id: int
+    citizen_id: int
+    citizen_name: str
+    rating: int
+    comment: Optional[str]
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+

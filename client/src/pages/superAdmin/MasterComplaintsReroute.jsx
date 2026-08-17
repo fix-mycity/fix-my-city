@@ -16,6 +16,19 @@ import {
 import ComplaintLocation from '../../components/shared/ComplaintLocation';
 import ComplaintDetailsModal from '../../components/shared/ComplaintDetailsModal';
 
+const ISSUE_TO_DEPARTMENT_MAP = {
+  pothole: "traffic",
+  broken_traffic_signal: "traffic",
+  illegal_parking: "traffic",
+  garbage_accumulation: "waste",
+  sewage_overflow: "waste",
+  water_leak: "water",
+  broken_hydrant: "water",
+  street_light_issue: "general",
+  accident: "traffic",
+  other: "general"
+};
+
 export default function MasterComplaintsReroute() {
   const [complaints, setComplaints] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -172,9 +185,16 @@ export default function MasterComplaintsReroute() {
                     </td>
 
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="px-2.5 py-1 text-xs font-bold rounded-full bg-slate-100 text-slate-800 border border-slate-200">
-                        {c.status}
-                      </span>
+                      <div className="flex flex-col gap-1">
+                        <span className="px-2.5 py-1 text-xs font-bold rounded-full bg-slate-100 text-slate-800 border border-slate-200 w-max">
+                          {c.status}
+                        </span>
+                        {c.ai_routing_status === 'PENDING_TRIAGE' && (
+                          <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200 w-max animate-pulse">
+                            AI Triage Required
+                          </span>
+                        )}
+                      </div>
                     </td>
 
                     <td className="px-6 py-4 whitespace-nowrap text-right font-medium">
@@ -220,6 +240,36 @@ export default function MasterComplaintsReroute() {
             <p className="text-xs text-slate-500">
               Transfer this complaint to another municipal department. The assigned worker will be cleared and status set to PENDING.
             </p>
+
+            {selectedComplaintForReroute.ai_routing_status && (
+              <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-2 text-left">
+                <div className="flex justify-between items-center text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                  <span>AI routing suggestion</span>
+                  <span className={`px-2 py-0.5 rounded-full text-[9px] ${
+                    selectedComplaintForReroute.ai_image_agreement === 'SUPPORTIVE' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 'bg-amber-50 text-amber-700 border border-amber-100'
+                  }`}>
+                    Agreement: {selectedComplaintForReroute.ai_image_agreement}
+                  </span>
+                </div>
+                <div className="text-xs font-semibold text-slate-700">
+                  Detected issue: <span className="text-blue-600 font-bold">{selectedComplaintForReroute.ai_issue_type}</span> ({Math.round(selectedComplaintForReroute.ai_confidence * 100)}% confidence)
+                </div>
+                {selectedComplaintForReroute.ai_reasoning && (
+                  <p className="text-[11px] text-slate-500 bg-white p-2.5 rounded-lg border border-slate-100 leading-normal italic">
+                    "{selectedComplaintForReroute.ai_reasoning}"
+                  </p>
+                )}
+                {ISSUE_TO_DEPARTMENT_MAP[selectedComplaintForReroute.ai_issue_type] && ISSUE_TO_DEPARTMENT_MAP[selectedComplaintForReroute.ai_issue_type] !== 'general' && (
+                  <button
+                    onClick={() => setTargetDept(ISSUE_TO_DEPARTMENT_MAP[selectedComplaintForReroute.ai_issue_type])}
+                    type="button"
+                    className="w-full mt-2 text-xs font-bold text-blue-700 bg-blue-50 border border-blue-200 hover:bg-blue-100 py-1.5 rounded-lg transition-colors flex items-center justify-center gap-1"
+                  >
+                    Use AI Suggestion: {ISSUE_TO_DEPARTMENT_MAP[selectedComplaintForReroute.ai_issue_type].toUpperCase()}
+                  </button>
+                )}
+              </div>
+            )}
 
             <div>
               <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Select Target Department</label>

@@ -126,6 +126,17 @@ def resolve_my_task(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only workers can access this endpoint")
     return service.resolve_my_task(db, user.id, task_id, schema.resolution_report, schema.after_image)
 
+@router.post("/me/tasks/{task_id}/start")
+def start_my_task(
+    task_id: int,
+    db: Session = Depends(get_db),
+    user: UserData = Depends(PermissionChecker([]))
+):
+    """Worker: Start work on an assigned task (changes availability to BUSY and task status to IN_PROGRESS)"""
+    if user.role != "Worker":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only workers can access this endpoint")
+    return service.start_my_task(db, user.id, task_id)
+
 @router.get("/tasks/{task_id}/pdf-report")
 def get_task_pdf_report(
     task_id: int,

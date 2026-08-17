@@ -67,7 +67,29 @@ def get_post_by_id(db: Session, post_id: int, current_user_id: int = None) -> Po
 def get_visible_posts(db: Session, category: str = None, feed_type: str = None, current_user_id: int = None) -> list[Post]:
     query = db.query(Post).filter(Post.status == PostStatus.APPROVED.value)
     if category and category.lower() != "all":
-        query = query.filter(Post.category.ilike(category))
+        cat_lower = category.lower()
+        if cat_lower == "waste":
+            query = query.filter(
+                (Post.category.ilike("waste")) | 
+                ((Post.category.ilike("announcement")) & (Post.author_name.ilike("%waste%")))
+            )
+        elif cat_lower == "water":
+            query = query.filter(
+                (Post.category.ilike("water")) | 
+                ((Post.category.ilike("announcement")) & (Post.author_name.ilike("%water%")))
+            )
+        elif cat_lower == "traffic":
+            query = query.filter(
+                (Post.category.ilike("traffic")) | 
+                ((Post.category.ilike("announcement")) & (Post.author_name.ilike("%traffic%")))
+            )
+        elif cat_lower == "general":
+            query = query.filter(
+                (Post.category.ilike("general")) | 
+                ((Post.category.ilike("announcement")) & (Post.author_name.ilike("%general%")))
+            )
+        else:
+            query = query.filter(Post.category.ilike(category))
     if feed_type == "official":
         query = query.filter(Post.author_type == "authority")
     elif feed_type == "community":

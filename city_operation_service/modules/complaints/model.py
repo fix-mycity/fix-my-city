@@ -44,6 +44,12 @@ class Complaint(Base):
     department = Column(String(50), default=ComplaintDepartment.GENERAL.value, nullable=False, index=True)
     status = Column(String(50), default=ComplaintStatus.PENDING.value, nullable=False, index=True)
     
+    ai_issue_type = Column(String(100), nullable=True)
+    ai_confidence = Column(Float, nullable=True)
+    ai_reasoning = Column(Text, nullable=True)
+    ai_image_agreement = Column(String(50), nullable=True)
+    ai_routing_status = Column(String(50), default="PENDING", nullable=True, index=True)
+    
     # Worker Assignment & Resolution
     assigned_worker_id = Column(Integer, nullable=True, index=True)
     resolution_report = Column(Text, nullable=True)
@@ -58,3 +64,14 @@ class Complaint(Base):
     # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+class Feedback(Base):
+    __tablename__ = "feedback"
+
+    id = Column(Integer, primary_key=True, index=True)
+    complaint_id = Column(Integer, unique=True, nullable=False, index=True)
+    citizen_id = Column(Integer, nullable=False, index=True)
+    citizen_name = Column(String(150), nullable=False)
+    rating = Column(Integer, nullable=False)
+    comment = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())

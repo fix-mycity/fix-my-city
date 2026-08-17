@@ -216,95 +216,8 @@ class WasteDashboardService:
 
         _SYSTEM_INITIAL_SEEDED = True
         try:
-            bin_count = db.query(func.count(WasteBin.id)).scalar() or 0
-            if bin_count == 0:
-                bins = [
-                    WasteBin(bin_code="BIN-1001", location="Central Market Gate 1", ward="Ward 4", area="Connaught Circus", waste_type="Organic", capacity_liters=1100, fill_level_percentage=85.0, status="Full", latitude=28.6315, longitude=77.2167, installation_date=date.today()-timedelta(days=180), qr_code_data="SMART_BIN_BIN-1001_WARD_4"),
-                    WasteBin(bin_code="BIN-1002", location="Metro Station Exit 3", ward="Ward 4", area="Connaught Circus", waste_type="Plastic", capacity_liters=1100, fill_level_percentage=45.0, status="Half Full", latitude=28.6328, longitude=77.2195, installation_date=date.today()-timedelta(days=150), qr_code_data="SMART_BIN_BIN-1002_WARD_4"),
-                    WasteBin(bin_code="BIN-1003", location="Sector 15 Community Park", ward="Ward 9", area="Green Park", waste_type="General", capacity_liters=1100, fill_level_percentage=98.0, status="Overflow", latitude=28.5562, longitude=77.2025, installation_date=date.today()-timedelta(days=200), qr_code_data="SMART_BIN_BIN-1003_WARD_9"),
-                    WasteBin(bin_code="BIN-1004", location="Industrial Zone Complex", ward="Ward 12", area="Okhla Phase 3", waste_type="Electronic", capacity_liters=2000, fill_level_percentage=30.0, status="Empty", latitude=28.5355, longitude=77.2631, installation_date=date.today()-timedelta(days=90), qr_code_data="SMART_BIN_BIN-1004_WARD_12"),
-                    WasteBin(bin_code="BIN-1005", location="IT Park Main Gate", ward="Ward 15", area="Cyber City", waste_type="Glass", capacity_liters=1100, fill_level_percentage=20.0, status="Empty", latitude=28.4950, longitude=77.0890, installation_date=date.today()-timedelta(days=120), qr_code_data="SMART_BIN_BIN-1005_WARD_15"),
-                    WasteBin(bin_code="BIN-1006", location="Civic Hospital Rear Yard", ward="Ward 2", area="Civil Lines", waste_type="Organic", capacity_liters=1500, fill_level_percentage=65.0, status="Half Full", latitude=28.6750, longitude=77.2250, installation_date=date.today()-timedelta(days=300), qr_code_data="SMART_BIN_BIN-1006_WARD_2"),
-                    WasteBin(bin_code="BIN-1007", location="Railway Station Platform 1", ward="Ward 1", area="Old City", waste_type="Metal", capacity_liters=1100, fill_level_percentage=15.0, status="Empty", latitude=28.6420, longitude=77.2200, installation_date=date.today()-timedelta(days=210), qr_code_data="SMART_BIN_BIN-1007_WARD_1"),
-                    WasteBin(bin_code="BIN-1008", location="Residential Block C Square", ward="Ward 7", area="Vasant Kunj", waste_type="General", capacity_liters=1100, fill_level_percentage=0.0, status="Damaged", latitude=28.5200, longitude=77.1500, installation_date=date.today()-timedelta(days=365), qr_code_data="SMART_BIN_BIN-1008_WARD_7")
-                ]
-                db.add_all(bins)
-                db.commit()
-
-            vehicle_count = db.query(func.count(WasteVehicle.id)).scalar() or 0
-            if vehicle_count == 0:
-                vehicles = [
-                    WasteVehicle(vehicle_number="MH-12-WM-1001", vehicle_type="Compactor", capacity_tons=10.0, status="Available", driver_id=1, driver_name="Ramesh Singh", fuel_type="Diesel", current_location="Ward 4 - Connaught Circus", latitude=28.6315, longitude=77.2167),
-                    WasteVehicle(vehicle_number="MH-12-WM-1002", vehicle_type="Tipper", capacity_tons=6.0, status="On Route", driver_id=2, driver_name="Suresh Verma", fuel_type="CNG", current_location="Ward 9 - Green Park", latitude=28.5562, longitude=77.2025),
-                    WasteVehicle(vehicle_number="MH-12-WM-1003", vehicle_type="Mini Truck", capacity_tons=3.5, status="Available", driver_name="Amitabh Roy", fuel_type="Diesel", current_location="Ward 12 - Okhla Phase 3", latitude=28.5355, longitude=77.2631),
-                    WasteVehicle(vehicle_number="MH-12-WM-1004", vehicle_type="Loader", capacity_tons=8.0, status="Available", driver_name="Manoj Yadav", fuel_type="Electric", current_location="Ward 2 - Civil Lines", latitude=28.6750, longitude=77.2250),
-                    WasteVehicle(vehicle_number="MH-12-WM-1005", vehicle_type="Compactor", capacity_tons=8.0, status="Maintenance", driver_name="Rajesh Patil", fuel_type="Diesel", current_location="Central Depot Workshop", latitude=28.6139, longitude=77.2090)
-                ]
-                db.add_all(vehicles)
-                db.commit()
-
-            worker_count = db.query(func.count(WasteWorker.id)).scalar() or 0
-            if worker_count == 0:
-                workers = [
-                    WasteWorker(worker_id_number="WMW-101", name="Ramesh Singh", email="ramesh.wm@city.gov.in", phone="+919876543210", role="Driver", ward="Ward 4", area="Connaught Circus", status="Active", shift="Morning", performance_rating=4.9, assigned_vehicle_id=1),
-                    WasteWorker(worker_id_number="WMW-102", name="Suresh Verma", email="suresh.wm@city.gov.in", phone="+919876543211", role="Driver", ward="Ward 9", area="Green Park", status="Active", shift="Morning", performance_rating=4.8, assigned_vehicle_id=2),
-                    WasteWorker(worker_id_number="WMW-103", name="Anil Kumar", email="anil.wm@city.gov.in", phone="+919876543212", role="Cleaner", ward="Ward 4", area="Connaught Circus", status="Active", shift="Morning", performance_rating=4.7),
-                    WasteWorker(worker_id_number="WMW-104", name="Sunil Sharma", email="sunil.wm@city.gov.in", phone="+919876543213", role="Cleaner", ward="Ward 9", area="Green Park", status="Active", shift="Evening", performance_rating=4.6),
-                    WasteWorker(worker_id_number="WMW-105", name="Vikram Rathore", email="vikram.wm@city.gov.in", phone="+919876543214", role="Supervisor", ward="Ward 12", area="Okhla Phase 3", status="Active", shift="Morning", performance_rating=4.9),
-                    WasteWorker(worker_id_number="WMW-106", name="Pankaj Gupta", email="pankaj.wm@city.gov.in", phone="+919876543215", role="Inspector", ward="Ward 2", area="Civil Lines", status="On Leave", shift="Night", performance_rating=4.5)
-                ]
-                db.add_all(workers)
-                db.commit()
-
-                today = date.today()
-                for w in workers:
-                    att = WasteWorkerAttendance(
-                        worker_id=w.id,
-                        date=today,
-                        status="Present" if w.status == "Active" else "On Leave",
-                        check_in_time="07:30 AM" if w.status == "Active" else None
-                    )
-                    db.add(att)
-                db.commit()
-
-            maint_count = db.query(func.count(WasteMaintenanceTask.id)).scalar() or 0
-            if maint_count == 0:
-                today = date.today()
-                maintenances = [
-                    WasteMaintenanceTask(work_order_number="WMO-8001", asset_type="Vehicle", asset_id=5, asset_name="MH-12-WM-1005 (Compactor)", title="Hydraulic compactor cylinder leakage repair", description="Compactor truck hydraulic piston seal leaking oil during pressure sweep.", priority="High", status="In Progress", assigned_worker_id=5, assigned_worker_name="Vikram Rathore", estimated_cost=15000.0, actual_cost=12000.0, scheduled_date=today),
-                    WasteMaintenanceTask(work_order_number="WMO-8002", asset_type="Bin", asset_id=8, asset_name="BIN-1008 (Vasant Kunj)", title="Smart IoT fill sensor replacement & hinge repair", description="Bin lid hinge snapped and ultrasonic sensor not reporting level telemetry.", priority="Medium", status="Assigned", assigned_worker_id=3, assigned_worker_name="Anil Kumar", estimated_cost=3500.0, actual_cost=0.0, scheduled_date=today+timedelta(days=1)),
-                    WasteMaintenanceTask(work_order_number="WMO-8003", asset_type="Equipment", asset_id=1, asset_name="Central Landfill Weighbridge #2", title="Emergency weighbridge sensor calibration", description="Inbound waste truck weigh scale showing +500kg drift on heavy loads.", priority="Emergency", status="Pending", estimated_cost=25000.0, actual_cost=0.0, scheduled_date=today),
-                    WasteMaintenanceTask(work_order_number="WMO-8004", asset_type="Vehicle", asset_id=1, asset_name="MH-12-WM-1001 (Compactor)", title="Routine 10,000 KM Engine Oil & Filter Change", description="Scheduled preventive maintenance service for compactor truck.", priority="Low", status="Completed", assigned_worker_id=1, assigned_worker_name="Ramesh Singh", estimated_cost=8000.0, actual_cost=7500.0, scheduled_date=today-timedelta(days=5), completed_at=datetime.now()-timedelta(days=5), resolution_notes="Engine oil flushed, air filter replaced, brake pads checked.")
-                ]
-                db.add_all(maintenances)
-                db.commit()
-
-            notif_count = db.query(func.count(WasteNotification.id)).scalar() or 0
-            if notif_count == 0:
-                notifications = [
-                    WasteNotification(notification_type="Bin Full Alert", title="Smart Bin Overflow Warning (BIN-1003)", message="Bin BIN-1003 at Sector 15 Community Park has reached 98% fill capacity and requires immediate clearance.", status="Unread"),
-                    WasteNotification(notification_type="Emergency Alert", title="Bio-Hazard Dumping Emergency at Ward 2", message="Critical citizen complaint WC-20260728-003 reported hazardous medical waste outside Civil Hospital.", status="Unread"),
-                    WasteNotification(notification_type="Vehicle Maintenance", title="Vehicle Maintenance Alert (MH-12-WM-1005)", message="Compactor vehicle MH-12-WM-1005 moved to Central Workshop for hydraulic cylinder seal repair.", status="Unread"),
-                    WasteNotification(notification_type="Worker Assignment", title="New Task Assigned to Ramesh Singh", message="Assigned driver for Connaught Circus Morning Collection Route WCS-5001.", status="Read"),
-                    WasteNotification(notification_type="Collection Reminder", title="Scheduled Route Reminder (WCS-5002)", message="Green Park Residential Sweep collection route scheduled to start at 08:30 AM today.", status="Read")
-                ]
-                db.add_all(notifications)
-                db.commit()
-
-            sched_count = db.query(func.count(WasteCollectionSchedule.id)).scalar() or 0
-            if sched_count == 0:
-                today = date.today()
-                schedules = [
-                    WasteCollectionSchedule(schedule_code="WCS-5001", route_name="Connaught Circus Morning Route", ward="Ward 4", area="Connaught Circus", start_point="Central Depot Gate 1", end_point="Okhla Landfill Processing Plant", distance_km=14.2, estimated_minutes=50, vehicle_id=1, driver_worker_id=1, assigned_worker_ids="1, 3", scheduled_date=today, scheduled_time="07:00 AM", waste_type="General Waste", total_bins_count=12, collected_bins_count=10, collected_weight_tons=8.5, status="Active"),
-                    WasteCollectionSchedule(schedule_code="WCS-5002", route_name="Green Park Residential Sweep", ward="Ward 9", area="Green Park", start_point="Depot Sub-station 3", end_point="Okhla Landfill Processing Plant", distance_km=11.0, estimated_minutes=40, vehicle_id=2, driver_worker_id=2, assigned_worker_ids="2, 4", scheduled_date=today, scheduled_time="08:30 AM", waste_type="Organic Waste", total_bins_count=8, collected_bins_count=8, collected_weight_tons=6.2, status="Completed", completed_at=datetime.now()-timedelta(hours=2)),
-                    WasteCollectionSchedule(schedule_code="WCS-5003", route_name="Civil Lines Commercial Pickup", ward="Ward 2", area="Civil Lines", start_point="North Depot Station", end_point="Central Composting Facility", distance_km=9.5, estimated_minutes=35, vehicle_id=4, driver_worker_id=5, assigned_worker_ids="5, 6", scheduled_date=today+timedelta(days=1), scheduled_time="06:30 AM", waste_type="Recyclable", total_bins_count=15, collected_bins_count=0, collected_weight_tons=0.0, status="Planned")
-                ]
-                db.add_all(schedules)
-                db.commit()
-
             # Sync real citizen complaints from central complaints table
             WasteDashboardService.sync_central_complaints(db)
-
         except Exception as err:
             db.rollback()
             print(f"[WasteDashboardService] Seed notice: {err}")
@@ -777,6 +690,14 @@ class WasteComplaintService:
         complaint.status = "ASSIGNED"
         if notes:
             complaint.authority_notes = notes
+
+        # Update worker profile availability if currently AVAILABLE
+        from sqlalchemy import text
+        try:
+            db.execute(text("UPDATE worker_profiles SET availability = 'ASSIGNED', status_updated_at = CURRENT_TIMESTAMP WHERE user_id = :wid AND availability = 'AVAILABLE'"), {"wid": worker_id})
+            db.execute(text("UPDATE traffic_worker_profiles SET availability = 'ASSIGNED', status_updated_at = CURRENT_TIMESTAMP WHERE user_id = :wid AND availability = 'AVAILABLE'"), {"wid": worker_id})
+        except Exception as e:
+            print(f"Error updating worker profile status: {e}")
 
         db.commit()
 
@@ -1325,12 +1246,27 @@ class WasteWorkerService:
             worker_id_number = f"WMW-{candidate_id}"
         else:
             worker_id_number = schema.worker_id_number
+
+        raw_role = schema.role or "Cleaner"
+        role_map = {
+            "COLLECTOR": "Cleaner",
+            "Collector": "Cleaner",
+            "CLEANER": "Cleaner",
+            "DRIVER": "Driver",
+            "Driver": "Driver",
+            "SUPERVISOR": "Supervisor",
+            "Supervisor": "Supervisor",
+            "INSPECTOR": "Inspector",
+            "Inspector": "Inspector"
+        }
+        role_val = role_map.get(raw_role, raw_role)
+
         worker = WasteWorker(
             worker_id_number=worker_id_number,
             name=schema.name,
             email=schema.email,
             phone=schema.phone,
-            role=schema.role or "Cleaner",
+            role=role_val,
             ward=schema.ward,
             area=schema.area,
             status=schema.status or "Active",
@@ -1350,6 +1286,21 @@ class WasteWorkerService:
             return None
 
         update_data = schema.model_dump(exclude_unset=True)
+        if "role" in update_data and update_data["role"]:
+            raw_role = update_data["role"]
+            role_map = {
+                "COLLECTOR": "Cleaner",
+                "Collector": "Cleaner",
+                "CLEANER": "Cleaner",
+                "DRIVER": "Driver",
+                "Driver": "Driver",
+                "SUPERVISOR": "Supervisor",
+                "Supervisor": "Supervisor",
+                "INSPECTOR": "Inspector",
+                "Inspector": "Inspector"
+            }
+            update_data["role"] = role_map.get(raw_role, raw_role)
+
         for key, value in update_data.items():
             setattr(worker, key, value)
 

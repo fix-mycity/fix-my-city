@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
-from .model import Complaint, ComplaintStatus, ComplaintDepartment
-from .schema import ComplaintCreate
 from typing import Optional
+from .model import Complaint, ComplaintStatus, ComplaintDepartment, Feedback
+from .schema import ComplaintCreate, FeedbackCreate
 
 def classify_department(title: str, description: str) -> str:
     text = (title + " " + description).lower()
@@ -166,3 +166,33 @@ def update_complaint_image(db: Session, complaint_id: int, user_id: int, image_u
     db.commit()
     db.refresh(complaint)
     return complaint
+
+# =====================================================================
+# Feedback CRUD
+# =====================================================================
+
+def create_feedback(db: Session, citizen_id: int, citizen_name: str, data: FeedbackCreate) -> Feedback:
+    existing = db.query(Feedback).filter(Feedback.complaint_id == data.complaint_id).first()
+    if existing:
+        return existing
+        
+    feedback = Feedback(
+        complaint_id=data.complaint_id,
+        citizen_id=citizen_id,
+        citizen_name=citizen_name,
+        rating=data.rating,
+        comment=data.comment
+    )
+    db.add(feedback)
+    db.commit()
+    db.refresh(feedback)
+    return feedback
+
+def get_feedback_by_citizen(db: Session, citizen_id: int) -> list[Feedback]:
+    return db.query(Feedback).filter(Feedback.citizen_id == citizen_id).order_by(Feedback.created_at.desc()).all()
+
+def get_feedback_by_complaint(db: Session, complaint_id: int) -> Feedback | None:
+    return db.query(Feedback).filter(Feedback.complaint_id == complaint_id).first()
+
+def get_all_feedback(db: Session) -> list[Feedback]:
+    return db.query(Feedback).order_by(Feedback.created_at.desc()).all()

@@ -60,6 +60,10 @@ export const resolveTask = (taskId, resolution_report, after_image = null) => {
   return axiosInstance.post(`/city/workers/me/tasks/${taskId}/resolve`, { resolution_report, after_image });
 };
 
+export const startTask = (taskId) => {
+  return axiosInstance.post(`/city/workers/me/tasks/${taskId}/start`);
+};
+
 export const downloadTaskPdfReport = (taskId) => {
   return axiosInstance.get(`/city/workers/tasks/${taskId}/pdf-report`);
 };

@@ -160,17 +160,17 @@ def assign_worker(db: Session, incident_id: int, worker_data: WorkerAssignSchema
     
     current_status = central_status if central_status is not None else traffic_status
     
-    if current_status != "AVAILABLE":
+    if current_status in ["BUSY", "ON_BREAK", "ON_LEAVE", "EMERGENCY_DISPATCH"]:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Worker is not available for assignment. Current status: {current_status}"
         )
 
-    # Change worker status to BUSY in both profiles
-    if worker_profile:
-        worker_profile.availability = "BUSY"
-    if central_worker_profile:
-        central_worker_profile.availability = "BUSY"
+    # Change worker status to ASSIGNED in both profiles if currently AVAILABLE
+    if worker_profile and worker_profile.availability == "AVAILABLE":
+        worker_profile.availability = "ASSIGNED"
+    if central_worker_profile and central_worker_profile.availability == "AVAILABLE":
+        central_worker_profile.availability = "ASSIGNED"
 
     incident.assigned_worker_id = worker_data.worker_id
     incident.status = ComplaintStatus.ASSIGNED.value

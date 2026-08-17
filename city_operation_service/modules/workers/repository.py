@@ -375,6 +375,41 @@ class WorkerTaskRepository:
                     "resolved_at": item.resolved_at
                 })
             return mapped_items, total
+        elif department == "waste":
+            from modules.waste_management.model import WasteComplaint, WasteWorker
+            from sqlalchemy import func
+            email = db.execute(text("SELECT email FROM users WHERE id = :id"), {"id": worker_id}).scalar()
+            if email:
+                ww = db.query(WasteWorker).filter(func.lower(WasteWorker.email) == func.lower(email)).first()
+                if ww:
+                    target_ids.add(ww.id)
+
+            query = db.query(WasteComplaint).filter(WasteComplaint.assigned_worker_id.in_(list(target_ids))).order_by(WasteComplaint.created_at.desc())
+            items = query.all()
+            total = query.count()
+            
+            mapped_items = []
+            for item in items:
+                mapped_items.append({
+                    "id": item.id,
+                    "title": item.title,
+                    "description": item.description,
+                    "category": item.category,
+                    "department": "waste",
+                    "status": item.status,
+                    "priority": item.priority,
+                    "location_lat": item.latitude,
+                    "location_lng": item.longitude,
+                    "area": item.area,
+                    "address": item.address,
+                    "before_image": item.before_image,
+                    "after_image": item.after_image,
+                    "image_url": item.before_image,
+                    "resolution_report": item.resolution_notes,
+                    "created_at": item.created_at,
+                    "resolved_at": item.resolved_at
+                })
+            return mapped_items, total
         else:
             from modules.complaints.model import Complaint
             query = db.query(Complaint).filter(Complaint.assigned_worker_id == worker_id).order_by(Complaint.created_at.desc())
@@ -437,6 +472,32 @@ class WorkerTaskRepository:
                 print(f"Notice: sync_to_central_complaint warning on resolve: {_e}")
 
             return True
+        elif department == "waste":
+            from modules.waste_management.model import WasteComplaint, WasteWorker
+            from sqlalchemy import func
+            email = db.execute(text("SELECT email FROM users WHERE id = :id"), {"id": worker_id}).scalar()
+            if email:
+                ww = db.query(WasteWorker).filter(func.lower(WasteWorker.email) == func.lower(email)).first()
+                if ww:
+                    target_ids.add(ww.id)
+
+            item = db.query(WasteComplaint).filter(WasteComplaint.id == task_id, WasteComplaint.assigned_worker_id.in_(list(target_ids))).first()
+            if not item: return None
+            
+            item.status = "COMPLETED"
+            item.resolution_notes = resolution_report
+            if clean_after:
+                item.after_image = clean_after
+            item.resolved_at = datetime.datetime.utcnow()
+            db.commit()
+
+            try:
+                from modules.waste_management.service import WasteDashboardService
+                WasteDashboardService.sync_to_central_complaint(db, item)
+            except Exception as _e:
+                print(f"Notice: WasteComplaint sync on resolve: {_e}")
+
+            return True
         else:
             from modules.complaints.model import Complaint, ComplaintStatus
             item = db.query(Complaint).filter(Complaint.id == task_id).first()
@@ -447,18 +508,60 @@ class WorkerTaskRepository:
                     item.resolution_image = clean_after
                 item.resolved_at = datetime.datetime.utcnow()
                 db.commit()
+            return True
+
+    @staticmethod
+    def start_task(db: Session, worker_id: int, department: str, task_id: int):
+        target_ids = {worker_id}
+        if department == "water":
+            from modules.water_management.model import WaterComplaint, WaterFieldWorker
+            from sqlalchemy import func
+            email = db.execute(text("SELECT email FROM users WHERE id = :id"), {"id": worker_id}).scalar()
+            if email:
+                wfw = db.query(WaterFieldWorker).filter(func.lower(WaterFieldWorker.email) == func.lower(email)).first()
+                if wfw:
+                    target_ids.add(wfw.id)
+
+            item = db.query(WaterComplaint).filter(WaterComplaint.id == task_id, WaterComplaint.assigned_worker_id.in_(list(target_ids))).first()
+            if not item: return False
+            
+            item.status = "IN_PROGRESS"
+            db.commit()
 
             try:
-                from modules.waste_management.model import WasteComplaint
-                wc = db.query(WasteComplaint).filter(WasteComplaint.id == task_id).first()
-                if wc:
-                    wc.status = "COMPLETED"
-                    wc.resolution_notes = resolution_report
-                    if clean_after:
-                        wc.after_image = clean_after
-                    wc.resolved_at = datetime.datetime.utcnow()
-                    db.commit()
+                from modules.water_management.repository import WaterComplaintRepository
+                WaterComplaintRepository.sync_to_central_complaint(db, item)
             except Exception as _e:
-                print(f"Notice: WasteComplaint sync on resolve: {_e}")
+                print(f"Notice: sync_to_central_complaint warning on start: {_e}")
 
+            return True
+        elif department == "waste":
+            from modules.waste_management.model import WasteComplaint, WasteWorker
+            from sqlalchemy import func
+            email = db.execute(text("SELECT email FROM users WHERE id = :id"), {"id": worker_id}).scalar()
+            if email:
+                ww = db.query(WasteWorker).filter(func.lower(WasteWorker.email) == func.lower(email)).first()
+                if ww:
+                    target_ids.add(ww.id)
+
+            item = db.query(WasteComplaint).filter(WasteComplaint.id == task_id, WasteComplaint.assigned_worker_id.in_(list(target_ids))).first()
+            if not item: return False
+            
+            item.status = "IN_PROGRESS"
+            db.commit()
+
+            try:
+                from modules.waste_management.service import WasteDashboardService
+                WasteDashboardService.sync_to_central_complaint(db, item)
+            except Exception as _e:
+                print(f"Notice: WasteComplaint sync on start: {_e}")
+
+            return True
+        else:
+            from modules.complaints.model import Complaint
+            item = db.query(Complaint).filter(Complaint.id == task_id, Complaint.assigned_worker_id == worker_id).first()
+            if not item: return False
+            
+            item.status = "IN_PROGRESS"
+            db.commit()
             return True

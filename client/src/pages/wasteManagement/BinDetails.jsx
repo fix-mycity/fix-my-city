@@ -3,7 +3,6 @@ import { useParams, useNavigate } from 'react-router-dom';
 import PageHeader from '../../components/wasteManagement/PageHeader';
 import { BinFillLevelIndicator, BinStatusBadge, BinTypeBadge } from '../../components/wasteManagement/BinFillLevelIndicator';
 import { UpdateFillLevelModal } from '../../components/wasteManagement/UpdateFillLevelModal';
-import { AssignBinRouteModal, BinQrModal } from '../../components/wasteManagement/AssignBinRouteModal';
 import LoadingSkeleton from '../../components/wasteManagement/LoadingSkeleton';
 
 import { getWasteBinById, deleteWasteBin } from '../../services/wasteManagementService';
@@ -18,8 +17,6 @@ export default function BinDetails() {
 
   // Modals
   const [isFillModalOpen, setIsFillModalOpen] = useState(false);
-  const [isRouteModalOpen, setIsRouteModalOpen] = useState(false);
-  const [isQrModalOpen, setIsQrModalOpen] = useState(false);
 
   const fetchBinDetails = async () => {
     setLoading(true);
@@ -39,10 +36,10 @@ export default function BinDetails() {
   }, [id]);
 
   const handleDelete = async () => {
-    if (window.confirm(`Are you sure you want to delete Smart Bin #${bin.bin_code}?`)) {
+    if (window.confirm(`Are you sure you want to delete Waste Bin #${bin.bin_code}?`)) {
       try {
         await deleteWasteBin(bin.id);
-        toast.success('Smart Waste Bin deleted successfully');
+        toast.success('Waste Bin deleted successfully');
         navigate('/waste/bins');
       } catch (err) {
         toast.error('Failed to delete bin.');
@@ -54,7 +51,65 @@ export default function BinDetails() {
     return <LoadingSkeleton />;
   }
 
-  const qrSvgUrl = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(bin.qr_code_data || `SMART_BIN_${bin.bin_code}`)}`;
+  const qrSvgUrl = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(bin.qr_code_data || `WASTE_BIN_${bin.bin_code}`)}`;
+
+  const handlePrint = () => {
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Print QR Code - Bin #${bin.bin_code}</title>
+          <style>
+            body {
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              justify-content: center;
+              height: 100vh;
+              margin: 0;
+              font-family: system-ui, -apple-system, sans-serif;
+            }
+            .qr-card {
+              text-align: center;
+              padding: 20px;
+              border: 1px solid #e2e8f0;
+              border-radius: 16px;
+              box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+            }
+            img {
+              width: 250px;
+              height: 250px;
+            }
+            h1 {
+              font-size: 1.5rem;
+              margin: 15px 0 5px 0;
+              color: #0f172a;
+            }
+            p {
+              font-size: 0.9rem;
+              margin: 0;
+              color: #475569;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="qr-card">
+            <img src="${qrSvgUrl}" alt="QR Code" />
+            <h1>Bin #${bin.bin_code}</h1>
+            <p>${bin.waste_type} Bin - ${bin.capacity_liters}L</p>
+            <p>${bin.location} (${bin.ward || 'General'})</p>
+          </div>
+          <script>
+            window.onload = function() {
+              window.print();
+              setTimeout(function() { window.close(); }, 500);
+            };
+          </script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+  };
 
   return (
     <div className="waste-bin-details-page">
@@ -65,12 +120,12 @@ export default function BinDetails() {
           style={{ padding: '0.4rem 0.75rem', fontSize: '0.82rem' }}
         >
           <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>arrow_back</span>
-          Back to Smart Bins List
+          Back to Waste Bins List
         </button>
       </div>
 
       <PageHeader
-        title={`Smart Waste Bin #${bin.bin_code}`}
+        title={`Waste Bin #${bin.bin_code}`}
         subtitle={`${bin.waste_type} Bin • Installed ${bin.installation_date ? new Date(bin.installation_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A'}`}
       />
 
@@ -89,12 +144,12 @@ export default function BinDetails() {
               <BinStatusBadge status={bin.status} />
             </div>
 
-            {/* Sensor Fill Level Gauge Block */}
+            {/* Fill Level Gauge Block */}
             <div style={{ backgroundColor: '#f8fafc', padding: '1.25rem', borderRadius: '10px', border: '1px solid #e2e8f0', marginBottom: '1.5rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.65rem' }}>
                 <span style={{ fontSize: '0.85rem', fontWeight: '700', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                  <span className="material-symbols-outlined" style={{ color: '#10b981', fontSize: '20px' }}>sensors</span>
-                  IoT Sensor Live Fill Level
+                  <span className="material-symbols-outlined" style={{ color: '#10b981', fontSize: '20px' }}>equalizer</span>
+                  Current Fill Level
                 </span>
                 <span style={{ fontSize: '1.1rem', fontWeight: '800', color: '#047857' }}>
                   {bin.fill_level_percentage}%
@@ -116,16 +171,10 @@ export default function BinDetails() {
                 <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: '600' }}>Category Waste Type</div>
                 <div style={{ fontSize: '1rem', fontWeight: '700', color: '#0f172a' }}>{bin.waste_type}</div>
               </div>
-              <div>
-                <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: '600' }}>Assigned Collection Route</div>
-                <div style={{ fontSize: '1rem', fontWeight: '700', color: '#7c3aed' }}>
-                  {bin.assigned_route_name || 'Unassigned'}
-                </div>
-              </div>
             </div>
           </div>
 
-          {/* Location & GPS Telemetry */}
+          {/* Location & Coordinates */}
           <div style={{ backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '1.5rem', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
             <h3 style={{ fontSize: '1rem', fontWeight: '700', color: '#0f172a', margin: '0 0 1rem 0', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
               <span className="material-symbols-outlined" style={{ color: '#06b6d4', fontSize: '20px' }}>location_on</span>
@@ -165,25 +214,16 @@ export default function BinDetails() {
                 className="waste-btn waste-btn-primary"
                 style={{ width: '100%', justifyContent: 'center' }}
               >
-                <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>sensors</span>
-                Update Sensor Fill Reading
+                <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>equalizer</span>
+                Update Fill Level
               </button>
 
               <button
-                onClick={() => setIsRouteModalOpen(true)}
+                onClick={handlePrint}
                 className="waste-btn waste-btn-secondary"
                 style={{ width: '100%', justifyContent: 'center' }}
               >
-                <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>route</span>
-                Assign Collection Route
-              </button>
-
-              <button
-                onClick={() => setIsQrModalOpen(true)}
-                className="waste-btn waste-btn-secondary"
-                style={{ width: '100%', justifyContent: 'center' }}
-              >
-                <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>qr_code_2</span>
+                <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>print</span>
                 Print QR Code Tag
               </button>
 
@@ -193,7 +233,7 @@ export default function BinDetails() {
                 style={{ width: '100%', justifyContent: 'center', backgroundColor: '#fef2f2', border: '1px solid #fecaca', color: '#dc2626' }}
               >
                 <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>delete</span>
-                Delete Smart Bin
+                Delete Waste Bin
               </button>
             </div>
           </div>
@@ -201,7 +241,7 @@ export default function BinDetails() {
           {/* QR Code Preview Card */}
           <div style={{ backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '1.25rem', textAlign: 'center', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
             <h3 style={{ fontSize: '0.95rem', fontWeight: '700', color: '#0f172a', margin: '0 0 0.75rem 0' }}>
-              Smart Tag QR Code
+              Waste Tag QR Code
             </h3>
 
             <div style={{
@@ -219,7 +259,7 @@ export default function BinDetails() {
               />
             </div>
             <div style={{ fontSize: '0.78rem', color: '#64748b' }}>
-              Scan QR to verify bin status on route sweep
+              Scan QR to identify this waste bin on route rounds.
             </div>
           </div>
         </div>
@@ -231,19 +271,6 @@ export default function BinDetails() {
         onClose={() => setIsFillModalOpen(false)}
         bin={bin}
         onSuccess={fetchBinDetails}
-      />
-
-      <AssignBinRouteModal
-        isOpen={isRouteModalOpen}
-        onClose={() => setIsRouteModalOpen(false)}
-        bin={bin}
-        onSuccess={fetchBinDetails}
-      />
-
-      <BinQrModal
-        isOpen={isQrModalOpen}
-        onClose={() => setIsQrModalOpen(false)}
-        bin={bin}
       />
     </div>
   );

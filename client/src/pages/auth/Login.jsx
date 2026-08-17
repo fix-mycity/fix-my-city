@@ -126,6 +126,8 @@ export default function Login() {
             deptPermissions = ['dept:water'];
           } else if (permissions.some(p => p.startsWith('traffic:'))) {
             deptPermissions = ['dept:traffic'];
+          } else if (permissions.some(p => p.startsWith('emergency:'))) {
+            deptPermissions = ['dept:emergency'];
           }
         }
 
@@ -144,6 +146,8 @@ export default function Login() {
               navigate('/waste/dashboard', { replace: true });
             } else if (perm === 'dept:general') {
               navigate('/general/dashboard', { replace: true });
+            } else if (perm === 'dept:emergency') {
+              navigate('/emergency/dashboard', { replace: true });
             } else {
               navigate('/admin', { replace: true });
             }

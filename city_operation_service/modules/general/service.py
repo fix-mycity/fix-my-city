@@ -160,6 +160,14 @@ class GeneralComplaintService:
         if notes:
             db_complaint.resolution_report = notes
             
+        # Update worker profile availability if currently AVAILABLE
+        from sqlalchemy import text
+        try:
+            db.execute(text("UPDATE worker_profiles SET availability = 'ASSIGNED', status_updated_at = CURRENT_TIMESTAMP WHERE user_id = :wid AND availability = 'AVAILABLE'"), {"wid": worker_id})
+            db.execute(text("UPDATE traffic_worker_profiles SET availability = 'ASSIGNED', status_updated_at = CURRENT_TIMESTAMP WHERE user_id = :wid AND availability = 'AVAILABLE'"), {"wid": worker_id})
+        except Exception as e:
+            print(f"Error updating worker profile status: {e}")
+
         db.commit()
         db.refresh(db_complaint)
         return GeneralComplaintService._to_schema(db, db_complaint)

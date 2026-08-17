@@ -79,6 +79,19 @@ def create_worker(db: Session, manager_id: int, department: str, schema: WorkerC
                         from sqlalchemy import func
                         
                         role_val = getattr(schema, 'role', None) or getattr(schema, 'designation', None) or 'Collector'
+                        role_map = {
+                            "COLLECTOR": "Cleaner",
+                            "Collector": "Cleaner",
+                            "CLEANER": "Cleaner",
+                            "DRIVER": "Driver",
+                            "Driver": "Driver",
+                            "SUPERVISOR": "Supervisor",
+                            "Supervisor": "Supervisor",
+                            "INSPECTOR": "Inspector",
+                            "Inspector": "Inspector"
+                        }
+                        role_val = role_map.get(role_val, role_val)
+
                         shift_val = getattr(schema, 'shift', None) or 'Morning Shift'
                         ward_val = getattr(schema, 'ward', None) or getattr(schema, 'place', None) or 'Ward 4'
                         area_val = getattr(schema, 'area', None) or getattr(schema, 'place', None) or 'Connaught Place'
@@ -151,19 +164,94 @@ def update_worker(db: Session, worker_id: int, manager_id: int, department: str,
             )
         except Exception as e:
             print(f"Error syncing update to traffic module: {e}")
+    elif department == "waste":
+        try:
+            from modules.waste_management.model import WasteWorker
+            waste_worker = db.query(WasteWorker).filter(WasteWorker.email == worker.email).first()
+            if waste_worker:
+                role_val = getattr(schema, 'role', None) or getattr(schema, 'designation', None)
+                if role_val:
+                    role_map = {
+                        "COLLECTOR": "Cleaner",
+                        "Collector": "Cleaner",
+                        "CLEANER": "Cleaner",
+                        "DRIVER": "Driver",
+                        "Driver": "Driver",
+                        "SUPERVISOR": "Supervisor",
+                        "Supervisor": "Supervisor",
+                        "INSPECTOR": "Inspector",
+                        "Inspector": "Inspector"
+                    }
+                    role_val = role_map.get(role_val, role_val)
+                    waste_worker.role = role_val
+                
+                if schema.first_name is not None or schema.last_name is not None:
+                    # Fetch existing if one of them is missing to prevent overwriting with blank
+                    orig_first = schema.first_name if schema.first_name is not None else (worker.first_name or "")
+                    orig_last = schema.last_name if schema.last_name is not None else (worker.last_name or "")
+                    full_name = f"{orig_first} {orig_last}".strip()
+                    if full_name:
+                        waste_worker.name = full_name
+                
+                if schema.phone is not None:
+                    waste_worker.phone = schema.phone
+                if schema.shift is not None:
+                    waste_worker.shift = schema.shift
+                if schema.ward is not None:
+                    waste_worker.ward = schema.ward
+                if schema.area is not None:
+                    waste_worker.area = schema.area
+                if schema.employment_status is not None:
+                    waste_worker.status = "Active" if schema.employment_status == "ACTIVE" else "Inactive"
+                db.commit()
+        except Exception as e:
+            print(f"Error syncing update to waste module: {e}")
 
     return {"success": True, "message": "Worker updated successfully"}
 
 def delete_worker(db: Session, worker_id: int, manager_id: int):
+    worker_data = WorkerRepository.get_worker_full(db, worker_id, manager_id)
+    if not worker_data:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Worker not found or unauthorized to delete")
+    
+    email = worker_data.get("email")
+    department = worker_data.get("department")
+    
     success = WorkerRepository.delete_worker(db, worker_id, manager_id)
     if not success:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Worker not found or unauthorized to delete")
+        
+    if department == "waste" and email:
+        try:
+            from modules.waste_management.model import WasteWorker
+            db.query(WasteWorker).filter(WasteWorker.email == email).delete()
+            db.commit()
+        except Exception as e:
+            print(f"Error syncing deletion to waste module: {e}")
+            
     return {"success": True, "message": "Worker deleted successfully"}
 
 def block_worker(db: Session, worker_id: int, manager_id: int):
+    worker_data = WorkerRepository.get_worker_full(db, worker_id, manager_id)
+    if not worker_data:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Worker not found or unauthorized to modify")
+        
     success = WorkerRepository.block_worker(db, worker_id, manager_id)
     if not success:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Worker not found or unauthorized to modify")
+        
+    email = worker_data.get("email")
+    department = worker_data.get("department")
+    if department == "waste" and email:
+        try:
+            from modules.waste_management.model import WasteWorker
+            waste_worker = db.query(WasteWorker).filter(WasteWorker.email == email).first()
+            if waste_worker:
+                waste_worker.status = "Inactive" if waste_worker.status == "Active" else "Active"
+                db.commit()
+        except Exception as e:
+            print(f"Error syncing status change to waste module: {e}")
+            
     return {"success": True, "message": "Worker status updated successfully"}
 
 def get_my_profile(db: Session, user_id: int):
@@ -277,4 +365,47 @@ def resolve_my_task(db: Session, user_id: int, task_id: int, resolution_report: 
     if not success:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found or not assigned to you")
         
+    # Re-evaluate availability: check if any assigned tasks remain unresolved
+    tasks, _ = WorkerTaskRepository.list_assigned_tasks(db, user_id, profile.department)
+    unresolved_tasks = [t for t in tasks if t.get("status") not in ["RESOLVED", "CLOSED", "COMPLETED", "VERIFIED"]]
+    
+    if len(unresolved_tasks) > 0:
+        profile.availability = "ASSIGNED"
+    else:
+        profile.availability = "AVAILABLE"
+        
+    # Sync status to traffic profile if applicable
+    if profile.department == "traffic":
+        try:
+            from sqlalchemy import text
+            new_avail = "ASSIGNED" if len(unresolved_tasks) > 0 else "AVAILABLE"
+            db.execute(text("UPDATE traffic_worker_profiles SET availability = :avail, status_updated_at = CURRENT_TIMESTAMP WHERE user_id = :wid"), {"avail": new_avail, "wid": user_id})
+        except Exception as e:
+            print(f"Error syncing resolve availability to traffic: {e}")
+            
+    db.commit()
     return {"success": True, "message": "Task marked as resolved"}
+
+def start_my_task(db: Session, user_id: int, task_id: int):
+    profile = WorkerRepository.get_worker_profile(db, user_id)
+    if not profile:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Worker profile not found")
+        
+    from modules.workers.repository import WorkerTaskRepository
+    success = WorkerTaskRepository.start_task(db, user_id, profile.department, task_id)
+    if not success:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found or not assigned to you")
+        
+    # Set status to BUSY
+    profile.availability = "BUSY"
+    
+    # Sync status to traffic profile if applicable
+    if profile.department == "traffic":
+        try:
+            from sqlalchemy import text
+            db.execute(text("UPDATE traffic_worker_profiles SET availability = 'BUSY', status_updated_at = CURRENT_TIMESTAMP WHERE user_id = :wid"), {"wid": user_id})
+        except Exception as e:
+            print(f"Error syncing start availability to traffic: {e}")
+            
+    db.commit()
+    return {"success": True, "message": "Task started and status set to BUSY"}

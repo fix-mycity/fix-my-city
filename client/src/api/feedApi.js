@@ -1,19 +1,64 @@
 import axiosInstance from "./axiosInstance";
 
-export const getFeedPostsApi = (category) => {
-  return axiosInstance.get("/city/feed/posts", {
-    params: { category }
-  });
+// Retrieve all visible feed posts
+export const getFeedPostsApi = (categoryOrParams, feedType) => {
+  let params = {};
+  if (categoryOrParams && typeof categoryOrParams === "object") {
+    params = categoryOrParams;
+  } else {
+    const category = categoryOrParams;
+    if (category && category !== "All") params.category = category;
+    if (feedType && feedType !== "All") {
+      params.feed_type = feedType.toLowerCase();
+    }
+  }
+  return axiosInstance.get("/city/feed/posts", { params });
 };
 
+export const getMyPostsApi = () => {
+  return axiosInstance.get("/city/feed/my-posts");
+};
+
+export const getPendingPostsApi = () => {
+  return axiosInstance.get("/city/feed/pending");
+};
+
+// Create a new post (announcement)
 export const createPostApi = (data) => {
-  return axiosInstance.post("/city/feed/posts", data, {
+  const isFormData = data instanceof FormData;
+  const config = isFormData ? {
     headers: {
       "Content-Type": "multipart/form-data",
     },
-  });
+  } : {};
+  return axiosInstance.post("/city/feed/posts", data, config);
 };
 
+export const approvePostApi = (postId) => {
+  return axiosInstance.patch(`/city/feed/posts/${postId}/approve`);
+};
+
+export const rejectPostApi = (postId, reason) => {
+  return axiosInstance.patch(`/city/feed/posts/${postId}/reject`, { reason });
+};
+
+// Delete a feed post
 export const deletePostApi = (postId) => {
   return axiosInstance.delete(`/city/feed/posts/${postId}`);
+};
+
+export const reactToPostApi = (postId, reactionType = "LIKE") => {
+  return axiosInstance.post(`/city/feed/posts/${postId}/react`, { reaction_type: reactionType });
+};
+
+export const getPostCommentsApi = (postId) => {
+  return axiosInstance.get(`/city/feed/posts/${postId}/comments`);
+};
+
+export const createPostCommentApi = (postId, content) => {
+  return axiosInstance.post(`/city/feed/posts/${postId}/comments`, { content });
+};
+
+export const deletePostCommentApi = (commentId) => {
+  return axiosInstance.delete(`/city/feed/posts/comments/${commentId}`);
 };

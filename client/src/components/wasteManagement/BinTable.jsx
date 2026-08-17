@@ -29,8 +29,8 @@ export function BinTable({
         <span className="material-symbols-outlined" style={{ fontSize: '48px', color: '#cbd5e1', marginBottom: '0.5rem' }}>
           delete_sweep
         </span>
-        <h4 style={{ margin: '0 0 0.25rem 0', color: '#0f172a' }}>No Smart Bins Found</h4>
-        <p style={{ margin: 0, fontSize: '0.85rem' }}>No smart waste bins matching your current filters or search terms.</p>
+        <h4 style={{ margin: '0 0 0.25rem 0', color: '#0f172a' }}>No Waste Bins Found</h4>
+        <p style={{ margin: 0, fontSize: '0.85rem' }}>No waste bins matching your current filters or search terms.</p>
       </div>
     );
   }
@@ -46,14 +46,13 @@ export function BinTable({
       <div style={{ overflowX: 'auto' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.875rem' }}>
           <thead>
-            <tr style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0', color: '#475569', fontWeight: '700' }}>
+             <tr style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0', color: '#475569', fontWeight: '700' }}>
               <th style={{ padding: '0.85rem 1rem' }}>Bin Code</th>
               <th style={{ padding: '0.85rem 1rem' }}>Location & Ward</th>
               <th style={{ padding: '0.85rem 1rem' }}>Category Type</th>
               <th style={{ padding: '0.85rem 1rem' }}>Capacity</th>
-              <th style={{ padding: '0.85rem 1rem' }}>Sensor Fill Level</th>
+              <th style={{ padding: '0.85rem 1rem' }}>Fill Level</th>
               <th style={{ padding: '0.85rem 1rem' }}>Status</th>
-              <th style={{ padding: '0.85rem 1rem' }}>Collection Route</th>
               <th style={{ padding: '0.85rem 1rem', textAlign: 'right' }}>Actions</th>
             </tr>
           </thead>
@@ -79,16 +78,6 @@ export function BinTable({
                 <td style={{ padding: '0.85rem 1rem' }}>
                   <BinStatusBadge status={b.status} />
                 </td>
-                <td style={{ padding: '0.85rem 1rem' }}>
-                  {b.assigned_route_name ? (
-                    <div style={{ fontSize: '0.82rem', fontWeight: '600', color: '#0f172a' }}>
-                      <span className="material-symbols-outlined" style={{ fontSize: '14px', verticalAlign: 'middle', marginRight: '4px', color: '#8b5cf6' }}>route</span>
-                      {b.assigned_route_name}
-                    </div>
-                  ) : (
-                    <span style={{ fontSize: '0.78rem', color: '#94a3b8', fontStyle: 'italic' }}>Unassigned</span>
-                  )}
-                </td>
                 <td style={{ padding: '0.85rem 1rem', textAlign: 'right', whiteSpace: 'nowrap' }}>
                   <div style={{ display: 'inline-flex', gap: '0.4rem' }}>
                     {/* View Details */}
@@ -112,7 +101,7 @@ export function BinTable({
                     {/* Sensor Fill Level */}
                     <button
                       onClick={() => onUpdateFillLevel(b)}
-                      title="Update Sensor Reading"
+                      title="Update Fill Level"
                       style={{
                         background: '#ecfeff',
                         border: '1px solid #a5f3fc',
@@ -125,42 +114,6 @@ export function BinTable({
                       }}
                     >
                       <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>sensors</span>
-                    </button>
-
-                    {/* Assign Route */}
-                    <button
-                      onClick={() => onAssignRoute(b)}
-                      title="Assign Collection Route"
-                      style={{
-                        background: '#f5f3ff',
-                        border: '1px solid #ddd6fe',
-                        color: '#7c3aed',
-                        padding: '0.35rem 0.5rem',
-                        borderRadius: '6px',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center'
-                      }}
-                    >
-                      <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>route</span>
-                    </button>
-
-                    {/* QR Code */}
-                    <button
-                      onClick={() => onShowQr(b)}
-                      title="View QR Code Tag"
-                      style={{
-                        background: '#fffbeb',
-                        border: '1px solid #fde68a',
-                        color: '#d97706',
-                        padding: '0.35rem 0.5rem',
-                        borderRadius: '6px',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center'
-                      }}
-                    >
-                      <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>qr_code_2</span>
                     </button>
 
                     {/* Delete */}

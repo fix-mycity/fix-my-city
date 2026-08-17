@@ -2,6 +2,7 @@ import React from 'react';
 import { sidebarItems } from '../../utils/waterMockData';
 import { Link } from 'react-router-dom';
 import { useSelector } from 'react-redux';
+import DepartmentSwitcher from '../shared/DepartmentSwitcher';
 
 export default function Sidebar({
   isCollapsed,
@@ -51,6 +52,12 @@ export default function Sidebar({
         </div>
       </div>
 
+      {!isCollapsed && (
+        <div className="px-4 py-3 border-b border-slate-700/50">
+          <DepartmentSwitcher />
+        </div>
+      )}
+
       <nav className="water-sidebar-nav">
         <ul className="water-sidebar-menu">
           {itemsToRender.map((item) => (
@@ -83,7 +90,6 @@ export default function Sidebar({
           ))}
         </ul>
       </nav>
-
       <div className="water-sidebar-footer">
         <div className="water-sidebar-user-block">
           <img src={displayUser.avatar} alt="User Profile" className="water-sidebar-avatar" />

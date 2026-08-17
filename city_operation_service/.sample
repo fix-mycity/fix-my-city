@@ -19,3 +19,8 @@ CASHFREE_BASE_URL=https://sandbox.cashfree.com/verification
 
 CASHFREE_CLIENT_ID=YOUR_CLIENT_ID
 CASHFREE_CLIENT_SECRET=YOUR_CLIENT_SECRET
+
+# AI Service Configuration
+AI_SERVICE_URL=http://ai-service:8003
+INTERNAL_API_KEY=your_internal_api_key_here
+

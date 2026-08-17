@@ -29,5 +29,9 @@ class Settings:
     CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", "amqp://guest:guest@localhost:5672//")
     CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND", "rpc://")
 
+    # AI Service Configuration
+    AI_SERVICE_URL = os.getenv("AI_SERVICE_URL", "http://ai-service:8003")
+    INTERNAL_API_KEY = os.getenv("INTERNAL_API_KEY", "super_secret_internal_key_change_me")
+
 
 settings = Settings()
